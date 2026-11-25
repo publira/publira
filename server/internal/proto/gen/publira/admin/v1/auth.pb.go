@@ -2763,8 +2763,10 @@ type AdminAuthServiceGetTenantAdminInvitationStateResponse struct {
 	Status    string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 	ExpiresAt string                 `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	// Whether the address belongs to an account its owner can already sign in
-	// with. An account whose address was never confirmed answers false: its
-	// password was set by whoever signed up with the address, so accepting asks
+	// with. An account whose address was never confirmed, or whose password was
+	// not set by someone who had proved the address, answers false: a password
+	// chosen on a sign-up form was set by whoever signed up with the address,
+	// even once the sign-up's confirmation link is followed, so accepting asks
 	// for a name and a password that replace its own.
 	AccountExists bool `protobuf:"varint,4,opt,name=account_exists,json=accountExists,proto3" json:"account_exists,omitempty"`
 	// The role accepting the invitation grants:

@@ -549,6 +549,9 @@ func CreateAccount(ctx context.Context, tx *sql.Tx, p AccountParams) (Member, er
 			Email:        email,
 			PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 			Name:         strings.TrimSpace(p.Name),
+			// The administrator who chose the password is trusted with the
+			// address, which is what marks it confirmed below.
+			PasswordProvenAt: sql.NullTime{Time: time.Now(), Valid: true},
 		})
 	})
 	if err != nil {
@@ -587,19 +590,33 @@ func AddressConfirmed(user dbmodels.User) bool {
 	return user.EmailVerifiedAt.Valid
 }
 
+// CredentialsProven reports whether only a proven holder of user's address can
+// sign in to it with a password: the address is confirmed, and the account has
+// no password or one set by someone who had proved the address, as
+// password_proven_at records. Confirming the address does not prove the
+// password on its own: a sign-up's confirmation link shows who reads the
+// mailbox, while the password is still whatever the person who filled in the
+// form chose, and that person need not be the same one.
+//
+// Granting a console role without an invitation, and handing an invited
+// account over without asking for a new password, both read this.
+func CredentialsProven(user dbmodels.User) bool {
+	return AddressConfirmed(user) && (!user.PasswordHash.Valid || user.PasswordProvenAt.Valid)
+}
+
 // ErrAccountUnconfirmed refuses a console role given without an invitation to
 // an account [grantable] does not accept for a reason other than a suspension:
-// its address was never confirmed, or it is not active yet. Inviting the
+// [CredentialsProven] does not hold, or it is not active yet. Inviting the
 // address instead mails a link that hands the account to whoever follows it,
 // as [ClaimInvited] does.
-var ErrAccountUnconfirmed = errors.New("account address is not confirmed")
+var ErrAccountUnconfirmed = errors.New("account credentials are not proven by the address owner")
 
 // grantable reports whether user may be given a console role on an
 // administrator's word alone, without its owner following a link mailed to
-// its address: it is active, and [AddressConfirmed] holds. Any other account
+// its address: it is active, and [CredentialsProven] holds. Any other account
 // is readied for the role by [ClaimInvited] when its invitation is accepted.
 func grantable(user dbmodels.User) bool {
-	return user.Status == "active" && AddressConfirmed(user)
+	return user.Status == "active" && CredentialsProven(user)
 }
 
 // refuseUngrantable answers why user may not be given a console role without
@@ -634,8 +651,8 @@ func lockAccount(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UUID) (d
 type ClaimParams struct {
 	TenantID uuid.UUID
 	UserID   uuid.UUID
-	// Name and Password replace the account's own when its address was never
-	// confirmed, and are required then. They are not read otherwise.
+	// Name and Password replace the account's own when [CredentialsProven]
+	// does not hold, and are required then. They are not read otherwise.
 	Name     string
 	Password string
 }
@@ -643,10 +660,10 @@ type ClaimParams struct {
 // ClaimInvited readies an existing account for the console role an invitation
 // gives, inside tx, on the strength of the invitee having followed the link
 // mailed to its address. An account an administrator suspended is refused with
-// [ErrAccountSuspended]. One whose address was never confirmed is handed over
-// as [AddressConfirmed] requires: Name and Password replace its own, the
-// address is marked confirmed, and anything signed for it before stops
-// working. The role itself is the caller's to grant.
+// [ErrAccountSuspended]. One [CredentialsProven] does not accept is handed
+// over as it requires: Name and Password replace its own, the address and the
+// password are marked proven, and anything signed for it before stops working.
+// The role itself is the caller's to grant.
 func ClaimInvited(ctx context.Context, tx *sql.Tx, p ClaimParams) (dbmodels.User, error) {
 	user, err := lockAccount(ctx, tx, p.TenantID, p.UserID)
 	if err != nil {
@@ -660,7 +677,7 @@ func ClaimInvited(ctx context.Context, tx *sql.Tx, p ClaimParams) (dbmodels.User
 	}
 
 	q := dbmodels.New(tx)
-	if AddressConfirmed(user) {
+	if CredentialsProven(user) {
 		if err := q.ActivateInactiveUserByID(ctx, user.ID); err != nil {
 			return dbmodels.User{}, fmt.Errorf("activate user: %w", err)
 		}
@@ -679,13 +696,13 @@ func ClaimInvited(ctx context.Context, tx *sql.Tx, p ClaimParams) (dbmodels.User
 	if err != nil {
 		return dbmodels.User{}, fmt.Errorf("hash password: %w", err)
 	}
-	user, err = q.ClaimUnverifiedUserByID(ctx, dbmodels.ClaimUnverifiedUserByIDParams{
+	user, err = q.ClaimUnprovenUserByID(ctx, dbmodels.ClaimUnprovenUserByIDParams{
 		ID:           user.ID,
 		Name:         name,
 		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 	})
 	if err != nil {
-		return dbmodels.User{}, fmt.Errorf("claim unverified user: %w", err)
+		return dbmodels.User{}, fmt.Errorf("claim unproven user: %w", err)
 	}
 	return user, nil
 }

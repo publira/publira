@@ -176,12 +176,49 @@ func (e *PostgresEnv) SeedTenantAdmin(t *testing.T, tenantID uuid.UUID, publicID
 
 // SeedEndUser inserts a member of the tenant's public site: an active user with
 // a verified address and no tenant role, which is the only shape the public API
-// lets sign in.
+// lets sign in. It is the state a sign-up leaves once its confirmation link is
+// followed, so its password is not proven: whoever filled in the form chose it.
 func (e *PostgresEnv) SeedEndUser(t *testing.T, tenantID uuid.UUID, publicID, email, name string) TenantUser {
 	t.Helper()
 
 	user := e.seedUser(t, tenantID, publicID, email, name)
 	e.markUserVerified(t, user.ID)
+	return user
+}
+
+// SeedEndUserOnOlderSchema is [PostgresEnv.SeedEndUser] for a test that
+// migrated back past a column users gained later, such as password_proven_at.
+// The generated CreateUser names every column users has on the newest schema,
+// so the row is inserted by hand with the columns it has had since the initial
+// schema instead.
+func (e *PostgresEnv) SeedEndUserOnOlderSchema(t *testing.T, tenantID uuid.UUID, publicID, email, name string) TenantUser {
+	t.Helper()
+
+	passwordHash, err := seededPasswordHash()
+	if err != nil {
+		t.Fatalf("HashPassword: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	user := TenantUser{ID: uuid.Must(uuid.NewV7()), TenantID: tenantID, PublicID: publicID, Email: email, Name: name}
+	if err := e.DB.QueryRowContext(ctx, `
+		INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, email_verified_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		RETURNING credentials_version
+	`, user.ID, tenantID, publicID, email, passwordHash, name).Scan(&user.CredentialsVersion); err != nil {
+		t.Fatalf("insert user %s on an older schema: %v", publicID, err)
+	}
+	return user
+}
+
+// SeedProvenEndUser inserts the account [PostgresEnv.SeedEndUser] does, with
+// its password set by a proven holder of the address, as a password reset
+// through the mailed link leaves it.
+func (e *PostgresEnv) SeedProvenEndUser(t *testing.T, tenantID uuid.UUID, publicID, email, name string) TenantUser {
+	t.Helper()
+
+	user := e.SeedEndUser(t, tenantID, publicID, email, name)
+	e.markPasswordProven(t, user.ID)
 	return user
 }
 
@@ -216,14 +253,35 @@ func (e *PostgresEnv) markUserVerified(t *testing.T, userID uuid.UUID) {
 	}
 }
 
-// SeedTenantUser inserts an active user in the tenant with a verified address,
-// the only shape the console lets sign in, and grants it one tenant role
-// (tenant_admin / tenant_editor / tenant_auditor).
+// markPasswordProven records the account's password as set by a proven holder
+// of its address, through the query a password reset writes it with.
+func (e *PostgresEnv) markPasswordProven(t *testing.T, userID uuid.UUID) {
+	t.Helper()
+
+	passwordHash, err := seededPasswordHash()
+	if err != nil {
+		t.Fatalf("HashPassword: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := dbmodels.New(e.DB).ResetUserPasswordHashByID(ctx, dbmodels.ResetUserPasswordHashByIDParams{
+		ID:           userID,
+		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
+	}); err != nil {
+		t.Fatalf("ResetUserPasswordHashByID %s: %v", userID, err)
+	}
+}
+
+// SeedTenantUser inserts an active user in the tenant with a verified address
+// and a proven password, the shape every way of giving a console role leaves,
+// and grants it one tenant role (tenant_admin / tenant_editor /
+// tenant_auditor).
 func (e *PostgresEnv) SeedTenantUser(t *testing.T, tenantID uuid.UUID, publicID, email, name, role string) TenantUser {
 	t.Helper()
 
 	user := e.seedUser(t, tenantID, publicID, email, name)
 	e.markUserVerified(t, user.ID)
+	e.markPasswordProven(t, user.ID)
 	e.SeedTenantUserRole(t, tenantID, user.ID, role)
 
 	user.Role = role

@@ -760,7 +760,7 @@ describe("createPlatformTenant", () => {
   it.each([
     [
       RPC_ERROR_REASON.accountUnconfirmed,
-      "This account's email address has not been confirmed, so it cannot be given a role directly. Invite the address instead.",
+      "This account's email address or password has not been proven to be its owner's, so it cannot be given a role directly. An account that signed up with a password it has not reset since is one. Invite the address instead.",
     ],
     [
       RPC_ERROR_REASON.accountSuspended,

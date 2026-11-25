@@ -111,7 +111,7 @@ func TestTenantMemberCommands(t *testing.T) {
 	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
 	tenant := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
 	pg.SeedTenantAdmin(t, tenant.ID, "ADMIN0000001", "admin@tenant-a.example.com", "Admin")
-	pg.SeedEndUser(t, tenant.ID, "READER000001", "reader@tenant-a.example.com", "Reader")
+	pg.SeedProvenEndUser(t, tenant.ID, "READER000001", "reader@tenant-a.example.com", "Reader")
 
 	if got := tenantCommand(t, "", "member", "add", "--tenant", "tenant-a.example.com", "--email", "reader@tenant-a.example.com", "--role", auth.RoleTenantEditor); got != "Gave reader@tenant-a.example.com (READER000001) the tenant_editor role\n" {
 		t.Fatalf("member add = %q", got)

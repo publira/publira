@@ -125,8 +125,8 @@ func TestDBListAuditLogsNamesTheTenantOfARoleGrantedToAnExistingUser(t *testing.
 	first := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
 	second := pg.SeedTenant(t, "TENANTB", "tenant-b.example.com", "Tenant B")
 	const email = "reader@example.com"
-	pg.SeedEndUser(t, first.ID, "TAREADER", email, "Reader A")
-	pg.SeedEndUser(t, second.ID, "TBREADER", email, "Reader B")
+	pg.SeedProvenEndUser(t, first.ID, "TAREADER", email, "Reader A")
+	pg.SeedProvenEndUser(t, second.ID, "TBREADER", email, "Reader B")
 	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	audit := publirasplatformv1connect.NewPlatformAuditLogServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 	ctx := context.Background()
@@ -175,7 +175,7 @@ func TestDBCreateTenantAdminInvitationGrantsTheRoleToAnAddressLongerThanAnAuditT
 	ts, pg := newDBIntegrationEnv(t)
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	reader := pg.SeedEndUser(t, tenant.ID, "TAREADER", strings.Repeat("a", 64)+"@tenant-a.example.com", "Reader")
+	reader := pg.SeedProvenEndUser(t, tenant.ID, "TAREADER", strings.Repeat("a", 64)+"@tenant-a.example.com", "Reader")
 	tenants := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	created, err := tenants.CreateTenantAdminInvitation(testutil.WithBearer(context.Background(), issueDBIntegrationToken(operator)), &publirasplatformv1.CreateTenantAdminInvitationRequest{

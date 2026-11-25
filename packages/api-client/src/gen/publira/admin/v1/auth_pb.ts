@@ -1240,8 +1240,10 @@ export type AdminAuthServiceGetTenantAdminInvitationStateResponse = Message<"pub
 
   /**
    * Whether the address belongs to an account its owner can already sign in
-   * with. An account whose address was never confirmed answers false: its
-   * password was set by whoever signed up with the address, so accepting asks
+   * with. An account whose address was never confirmed, or whose password was
+   * not set by someone who had proved the address, answers false: a password
+   * chosen on a sign-up form was set by whoever signed up with the address,
+   * even once the sign-up's confirmation link is followed, so accepting asks
    * for a name and a password that replace its own.
    *
    * @generated from field: bool account_exists = 4;

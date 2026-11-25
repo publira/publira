@@ -409,9 +409,11 @@ export type CreateTenantAdminInvitationResponse = Message<"publira.admin.v1.Crea
 
   /**
    * True when the address belongs to an active user of the tenant whose owner
-   * confirmed it, who is given the role on the spot instead of being mailed an
-   * invitation. Any other account is mailed one: until its address is
-   * confirmed, its password was chosen by whoever signed up with the address.
+   * confirmed it and whose password, if it has one, was set by someone who had
+   * proved the address, who is given the role on the spot instead of being
+   * mailed an invitation. Any other account is mailed one: a password chosen
+   * on a sign-up form was chosen by whoever signed up with the address, and
+   * following the sign-up's confirmation link does not change who that was.
    *
    * @generated from field: bool role_granted_immediately = 2;
    */
@@ -430,9 +432,10 @@ export const CreateTenantAdminInvitationResponseSchema: GenMessage<CreateTenantA
  * account in the tenant is refused with NOT_FOUND, and one whose user already
  * holds a role with ALREADY_EXISTS: changing it is UpdateTenantMemberRole's.
  * An account that is suspended is refused with FAILED_PRECONDITION and the
- * ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet or whose
- * address was never confirmed with ACCOUNT_UNCONFIRMED: such an account is
- * invited instead.
+ * ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet, whose
+ * address was never confirmed, or whose password was not set by someone who
+ * had proved the address, such as one chosen on a sign-up form, with
+ * ACCOUNT_UNCONFIRMED: such an account is invited instead.
  *
  * @generated from message publira.admin.v1.AddTenantMemberRequest
  */

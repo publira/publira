@@ -25,7 +25,7 @@ func TestDBTenantRPCsAddressTheTenantAndItsMembersByID(t *testing.T) {
 
 	seededTenantID := seedTenant(t, pg, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
 	otherTenantID := seedTenant(t, pg, "TENANTBBBBBB", "tenant-b.example.com", "Tenant B")
-	reader := seedEndUser(t, pg, seededTenantID, "READER000001", "reader@tenant-a.example.com", "Reader")
+	reader := pg.SeedProvenEndUser(t, seededTenantID, "READER000001", "reader@tenant-a.example.com", "Reader")
 	stranger := seedEndUser(t, pg, otherTenantID, "READER000002", "reader@tenant-b.example.com", "Stranger")
 
 	got, err := client.GetTenant(testutil.WithBearer(ctx, issueDBIntegrationToken(operator)), &publirasplatformv1.GetTenantRequest{PublicId: "TENANTAAAAAA"})

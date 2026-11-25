@@ -589,6 +589,11 @@ func (s *apiServer) signupConsents(ctx context.Context, tenant dbmodels.Tenant, 
 	return versionIDs, nil
 }
 
+// VerifyUserEmail confirms the address a sign-up's link was mailed to and
+// activates the account. It leaves the password unproven: following the link
+// shows who reads the mailbox, while the password is whatever the person who
+// filled in the sign-up form chose, so tenantmembers.CredentialsProven still
+// refuses the account a console role without an invitation.
 func (s *apiServer) VerifyUserEmail(
 	ctx context.Context,
 	req *publirav1.VerifyUserEmailRequest,
@@ -1133,7 +1138,7 @@ func (s *apiServer) ConfirmPasswordReset(
 		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
-	if _, err := s.queriesFor(ctx).UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
+	if _, err := s.queriesFor(ctx).ResetUserPasswordHashByID(ctx, dbmodels.ResetUserPasswordHashByIDParams{
 		ID:           user.ID,
 		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 	}); err != nil {

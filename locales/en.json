@@ -8867,7 +8867,7 @@
       "members_list_title": "Members",
       "member_already_added": "This user is already a member.",
       "member_account_suspended": "This account is suspended, so it cannot be given a role.",
-      "member_account_unconfirmed": "This account's email address has not been confirmed, so it cannot be given a role directly. Invite the address instead.",
+      "member_account_unconfirmed": "This account's email address or password has not been proven to be its owner's, so it cannot be given a role directly. An account that signed up with a password it has not reset since is one. Invite the address instead.",
       "member_not_found": "This member could not be found. Open the member list.",
       "member_role_update_failed": "Could not change the role. Please try again later.",
       "members_load_failed": "Could not display member management",

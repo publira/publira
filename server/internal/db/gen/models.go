@@ -2098,6 +2098,7 @@ type User struct {
 	IconImageID        uuid.NullUUID  `json:"icon_image_id"`
 	IconPresetID       uuid.NullUUID  `json:"icon_preset_id"`
 	LastLocale         sql.NullString `json:"last_locale"`
+	PasswordProvenAt   sql.NullTime   `json:"password_proven_at"`
 }
 
 type UserDataExport struct {

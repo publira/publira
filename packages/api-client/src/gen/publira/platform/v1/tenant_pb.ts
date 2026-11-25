@@ -1047,9 +1047,10 @@ export const PlatformTenantService: GenService<{
   },
   /**
    * An account that is suspended is refused with failed_precondition and the
-   * ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet or whose
-   * address was never confirmed with ACCOUNT_UNCONFIRMED: such an account is
-   * invited instead.
+   * ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet, whose
+   * address was never confirmed, or whose password was not set by someone who
+   * had proved the address, such as one chosen on a sign-up form, with
+   * ACCOUNT_UNCONFIRMED: such an account is invited instead.
    *
    * @generated from rpc publira.platform.v1.PlatformTenantService.AddTenantMember
    */

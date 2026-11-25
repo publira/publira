@@ -493,7 +493,7 @@ func TestMemberChangesFileTheirEntries(t *testing.T) {
 	operator := pg.SeedPlatformOperator(t, "PLATOPS01", "operator@platform.example.com", "Operator")
 	actor := auditlog.PlatformActor{UserID: operator.ID, Role: operator.Role, ClientIP: "203.0.113.10"}
 	tenant := pg.SeedTenant(t, "TENANTAAAAAA", "tenant-a.example.com", "Tenant A")
-	reader := pg.SeedEndUser(t, tenant.ID, "READER000001", "reader@tenant-a.example.com", "Reader")
+	reader := pg.SeedProvenEndUser(t, tenant.ID, "READER000001", "reader@tenant-a.example.com", "Reader")
 	ctx := context.Background()
 
 	if err := inPlatformTx(t, pg, func(tx *sql.Tx) error {

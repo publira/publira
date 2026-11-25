@@ -81,7 +81,7 @@ func TestDBPlatformTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T)
 	ts, pg := newDBIntegrationEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1, PerDay: 100}))
 	operator := pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	reader := pg.SeedEndUser(t, tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
+	reader := pg.SeedProvenEndUser(t, tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
 	client := publirasplatformv1connect.NewPlatformTenantServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL)))
 
 	for attempt := 1; attempt <= 2; attempt++ {

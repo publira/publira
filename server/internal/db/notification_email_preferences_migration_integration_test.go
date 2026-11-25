@@ -32,8 +32,8 @@ func TestNotificationEmailPreferencesMigrationKeepsEmailOffForReadersWhoTurnedIt
 	db := pg.DB
 
 	tenant := pg.SeedTenantOnOlderSchema(t, "TENANTM", "tenant-m.example.com", "Tenant M")
-	declined := pg.SeedEndUser(t, tenant.ID, "READEROFF01", "off@example.com", "Reader Off")
-	accepted := pg.SeedEndUser(t, tenant.ID, "READERON001", "on@example.com", "Reader On")
+	declined := pg.SeedEndUserOnOlderSchema(t, tenant.ID, "READEROFF01", "off@example.com", "Reader Off")
+	accepted := pg.SeedEndUserOnOlderSchema(t, tenant.ID, "READERON001", "on@example.com", "Reader On")
 	mustExec(t, ctx, db, `
 		INSERT INTO user_notification_settings (tenant_id, user_id, email_notifications_enabled)
 		VALUES ($1, $2, false), ($1, $3, true)

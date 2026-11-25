@@ -340,7 +340,7 @@ func (s *adminServer) ConfirmPasswordReset(
 		return nil, connect.NewError(connect.CodeInternal, err.Error()).WithCause(err)
 	}
 
-	if _, err := s.queriesFor(ctx).UpdateUserPasswordHashByID(ctx, dbmodels.UpdateUserPasswordHashByIDParams{
+	if _, err := s.queriesFor(ctx).ResetUserPasswordHashByID(ctx, dbmodels.ResetUserPasswordHashByIDParams{
 		ID:           user.ID,
 		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 	}); err != nil {

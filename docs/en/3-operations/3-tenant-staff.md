@@ -2,7 +2,7 @@
 title: A tenant's staff
 description: Give a tenant's staff access to its console, choose their roles, remove a two-step verification a member lost, and recover a tenant that lost its last administrator.
 published: 2026-10-06
-updated: 2026-11-24
+updated: 2026-11-25
 ---
 
 A tenant's staff are the people who sign in to its console. This page covers how they get there from the operator's side: inviting the first administrator, the roles staff hold, and what to do when a tenant has no administrator left. Once a tenant has an administrator, that administrator manages the rest of the staff from **Members** in the tenant console, as [Members](../4-console/3-setup/6-members.md) describes, and the operator is needed again only when something goes wrong.
@@ -46,9 +46,9 @@ An invitation is mailed to an address and makes it a Tenant admin when accepted.
 
 The invitee is mailed a link to the tenant's console, in the tenant's default language. On it they enter their **Full name** and a **Password**, choose **Accept invitation**, and sign in. The link is valid for 24 hours.
 
-An address that belongs to an active account of the tenant, whose owner has confirmed the address, is not invited: it becomes a Tenant admin at once, and no mail is sent. This replaces any role it held before, so an Editor invited this way becomes a Tenant admin.
+An address that belongs to an active account of the tenant, whose owner has confirmed the address and set its password, is not invited: it becomes a Tenant admin at once, and no mail is sent. A password counts as the owner's when it was set through a link mailed to the address, by resetting the password or by accepting an earlier invitation, or when the account was created with `tenant admin create`; an account that signs in only with Apple or Google has none to check. This replaces any role it held before, so an Editor invited this way becomes a Tenant admin.
 
-Any other account of the tenant is mailed the invitation, as a new address is. Until its address is confirmed, an account's password was chosen by whoever signed up with the address, who need not be its owner, so accepting the invitation replaces its name and password with the ones the invitee enters. A suspended account can accept only once it is no longer suspended.
+Any other account of the tenant is mailed the invitation, as a new address is. That includes an account that signed up on the tenant's site with a password it has not reset since, even once its address is confirmed: the password was chosen by whoever filled in the sign-up form, who need not be the address's owner, and following the confirmation link does not change who that was. The same goes for an account whose address was changed after its password was set. Accepting the invitation replaces the account's name and password with the ones the invitee enters, and signs it out wherever it was signed in. A suspended account can accept only once it is no longer suspended.
 
 The invitation mail is sent by `publira worker`, from the tenant's own SMTP settings if it has saved some, and from the platform's otherwise. An install with no worker running creates the invitation and sends nothing.
 
@@ -76,7 +76,7 @@ A reader of the tenant can be given any of the three roles directly, without mai
 
 ![Add member: Email address to add, Role, and Add member.](./tenant-staff-add-member.png)
 
-This only works for an address that already has an account in the tenant, active and with its address confirmed; any other is refused. Someone without one signs up on the tenant's site and confirms the address first, or is invited as a Tenant admin. An account whose address was never confirmed is refused too, because whoever signed up with the address chose its password: invite it instead, and accepting the invitation sets a new one. A suspended account is refused until it is no longer suspended. An account that already holds a role is changed with **Change role** instead.
+This only works for an address whose account in the tenant would be made a Tenant admin at once by an invitation, as described in [Inviting a tenant admin](#inviting-a-tenant-admin): active, with its address confirmed, and with a password its owner set. Any other is refused. That includes an account that signed up on the tenant's site and has not reset its password since, even once its address is confirmed, because whoever filled in the sign-up form chose its password: invite it instead, and accepting the invitation sets a new one. Someone without an account is invited too. A suspended account is refused until it is no longer suspended. An account that already holds a role is changed with **Change role** instead.
 
 ### Creating an account without mail
 

@@ -49,8 +49,8 @@ func expectAuthSession(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now tim
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByID)).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}).
-			AddRow(userID, testPublicUserPublicID, "member@example.com", "", "Member User", now, "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now, int32(1), nil, nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale", "password_proven_at"}).
+			AddRow(userID, testPublicUserPublicID, "member@example.com", "", "Member User", now, "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now, int32(1), nil, nil, nil, nil, nil))
 
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
 		WithArgs(userID).

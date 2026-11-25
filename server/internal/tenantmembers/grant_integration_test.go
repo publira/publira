@@ -14,12 +14,12 @@ import (
 	"github.com/publira/publira/server/internal/testutil"
 )
 
-// An account whose owner has not shown the address is theirs, or that an
-// administrator suspended, is given no console role on an administrator's word
-// alone: inviting its address mails an invitation, and adding it is refused.
-// Only accepting the invitation, which takes following the mailed link, hands
-// the account over.
-func TestRoleIsGrantedWithoutInvitationOnlyToAnActiveConfirmedAccount(t *testing.T) {
+// An account whose owner has not shown that the address and the password are
+// both theirs, or that an administrator suspended, is given no console role on
+// an administrator's word alone: inviting its address mails an invitation, and
+// adding it is refused. Only accepting the invitation, which takes following
+// the mailed link, hands the account over.
+func TestRoleIsGrantedWithoutInvitationOnlyToAnActiveProvenAccount(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 
 	accounts := []struct {
@@ -29,10 +29,42 @@ func TestRoleIsGrantedWithoutInvitationOnlyToAnActiveConfirmedAccount(t *testing
 		addErr error
 	}{
 		{
-			name: "active and confirmed",
+			name: "active, confirmed, and with a proven password",
 			seed: func(t *testing.T, tenantID uuid.UUID, email string) testutil.TenantUser {
-				return pg.SeedEndUser(t, tenantID, "READER01", email, "Reader")
+				return pg.SeedProvenEndUser(t, tenantID, "READER01", email, "Reader")
 			},
+		},
+		{
+			name: "confirmed and with no password",
+			seed: func(t *testing.T, tenantID uuid.UUID, email string) testutil.TenantUser {
+				user := pg.SeedEndUser(t, tenantID, "READER01", email, "Reader")
+				if _, err := pg.DB.Exec(`UPDATE users SET password_hash = NULL WHERE id = $1`, user.ID); err != nil {
+					t.Fatalf("clear the password: %v", err)
+				}
+				return user
+			},
+		},
+		{
+			// Following a sign-up's link shows who reads the mailbox; the
+			// password is still the one whoever filled in the form chose.
+			name: "signed up and confirmed through the sign-up link",
+			seed: func(t *testing.T, tenantID uuid.UUID, email string) testutil.TenantUser {
+				return pg.SeedEndUser(t, tenantID, "READER01", email, "Applicant")
+			},
+			addErr: ErrAccountUnconfirmed,
+		},
+		{
+			// Whoever set the password proved the address the account had
+			// then, not the one it moved to.
+			name: "with a proven password and its address changed since",
+			seed: func(t *testing.T, tenantID uuid.UUID, email string) testutil.TenantUser {
+				user := pg.SeedProvenEndUser(t, tenantID, "READER01", "before@tenant-a.example.com", "Reader")
+				if _, err := dbmodels.New(pg.DB).UpdateUserEmailByID(context.Background(), dbmodels.UpdateUserEmailByIDParams{ID: user.ID, Email: email}); err != nil {
+					t.Fatalf("UpdateUserEmailByID: %v", err)
+				}
+				return user
+			},
+			addErr: ErrAccountUnconfirmed,
 		},
 		{
 			name: "signed up and never confirmed",
@@ -53,7 +85,7 @@ func TestRoleIsGrantedWithoutInvitationOnlyToAnActiveConfirmedAccount(t *testing
 		{
 			name: "suspended",
 			seed: func(t *testing.T, tenantID uuid.UUID, email string) testutil.TenantUser {
-				user := pg.SeedEndUser(t, tenantID, "READER01", email, "Reader")
+				user := pg.SeedProvenEndUser(t, tenantID, "READER01", email, "Reader")
 				setUserStatus(t, pg, user.ID, "suspended")
 				return user
 			},

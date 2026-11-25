@@ -63,8 +63,10 @@ WHERE id = $1
 FOR UPDATE;
 
 -- name: CreateUser :one
-INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, birth_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+-- password_proven_at is null for a password whoever created the account chose
+-- without proving the address, which is every password a sign-up form takes.
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, birth_date, password_proven_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: CreateTenantUserRole :one
@@ -773,14 +775,28 @@ WHERE id = $1
 RETURNING *;
 
 -- name: UpdateUserEmailByID :one
+-- Whoever set the password proved the address being replaced, not this one,
+-- so the password is no longer proven.
 UPDATE users
-SET email = $2
+SET email = $2,
+    password_proven_at = NULL
 WHERE id = $1
 RETURNING *;
 
 -- name: UpdateUserPasswordHashByID :one
+-- Replaces the password on the strength of the one it replaces, so the new
+-- password is exactly as proven as the old one was.
 UPDATE users
 SET password_hash = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: ResetUserPasswordHashByID :one
+-- Replaces the password on the strength of a link mailed to the address, which
+-- proves whoever set it holds the address.
+UPDATE users
+SET password_hash = $2,
+    password_proven_at = NOW()
 WHERE id = $1
 RETURNING *;
 
@@ -790,6 +806,7 @@ RETURNING *;
 -- address was theirs, and could otherwise sign in beside its owner.
 UPDATE users
 SET password_hash = NULL,
+    password_proven_at = NULL,
     email_verified_at = NOW(),
     status = CASE
         WHEN status = 'inactive' THEN 'active'
@@ -800,14 +817,18 @@ WHERE id = sqlc.arg('id')
     AND email_verified_at IS NULL
 RETURNING *;
 
--- name: ClaimUnverifiedUserByID :one
--- Hands an account nobody had confirmed to the person who has just proved the
--- address by following a link mailed to it. The name and the password are
+-- name: ClaimUnprovenUserByID :one
+-- Hands an account whose address nobody had confirmed, or whose password was
+-- set by someone who had not proved the address, to the person who has just
+-- proved it by following a link mailed to it. The name and the password are
 -- replaced with theirs: whoever set the old ones never proved the address was
--- theirs, and could otherwise sign in beside its owner.
+-- theirs, and could otherwise sign in beside its owner. Confirming the address
+-- through a sign-up's own link does not prove the password, so an account in
+-- that state is handed over too.
 UPDATE users
 SET name = sqlc.arg('name'),
     password_hash = sqlc.arg('password_hash'),
+    password_proven_at = NOW(),
     email_verified_at = NOW(),
     status = CASE
         WHEN status = 'inactive' THEN 'active'
@@ -815,7 +836,10 @@ SET name = sqlc.arg('name'),
     END,
     credentials_version = credentials_version + 1
 WHERE id = sqlc.arg('id')
-    AND email_verified_at IS NULL
+    AND (
+        email_verified_at IS NULL
+        OR (password_hash IS NOT NULL AND password_proven_at IS NULL)
+    )
 RETURNING *;
 
 -- name: DeleteUserByID :exec

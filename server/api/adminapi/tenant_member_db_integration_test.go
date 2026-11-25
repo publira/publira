@@ -385,8 +385,8 @@ func TestDBAddTenantMemberGivesAReaderTheRoleDirectly(t *testing.T) {
 
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
-	editor := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER1", "editor@tenant-a.example.com", "Editor To Be")
-	auditor := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER2", "auditor@tenant-a.example.com", "Auditor To Be")
+	editor := env.PG.SeedProvenEndUser(t, tenant.Tenant.ID, "TAREADER1", "editor@tenant-a.example.com", "Editor To Be")
+	auditor := env.PG.SeedProvenEndUser(t, tenant.Tenant.ID, "TAREADER2", "auditor@tenant-a.example.com", "Auditor To Be")
 	client := env.tenantMemberClient()
 	ctx := context.Background()
 
@@ -560,7 +560,7 @@ func TestDBAnInvitationToAnExistingAccountGrantsTheRoleOnlyToAReader(t *testing.
 
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
-	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER1", "reader@tenant-a.example.com", "Reader")
+	reader := env.PG.SeedProvenEndUser(t, tenant.Tenant.ID, "TAREADER1", "reader@tenant-a.example.com", "Reader")
 	second := env.seedMember(t, tenant, "TASECOND", "second@tenant-a.example.com", auth.RoleTenantAdmin)
 	client := env.tenantMemberClient()
 	ctx := context.Background()
@@ -682,7 +682,7 @@ func TestDBAcceptingAnInvitationWaitsForAPromotionUnderWay(t *testing.T) {
 	`, uuid.Must(uuid.NewV7()), tenant.Tenant.ID, email, auth.HashToken(token), auth.RoleTenantEditor); err != nil {
 		t.Fatalf("insert invitation: %v", err)
 	}
-	invitee := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAINVITEE", email, "Invitee")
+	invitee := env.PG.SeedProvenEndUser(t, tenant.Tenant.ID, "TAINVITEE", email, "Invitee")
 
 	err := env.promoteWhileGrantWaits(t, tenant, invitee, func() error {
 		_, err := env.authClient().AcceptTenantAdminInvitation(ctx, &publiraadminv1.AdminAuthServiceAcceptTenantAdminInvitationRequest{
@@ -705,7 +705,7 @@ func TestDBAnInvitationWaitsForAPromotionUnderWay(t *testing.T) {
 
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
-	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER1", "reader@tenant-a.example.com", "Reader")
+	reader := env.PG.SeedProvenEndUser(t, tenant.Tenant.ID, "TAREADER1", "reader@tenant-a.example.com", "Reader")
 	ctx := context.Background()
 
 	err := env.promoteWhileGrantWaits(t, tenant, reader, func() error {
@@ -901,7 +901,7 @@ func TestDBCreateTenantAdminInvitationGrantsAnExistingUserAtOnce(t *testing.T) {
 
 	env := newAdminDBEnv(t)
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
-	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
+	reader := env.PG.SeedProvenEndUser(t, tenant.Tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
 
 	created, err := env.tenantMemberClient().CreateTenantAdminInvitation(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateTenantAdminInvitationRequest{
 		Tenant: tenant.tenantContext(), Email: reader.Email,
@@ -963,7 +963,7 @@ func TestDBTenantAdminInvitationGrantSpendsNoMailAllowance(t *testing.T) {
 
 	env := newAdminDBEnvWithMailGuard(t, mailGuardWith(platformpolicy.HourDay{PerHour: 1, PerDay: 100}, platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}))
 	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
-	reader := env.PG.SeedEndUser(t, tenant.Tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
+	reader := env.PG.SeedProvenEndUser(t, tenant.Tenant.ID, "TAREADER", "reader@tenant-a.example.com", "Reader")
 	client := env.tenantMemberClient()
 
 	for attempt := 1; attempt <= 2; attempt++ {

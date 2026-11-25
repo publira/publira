@@ -22,8 +22,8 @@ const (
 	ErrorInfoDomain = "publira"
 
 	// The refusals of giving a console role without an invitation to an
-	// account an administrator suspended, and to one whose owner has not
-	// confirmed its address or that is not active yet.
+	// account an administrator suspended, and to one that is not active yet
+	// or whose address or password its owner has not proved.
 	ReasonAccountSuspended   = "ACCOUNT_SUSPENDED"
 	ReasonAccountUnconfirmed = "ACCOUNT_UNCONFIRMED"
 

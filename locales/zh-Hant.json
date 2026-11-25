@@ -8867,7 +8867,7 @@
       "members_list_title": "成員",
       "member_already_added": "該使用者已經是成員。",
       "member_account_suspended": "該帳號已暫停，無法授予角色。",
-      "member_account_unconfirmed": "該帳號的電子郵件地址尚未確認，無法直接授予角色。請改為邀請該地址。",
+      "member_account_unconfirmed": "該帳號的電子郵件地址或密碼尚未證實屬於地址的擁有者，無法直接授予角色。註冊後沒有重設過密碼的帳號也屬於這種情況。請改為邀請該地址。",
       "member_not_found": "找不到該成員。",
       "member_role_update_failed": "無法變更角色。請稍後再試。",
       "members_load_failed": "無法顯示成員管理",

@@ -143,10 +143,10 @@ func (p InviteParams) normalize() (email, role string, err error) {
 // Invite gives the address the role inside tx. An address that belongs to an
 // account of the tenant [grantable] accepts is granted the role on the spot;
 // any other is sent an invitation, rearming the one it already has with this
-// role. That includes an account whose address was never confirmed: whoever
-// typed the address into a sign-up form chose its password, so the role waits
-// for the link mailed to the address, which [ClaimInvited] hands the account
-// over on.
+// role. That includes an account whose password was chosen by whoever typed
+// the address into a sign-up form, whether or not the sign-up's confirmation
+// link was followed since: the role waits for the link mailed to the address,
+// which [ClaimInvited] hands the account over on.
 //
 // A user granted tenant_admin on the spot loses any role they held, which can
 // only be a weaker one. Any other role is refused with [ErrAlreadyMember] when

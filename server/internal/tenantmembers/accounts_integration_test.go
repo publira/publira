@@ -100,8 +100,8 @@ func TestAddGivesAUserOfTheTenantARole(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 	tenant := pg.SeedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
-	byID := pg.SeedEndUser(t, tenant.ID, "READER01", "first@tenant-a.example.com", "First")
-	pg.SeedEndUser(t, tenant.ID, "READER02", "second@tenant-a.example.com", "Second")
+	byID := pg.SeedProvenEndUser(t, tenant.ID, "READER01", "first@tenant-a.example.com", "First")
+	pg.SeedProvenEndUser(t, tenant.ID, "READER02", "second@tenant-a.example.com", "Second")
 	admin := pg.SeedTenantAdmin(t, tenant.ID, "ADMIN001", "admin@tenant-a.example.com", "Admin")
 
 	for _, tc := range []struct {

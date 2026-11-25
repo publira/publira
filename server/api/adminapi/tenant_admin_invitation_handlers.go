@@ -68,9 +68,9 @@ func (s *adminServer) GetTenantAdminInvitationState(
 		Email:     invitation.Email,
 		Status:    adminInvitationStatus(invitation, time.Now()),
 		ExpiresAt: invitation.ExpiresAt.UTC().Format(time.RFC3339),
-		// An account whose address was never confirmed answers as none, so the
+		// An account whose credentials are not proven answers as none, so the
 		// invitee is asked for the name and password that replace its own.
-		AccountExists: userErr == nil && tenantmembers.AddressConfirmed(user),
+		AccountExists: userErr == nil && tenantmembers.CredentialsProven(user),
 		Role:          invitation.Role,
 	}, nil
 }

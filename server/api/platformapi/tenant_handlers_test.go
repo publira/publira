@@ -433,7 +433,7 @@ func expectTenantMemberAuditLogInsert(mock sqlmock.Sqlmock, operatorID, tenantID
 
 // expectAccountLock expects the administrator lock and the account's row that
 // adding a member reads before granting, answering an account that is active
-// with a confirmed address.
+// with a confirmed address and a proven password.
 func expectAccountLock(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now time.Time) {
 	mock.ExpectExec(regexp.QuoteMeta("SELECT set_config('lock_timeout', $1, true)")).
 		WithArgs(tenantlock.Timeout.String()).
@@ -443,8 +443,8 @@ func expectAccountLock(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now tim
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByIDForUpdate)).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}).
-			AddRow(userID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID, now, int32(1), nil, nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale", "password_proven_at"}).
+			AddRow(userID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID, now, int32(1), nil, nil, nil, nil, now))
 }
 
 func TestAddTenantMemberSuccess(t *testing.T) {
@@ -508,8 +508,8 @@ func TestAddTenantMemberByEmailSuccess(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByEmailForTenant)).
 		WithArgs(sql.NullString{String: tenantID.String(), Valid: true}, "alice@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}).
-			AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID, nil, int32(1), nil, nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale", "password_proven_at"}).
+			AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, "active", tenantID, nil, int32(1), nil, nil, nil, nil, nil))
 
 	expectAccountLock(mock, tenantID, targetUserID, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.ListTenantUserRoles)).
@@ -654,9 +654,9 @@ func TestAddTenantMemberAlreadyExists(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-// An account that is suspended, or whose owner has not confirmed its address,
-// is refused with the reason the Platform Console explains it by, and nothing
-// is granted.
+// An account that is suspended, or whose owner has not confirmed its address
+// or set its password, is refused with the reason the Platform Console
+// explains it by, and nothing is granted.
 func TestAddTenantMemberRefusesAnAccountItWouldNotGrantTo(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -665,6 +665,7 @@ func TestAddTenantMemberRefusesAnAccountItWouldNotGrantTo(t *testing.T) {
 		reason   string
 	}{
 		{name: "never confirmed", status: "inactive", reason: rpcerrors.ReasonAccountUnconfirmed},
+		{name: "confirmed with the password chosen at sign-up", status: "active", verified: true, reason: rpcerrors.ReasonAccountUnconfirmed},
 		{name: "suspended", status: "suspended", verified: true, reason: rpcerrors.ReasonAccountSuspended},
 	}
 	for _, tt := range tests {
@@ -694,8 +695,8 @@ func TestAddTenantMemberRefusesAnAccountItWouldNotGrantTo(t *testing.T) {
 				WillReturnResult(sqlmock.NewResult(0, 0))
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByIDForUpdate)).
 				WithArgs(targetUserID).
-				WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}).
-					AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, tt.status, tenantID, verifiedAt, int32(1), nil, nil, nil, nil))
+				WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale", "password_proven_at"}).
+					AddRow(targetUserID, "USER000001", "alice@example.com", "hashed", "Alice", now, tt.status, tenantID, verifiedAt, int32(1), nil, nil, nil, nil, nil))
 			mock.ExpectRollback()
 
 			_, err := server.AddTenantMember(newOperatorActorContext(uuid.Must(uuid.NewV7())), &publirasplatformv1.AddTenantMemberRequest{
@@ -897,8 +898,8 @@ const (
 
 // tenantUserRows is the users row GetUserByID answers for a user of tenantID.
 func tenantUserRows(id uuid.UUID, publicID, name, email, status string, tenantID uuid.UUID, createdAt time.Time) *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale"}).
-		AddRow(id, publicID, email, "", name, createdAt, status, tenantID, nil, int32(0), nil, nil, nil, nil)
+	return sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale", "password_proven_at"}).
+		AddRow(id, publicID, email, "", name, createdAt, status, tenantID, nil, int32(0), nil, nil, nil, nil, nil)
 }
 
 // Each refusal names the request field publiractl names as a flag, and reads

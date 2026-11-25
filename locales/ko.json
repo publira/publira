@@ -8867,7 +8867,7 @@
       "members_list_title": "멤버 목록",
       "member_already_added": "이 사용자는 이미 멤버로 추가되어 있습니다.",
       "member_account_suspended": "이 계정은 정지되어 있어 역할을 부여할 수 없습니다.",
-      "member_account_unconfirmed": "이 계정은 이메일 주소가 확인되지 않아 역할을 직접 부여할 수 없습니다. 대신 이 주소로 초대해 주세요.",
+      "member_account_unconfirmed": "이 계정은 이메일 주소나 비밀번호가 주소 소유자의 것으로 확인되지 않아 역할을 직접 부여할 수 없습니다. 가입한 뒤 비밀번호를 재설정하지 않은 계정도 이에 해당합니다. 대신 이 주소로 초대해 주세요.",
       "member_not_found": "해당 멤버를 찾을 수 없습니다.",
       "member_role_update_failed": "역할을 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "members_load_failed": "멤버 관리를 표시할 수 없습니다",

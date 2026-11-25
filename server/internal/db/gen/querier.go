@@ -131,11 +131,14 @@ type Querier interface {
 	// drain without waiting on each other's locks. The CTE is required:
 	// FOR UPDATE is not allowed in an IN subquery.
 	ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
-	// Hands an account nobody had confirmed to the person who has just proved the
-	// address by following a link mailed to it. The name and the password are
+	// Hands an account whose address nobody had confirmed, or whose password was
+	// set by someone who had not proved the address, to the person who has just
+	// proved it by following a link mailed to it. The name and the password are
 	// replaced with theirs: whoever set the old ones never proved the address was
-	// theirs, and could otherwise sign in beside its owner.
-	ClaimUnverifiedUserByID(ctx context.Context, arg ClaimUnverifiedUserByIDParams) (User, error)
+	// theirs, and could otherwise sign in beside its owner. Confirming the address
+	// through a sign-up's own link does not prove the password, so an account in
+	// that state is handed over too.
+	ClaimUnprovenUserByID(ctx context.Context, arg ClaimUnprovenUserByIDParams) (User, error)
 	// Takes up the oldest request no worker is building: one never claimed, or
 	// one whose claim is older than stale_before, which a worker that died
 	// mid-build left behind. A request whose account is gone is the purge's.
@@ -531,6 +534,8 @@ type Querier interface {
 	CreateTenantImageVariant(ctx context.Context, arg CreateTenantImageVariantParams) (TenantImageVariant, error)
 	CreateTenantUserRole(ctx context.Context, arg CreateTenantUserRoleParams) (TenantUserRole, error)
 	CreateTenantWebhookEndpoint(ctx context.Context, arg CreateTenantWebhookEndpointParams) (TenantWebhookEndpoint, error)
+	// password_proven_at is null for a password whoever created the account chose
+	// without proving the address, which is every password a sign-up form takes.
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// A reader's download of what the install keeps about them. The reader's own
 	// connection requests it and reads it back, under the member isolation the
@@ -4847,6 +4852,9 @@ type Querier interface {
 	// A second factor that checked out clears the count, and so does starting an
 	// enrollment, so a stalled attempt never blocks the next one.
 	ResetUserMfaFailures(ctx context.Context, userID uuid.UUID) error
+	// Replaces the password on the strength of a link mailed to the address, which
+	// proves whoever set it holds the address.
+	ResetUserPasswordHashByID(ctx context.Context, arg ResetUserPasswordHashByIDParams) (User, error)
 	// Staff deciding one report, either way. It names 'open' as the state it moves
 	// from, so a report a second moderator decided in between returns no row and
 	// the caller answers "already decided" rather than overwriting the first
@@ -5223,9 +5231,13 @@ type Querier interface {
 	// from one it has to answer for in the audit log.
 	UpdateTenantTimezone(ctx context.Context, arg UpdateTenantTimezoneParams) (Tenant, error)
 	UpdateTenantWebhookEndpoint(ctx context.Context, arg UpdateTenantWebhookEndpointParams) (TenantWebhookEndpoint, error)
+	// Whoever set the password proved the address being replaced, not this one,
+	// so the password is no longer proven.
 	UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error)
 	UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateUserEmailVerifiedAtByIDParams) (User, error)
 	UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByIDParams) (User, error)
+	// Replaces the password on the strength of the one it replaces, so the new
+	// password is exactly as proven as the old one was.
 	UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error)
 	UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatusByIDParams) (User, error)
 	// Replaces the title and the price. A purchase already made keeps the price it

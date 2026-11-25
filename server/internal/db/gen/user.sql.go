@@ -32,7 +32,7 @@ const BumpUserCredentialsVersion = `-- name: BumpUserCredentialsVersion :one
 UPDATE users
 SET credentials_version = credentials_version + 1
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
 func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) (User, error) {
@@ -53,6 +53,7 @@ func (q *Queries) BumpUserCredentialsVersion(ctx context.Context, id uuid.UUID) 
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -82,10 +83,11 @@ func (q *Queries) CanonicalEmailHeldByAnotherUserForTenant(ctx context.Context, 
 	return exists, err
 }
 
-const ClaimUnverifiedUserByID = `-- name: ClaimUnverifiedUserByID :one
+const ClaimUnprovenUserByID = `-- name: ClaimUnprovenUserByID :one
 UPDATE users
 SET name = $1,
     password_hash = $2,
+    password_proven_at = NOW(),
     email_verified_at = NOW(),
     status = CASE
         WHEN status = 'inactive' THEN 'active'
@@ -93,22 +95,28 @@ SET name = $1,
     END,
     credentials_version = credentials_version + 1
 WHERE id = $3
-    AND email_verified_at IS NULL
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+    AND (
+        email_verified_at IS NULL
+        OR (password_hash IS NOT NULL AND password_proven_at IS NULL)
+    )
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
-type ClaimUnverifiedUserByIDParams struct {
+type ClaimUnprovenUserByIDParams struct {
 	Name         string         `json:"name"`
 	PasswordHash sql.NullString `json:"password_hash"`
 	ID           uuid.UUID      `json:"id"`
 }
 
-// Hands an account nobody had confirmed to the person who has just proved the
-// address by following a link mailed to it. The name and the password are
+// Hands an account whose address nobody had confirmed, or whose password was
+// set by someone who had not proved the address, to the person who has just
+// proved it by following a link mailed to it. The name and the password are
 // replaced with theirs: whoever set the old ones never proved the address was
-// theirs, and could otherwise sign in beside its owner.
-func (q *Queries) ClaimUnverifiedUserByID(ctx context.Context, arg ClaimUnverifiedUserByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, ClaimUnverifiedUserByID, arg.Name, arg.PasswordHash, arg.ID)
+// theirs, and could otherwise sign in beside its owner. Confirming the address
+// through a sign-up's own link does not prove the password, so an account in
+// that state is handed over too.
+func (q *Queries) ClaimUnprovenUserByID(ctx context.Context, arg ClaimUnprovenUserByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, ClaimUnprovenUserByID, arg.Name, arg.PasswordHash, arg.ID)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -125,6 +133,7 @@ func (q *Queries) ClaimUnverifiedUserByID(ctx context.Context, arg ClaimUnverifi
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -208,21 +217,24 @@ func (q *Queries) CreateTenantUserRole(ctx context.Context, arg CreateTenantUser
 }
 
 const CreateUser = `-- name: CreateUser :one
-INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, birth_date)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+INSERT INTO users (id, tenant_id, public_id, email, password_hash, name, birth_date, password_proven_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
 type CreateUserParams struct {
-	ID           uuid.UUID      `json:"id"`
-	TenantID     uuid.NullUUID  `json:"tenant_id"`
-	PublicID     string         `json:"public_id"`
-	Email        string         `json:"email"`
-	PasswordHash sql.NullString `json:"password_hash"`
-	Name         string         `json:"name"`
-	BirthDate    sql.NullTime   `json:"birth_date"`
+	ID               uuid.UUID      `json:"id"`
+	TenantID         uuid.NullUUID  `json:"tenant_id"`
+	PublicID         string         `json:"public_id"`
+	Email            string         `json:"email"`
+	PasswordHash     sql.NullString `json:"password_hash"`
+	Name             string         `json:"name"`
+	BirthDate        sql.NullTime   `json:"birth_date"`
+	PasswordProvenAt sql.NullTime   `json:"password_proven_at"`
 }
 
+// password_proven_at is null for a password whoever created the account chose
+// without proving the address, which is every password a sign-up form takes.
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, CreateUser,
 		arg.ID,
@@ -232,6 +244,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.PasswordHash,
 		arg.Name,
 		arg.BirthDate,
+		arg.PasswordProvenAt,
 	)
 	var i User
 	err := row.Scan(
@@ -249,6 +262,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -446,7 +460,7 @@ func (q *Queries) GetTenantReaderByPublicID(ctx context.Context, arg GetTenantRe
 }
 
 const GetUserByCanonicalEmailForTenant = `-- name: GetUserByCanonicalEmailForTenant :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 FROM users
 WHERE tenant_id = $1
     AND canonical_email(email) = canonical_email($2::text)
@@ -481,12 +495,13 @@ func (q *Queries) GetUserByCanonicalEmailForTenant(ctx context.Context, arg GetU
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
 
 const GetUserByEmailForTenant = `-- name: GetUserByEmailForTenant :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 FROM users
 WHERE tenant_id = $1
     AND email = $2
@@ -516,12 +531,13 @@ func (q *Queries) GetUserByEmailForTenant(ctx context.Context, arg GetUserByEmai
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
 
 const GetUserByID = `-- name: GetUserByID :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 FROM users
 WHERE id = $1
 `
@@ -544,6 +560,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -593,7 +610,7 @@ func (q *Queries) GetUserByIDForTenant(ctx context.Context, arg GetUserByIDForTe
 }
 
 const GetUserByIDForUpdate = `-- name: GetUserByIDForUpdate :one
-SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+SELECT id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 FROM users
 WHERE id = $1
 FOR UPDATE
@@ -617,6 +634,7 @@ func (q *Queries) GetUserByIDForUpdate(ctx context.Context, id uuid.UUID) (User,
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -1731,6 +1749,44 @@ func (q *Queries) LockCanonicalEmailForTenant(ctx context.Context, arg LockCanon
 	return err
 }
 
+const ResetUserPasswordHashByID = `-- name: ResetUserPasswordHashByID :one
+UPDATE users
+SET password_hash = $2,
+    password_proven_at = NOW()
+WHERE id = $1
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
+`
+
+type ResetUserPasswordHashByIDParams struct {
+	ID           uuid.UUID      `json:"id"`
+	PasswordHash sql.NullString `json:"password_hash"`
+}
+
+// Replaces the password on the strength of a link mailed to the address, which
+// proves whoever set it holds the address.
+func (q *Queries) ResetUserPasswordHashByID(ctx context.Context, arg ResetUserPasswordHashByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, ResetUserPasswordHashByID, arg.ID, arg.PasswordHash)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Status,
+		&i.TenantID,
+		&i.EmailVerifiedAt,
+		&i.CredentialsVersion,
+		&i.BirthDate,
+		&i.IconImageID,
+		&i.IconPresetID,
+		&i.LastLocale,
+		&i.PasswordProvenAt,
+	)
+	return i, err
+}
+
 const SetTenantReaderBirthDate = `-- name: SetTenantReaderBirthDate :one
 UPDATE users
 SET birth_date = $1::date
@@ -1812,7 +1868,7 @@ UPDATE users
 SET birth_date = $2
 WHERE id = $1
     AND birth_date IS NULL
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
 type SetUserBirthDateByIDParams struct {
@@ -1842,6 +1898,7 @@ func (q *Queries) SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDate
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -1957,6 +2014,7 @@ func (q *Queries) SuspendTenantReader(ctx context.Context, arg SuspendTenantRead
 const TakeOverUnverifiedUserByID = `-- name: TakeOverUnverifiedUserByID :one
 UPDATE users
 SET password_hash = NULL,
+    password_proven_at = NULL,
     email_verified_at = NOW(),
     status = CASE
         WHEN status = 'inactive' THEN 'active'
@@ -1965,7 +2023,7 @@ SET password_hash = NULL,
     credentials_version = credentials_version + 1
 WHERE id = $1
     AND email_verified_at IS NULL
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
 // Confirms an address nobody had confirmed on the strength of a provider's
@@ -1989,6 +2047,7 @@ func (q *Queries) TakeOverUnverifiedUserByID(ctx context.Context, id uuid.UUID) 
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -2071,7 +2130,7 @@ const UnsuspendUserByID = `-- name: UnsuspendUserByID :one
 UPDATE users
 SET status = CASE WHEN email_verified_at IS NULL THEN 'inactive' ELSE 'active' END
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
 // A user who never confirmed their address goes back to inactive, the state
@@ -2094,15 +2153,17 @@ func (q *Queries) UnsuspendUserByID(ctx context.Context, id uuid.UUID) (User, er
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
 
 const UpdateUserEmailByID = `-- name: UpdateUserEmailByID :one
 UPDATE users
-SET email = $2
+SET email = $2,
+    password_proven_at = NULL
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
 type UpdateUserEmailByIDParams struct {
@@ -2110,6 +2171,8 @@ type UpdateUserEmailByIDParams struct {
 	Email string    `json:"email"`
 }
 
+// Whoever set the password proved the address being replaced, not this one,
+// so the password is no longer proven.
 func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailByIDParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, UpdateUserEmailByID, arg.ID, arg.Email)
 	var i User
@@ -2128,6 +2191,7 @@ func (q *Queries) UpdateUserEmailByID(ctx context.Context, arg UpdateUserEmailBy
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -2136,7 +2200,7 @@ const UpdateUserEmailVerifiedAtByID = `-- name: UpdateUserEmailVerifiedAtByID :o
 UPDATE users
 SET email_verified_at = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
 type UpdateUserEmailVerifiedAtByIDParams struct {
@@ -2162,6 +2226,7 @@ func (q *Queries) UpdateUserEmailVerifiedAtByID(ctx context.Context, arg UpdateU
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -2170,7 +2235,7 @@ const UpdateUserNameByID = `-- name: UpdateUserNameByID :one
 UPDATE users
 SET name = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
 type UpdateUserNameByIDParams struct {
@@ -2196,6 +2261,7 @@ func (q *Queries) UpdateUserNameByID(ctx context.Context, arg UpdateUserNameByID
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -2204,7 +2270,7 @@ const UpdateUserPasswordHashByID = `-- name: UpdateUserPasswordHashByID :one
 UPDATE users
 SET password_hash = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
 type UpdateUserPasswordHashByIDParams struct {
@@ -2212,6 +2278,8 @@ type UpdateUserPasswordHashByIDParams struct {
 	PasswordHash sql.NullString `json:"password_hash"`
 }
 
+// Replaces the password on the strength of the one it replaces, so the new
+// password is exactly as proven as the old one was.
 func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUserPasswordHashByIDParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, UpdateUserPasswordHashByID, arg.ID, arg.PasswordHash)
 	var i User
@@ -2230,6 +2298,7 @@ func (q *Queries) UpdateUserPasswordHashByID(ctx context.Context, arg UpdateUser
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }
@@ -2238,7 +2307,7 @@ const UpdateUserStatusByID = `-- name: UpdateUserStatusByID :one
 UPDATE users
 SET status = $2
 WHERE id = $1
-RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale
+RETURNING id, public_id, email, password_hash, name, created_at, status, tenant_id, email_verified_at, credentials_version, birth_date, icon_image_id, icon_preset_id, last_locale, password_proven_at
 `
 
 type UpdateUserStatusByIDParams struct {
@@ -2264,6 +2333,7 @@ func (q *Queries) UpdateUserStatusByID(ctx context.Context, arg UpdateUserStatus
 		&i.IconImageID,
 		&i.IconPresetID,
 		&i.LastLocale,
+		&i.PasswordProvenAt,
 	)
 	return i, err
 }

@@ -761,9 +761,11 @@ type CreateTenantAdminInvitationResponse struct {
 	// Unset when role_granted_immediately is true.
 	Invitation *TenantAdminInvitation `protobuf:"bytes,1,opt,name=invitation,proto3" json:"invitation,omitempty"`
 	// True when the address belongs to an active user of the tenant whose owner
-	// confirmed it, who is given the role on the spot instead of being mailed an
-	// invitation. Any other account is mailed one: until its address is
-	// confirmed, its password was chosen by whoever signed up with the address.
+	// confirmed it and whose password, if it has one, was set by someone who had
+	// proved the address, who is given the role on the spot instead of being
+	// mailed an invitation. Any other account is mailed one: a password chosen
+	// on a sign-up form was chosen by whoever signed up with the address, and
+	// following the sign-up's confirmation link does not change who that was.
 	RoleGrantedImmediately bool `protobuf:"varint,2,opt,name=role_granted_immediately,json=roleGrantedImmediately,proto3" json:"role_granted_immediately,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
@@ -817,9 +819,10 @@ func (x *CreateTenantAdminInvitationResponse) GetRoleGrantedImmediately() bool {
 // account in the tenant is refused with NOT_FOUND, and one whose user already
 // holds a role with ALREADY_EXISTS: changing it is UpdateTenantMemberRole's.
 // An account that is suspended is refused with FAILED_PRECONDITION and the
-// ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet or whose
-// address was never confirmed with ACCOUNT_UNCONFIRMED: such an account is
-// invited instead.
+// ErrorInfo reason ACCOUNT_SUSPENDED, and one that is not active yet, whose
+// address was never confirmed, or whose password was not set by someone who
+// had proved the address, such as one chosen on a sign-up form, with
+// ACCOUNT_UNCONFIRMED: such an account is invited instead.
 type AddTenantMemberRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
