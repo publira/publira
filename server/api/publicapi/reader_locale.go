@@ -82,11 +82,13 @@ func (s *apiServer) recordLastLocale(ctx context.Context, raw string) {
 	if err != nil || (claims.TenantID != "" && claims.TenantID != tenant.TenantID.String()) {
 		return
 	}
+	sessionID, _, hasSession := claims.SessionID()
 	if err := s.queriesFor(ctx).SetUserLastLocale(ctx, dbmodels.SetUserLastLocaleParams{
 		LastLocale:         code,
 		TenantID:           uuid.NullUUID{UUID: tenant.TenantID, Valid: true},
 		PublicID:           claims.Subject,
 		CredentialsVersion: claims.CredentialsVersion,
+		SessionID:          uuid.NullUUID{UUID: sessionID, Valid: hasSession},
 	}); err != nil {
 		slog.WarnContext(ctx, "failed to record the reader's last locale",
 			"tenant_id", tenant.TenantID.String(),

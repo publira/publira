@@ -114,6 +114,7 @@ type TenantScopedQuerier interface {
 	GetUserByPublicIDForTenant(ctx context.Context, arg dbmodels.GetUserByPublicIDForTenantParams) (dbmodels.GetUserByPublicIDForTenantRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (dbmodels.User, error)
 	ListTenantUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error)
+	UserSessionSignedOut(ctx context.Context, jti uuid.UUID) (bool, error)
 }
 
 // TenantScopedQuerierFactory opens the queries an image route reads its row
@@ -438,7 +439,7 @@ func (h *Handler) episodeImageCredential(r *http.Request, tenantID uuid.UUID) (*
 
 // grantedEpisodeImage evaluates a verified credential against one image. A nil
 // row with a nil error means the credential unlocks nothing here — an unknown,
-// disabled, or password-rotated user, an unpublished episode, no grant, or a
+// disabled, or password-rotated user, a session signed out of, an unpublished episode, no grant, or a
 // media token issued for a different episode — and the caller falls back to
 // the public rule, which is the same one the API applies.
 func (h *Handler) grantedEpisodeImage(
@@ -561,6 +562,17 @@ func (h *Handler) activeUserForClaims(
 	tenantID uuid.UUID,
 	claims *auth.AccessTokenClaims,
 ) (*dbmodels.User, error) {
+	// An access token sent as a bearer names a session, which may have been
+	// signed out of; a media token names none and lives minutes.
+	if sessionID, _, ok := claims.SessionID(); ok {
+		signedOut, err := tenantQueries.UserSessionSignedOut(ctx, sessionID)
+		if err != nil {
+			return nil, err
+		}
+		if signedOut {
+			return nil, nil
+		}
+	}
 	userRef, err := tenantQueries.GetUserByPublicIDForTenant(ctx, dbmodels.GetUserByPublicIDForTenantParams{
 		PublicID: claims.Subject,
 		TenantID: uuid.NullUUID{UUID: tenantID, Valid: true},

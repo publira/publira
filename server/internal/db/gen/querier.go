@@ -4986,9 +4986,11 @@ type Querier interface {
 	SetUserIdentityRefreshToken(ctx context.Context, arg SetUserIdentityRefreshTokenParams) (int64, error)
 	// Records the locale a signed-in reader's request named, on the reader its
 	// access token names while that token still signs them in: the account is
-	// active and its credentials have not moved since the token was issued. A
-	// request in the locale already recorded writes nothing, so a reader browsing
-	// in one language costs no write per request.
+	// active, its credentials have not moved since the token was issued, and the
+	// session the token holds has not been signed out of. A token issued before
+	// tokens named their session passes a null session_id. A request in the locale
+	// already recorded writes nothing, so a reader browsing in one language costs
+	// no write per request.
 	SetUserLastLocale(ctx context.Context, arg SetUserLastLocaleParams) error
 	// Points the volume at an uploaded cover, or at none. The cover it pointed at
 	// before is left for the orphan image sweep.
