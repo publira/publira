@@ -159,7 +159,18 @@ An Author is paid a share of each episode they are credited on. The share is set
 - **On an episode**, **Authors** changes that episode's own credits and shares, and **Save authors** stores them.
 - **On the series' episode list**, **Credits** › **Set share** changes one credit's share on many episodes at once.
 
-A share is between 0 and 100 percent, with up to two decimal places, and the shares on an episode add up to no more than 100. A share of 0 credits an Author without paying them. Only a Tenant admin can change a share. An Editor still corrects who a series or an episode credits, as long as no credit ends up paid differently: a save that changes a share, removes a paid credit or puts someone else in its place, or pays a new credit is refused. So is **Set share**, and so are **Replace** and **Remove** on a credit that is paid on any episode of the range.
+A share is between 0 and 100 percent, with up to two decimal places, and the shares on an episode add up to no more than 100. A share of 0 credits an Author without paying them.
+
+Only a Tenant admin can change a share. An Editor still corrects who a series or an episode credits, as long as no credit ends up paid differently, and the console offers them only what that leaves:
+
+- Under **Authors**, on the series form and on an episode, each **Share of author** is shown but cannot be typed into, and an Author added with **Add author** is paid nothing. A credit paid a share keeps its Author and its role, and cannot be removed, since dropping it or putting someone else in its place would move what is paid. A credit paid nothing can be changed or removed as before.
+- **Credits** on the series' episode list offers **Add**, **Replace**, and **Remove**, without **Set share**. **Replace** and **Remove** are refused on a credit that is paid on any of the selected episodes, with a message that says so: leave those episodes out of the selection, or ask a Tenant admin.
+
+![The Authors field of a series form as an Editor sees it: Royalty Writer, paid nothing, whose Author and role can still be changed, and Royalty Artist, paid 30%, with the Author, the role, and the remove button unavailable, both shares read-only, the note that only a tenant admin can change a share, and Add author.](./reports-and-royalties-editor-series-authors.png)
+
+![The Authors section of an episode as an Editor sees it: Royalty Writer and Royalty Artist, both paid a share and marked Episode only, with their Authors, roles, and remove buttons unavailable and their shares read-only, the note that only a tenant admin can change a share, Add author, and Save authors.](./reports-and-royalties-editor-episode-authors.png)
+
+![The Edit credits on selected episodes dialog as an Editor sees it: Add, Replace, and Remove under Operation, without Set share.](./reports-and-royalties-editor-bulk-credits.png)
 
 For each credit, a month's payout is:
 

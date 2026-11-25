@@ -27,7 +27,10 @@ import {
   TenantEditorFieldset,
 } from "#components/tenant-role-gate";
 import { TranslationTabs } from "#components/translation-tabs";
-import { isSignedInTenantEditor } from "#lib/auth-session";
+import {
+  isSignedInTenantEditor,
+  isSignedInTenantEditorButNotAdmin,
+} from "#lib/auth-session";
 import type { SeriesTranslationItem } from "#lib/catalog-translation";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
@@ -402,6 +405,7 @@ const EditSeriesFormData = async ({
     timeZone,
     t,
     canCreateLabel,
+    creditSharesLocked,
     tenantLocales,
     rawSearchParams,
   ] = await Promise.all([
@@ -424,6 +428,7 @@ const EditSeriesFormData = async ({
     // The placeholders are attributes, which cannot stream in as nodes.
     getMessagesFor(locale),
     isSignedInTenantEditor(tenantId),
+    isSignedInTenantEditorButNotAdmin(tenantId),
     findTenantLocales(tenantId),
     searchParams,
   ]);
@@ -467,6 +472,7 @@ const EditSeriesFormData = async ({
       <SeriesForm
         action={updateSeriesAction}
         canCreateLabel={canCreateLabel}
+        creditSharesLocked={creditSharesLocked}
         creatorRoles={creatorRolesResult.creatorRoles}
         creatorRolesErrorMessage={
           creatorRolesResult.ok ? undefined : creatorRolesResult.message

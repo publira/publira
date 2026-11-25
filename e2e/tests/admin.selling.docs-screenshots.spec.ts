@@ -29,7 +29,12 @@ import {
   PROMOTION_CODES_ADMIN,
   PROMOTION_CODES_READER,
 } from "../src/scenarios/promotion-codes";
-import { ROYALTIES_ADMIN, ROYALTIES_SALES } from "../src/scenarios/royalties";
+import {
+  ROYALTIES_ADMIN,
+  ROYALTIES_CATALOG,
+  ROYALTIES_EDITOR,
+  ROYALTIES_SALES,
+} from "../src/scenarios/royalties";
 import { STOREFRONT_SUBSCRIPTIONS_ADMIN } from "../src/scenarios/storefront-subscriptions";
 import {
   WEB_ADMIN_ANALYTICS_BASE_URL,
@@ -54,6 +59,9 @@ import {
  * month, opened by its period so the screen does not move with today's
  * date; nothing here closes it. The month before it is a statement
  * `db/seeds/scenarios/460_docs_royalties.sql` writes as closed on a fixed day.
+ * What an Editor is shown of the shares on a credit is photographed on the
+ * same tenant, as the Editor `860_docs_credit_shares.sql` adds; nothing there
+ * is saved.
  * The providers a tenant holds are photographed on the analytics tenant of
  * `db/seeds/scenarios/690_admin_analytics.sql`, whose payment settings no
  * other shot reads.
@@ -121,6 +129,26 @@ const openRoyalties = async (
   await consoleSessions.signIn(
     page,
     ROYALTIES_ADMIN,
+    WEB_ADMIN_ROYALTIES_BASE_URL
+  );
+  await setDocsLocale(page, WEB_ADMIN_ROYALTIES_BASE_URL, locale);
+  await page.goto(`${WEB_ADMIN_ROYALTIES_BASE_URL}${path}`);
+};
+
+/**
+ * The same as the royalty tenant's Editor, whom
+ * `db/seeds/scenarios/860_docs_credit_shares.sql` adds: the member of staff
+ * who writes the credits and may not change what any of them is paid.
+ */
+const openRoyaltiesAsEditor = async (
+  page: Page,
+  consoleSessions: ConsoleSessions,
+  locale: string,
+  path: string
+): Promise<void> => {
+  await consoleSessions.signIn(
+    page,
+    ROYALTIES_EDITOR,
     WEB_ADMIN_ROYALTIES_BASE_URL
   );
   await setDocsLocale(page, WEB_ADMIN_ROYALTIES_BASE_URL, locale);
@@ -492,6 +520,90 @@ for (const locale of DOCS_LOCALES) {
           ],
           page: reportsPage,
           subject: "open-month",
+        });
+      });
+
+      test.describe("what an Editor is shown of a share", () => {
+        const seriesPath = `/series/${ROYALTIES_CATALOG.seriesPublicId}`;
+
+        test("the Authors field of the series form", async ({
+          consoleSessions,
+          page,
+        }) => {
+          await openRoyaltiesAsEditor(
+            page,
+            consoleSessions,
+            locale,
+            seriesPath
+          );
+
+          await expectDocsScreenshot(page, {
+            locale,
+            element: docsField(
+              page.getByRole("group", {
+                name: t("admin.series.form.creators"),
+              })
+            ),
+            page: reportsPage,
+            subject: "editor-series-authors",
+          });
+        });
+
+        test("the Authors section of an episode", async ({
+          consoleSessions,
+          page,
+        }) => {
+          await openRoyaltiesAsEditor(
+            page,
+            consoleSessions,
+            locale,
+            `${seriesPath}/episodes/${ROYALTIES_CATALOG.episodePublicId}`
+          );
+
+          await expectDocsScreenshot(page, {
+            locale,
+            element: docsSection(
+              page,
+              t("admin.series.episodes.credits.title")
+            ),
+            page: reportsPage,
+            subject: "editor-episode-authors",
+          });
+        });
+
+        test("the episode list's Credits dialog", async ({
+          consoleSessions,
+          page,
+        }) => {
+          // Tall enough for the whole dialog, which scrolls inside itself at
+          // the project's height and would be photographed cut off.
+          await page.setViewportSize({ height: 1600, width: 1280 });
+          await openRoyaltiesAsEditor(
+            page,
+            consoleSessions,
+            locale,
+            `${seriesPath}/episodes`
+          );
+          await page
+            .getByRole("button", {
+              exact: true,
+              name: t("admin.series.episodes.credits_action"),
+            })
+            .click();
+          // The dialog opens on a line saying the episodes are loading, and
+          // lays out its form once they arrive.
+          await expect(
+            page.getByRole("dialog").getByRole("button", {
+              name: t("admin.series.episodes.credits.apply"),
+            })
+          ).toBeVisible();
+
+          await expectDocsScreenshot(page, {
+            locale,
+            element: page.getByRole("dialog"),
+            page: reportsPage,
+            subject: "editor-bulk-credits",
+          });
         });
       });
 

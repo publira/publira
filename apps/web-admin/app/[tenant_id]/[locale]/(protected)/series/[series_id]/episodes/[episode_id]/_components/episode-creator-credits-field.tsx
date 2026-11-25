@@ -33,25 +33,40 @@ interface CreditEditorRow extends Omit<EpisodeCreatorCredit, "shareBps"> {
   key: string;
   /** The share box as typed, parsed when the list is summed and posted. */
   shareText: string;
+  /**
+   * What the credit was paid when the field opened, 0 for a row added since.
+   * With the shares locked, it is what the row posts, and a row paid anything
+   * keeps who it credits and in what role.
+   */
+  storedShareBps: number;
 }
 
 const isComplete = (row: CreditEditorRow) =>
   row.creatorId.length > 0 && row.roleId.length > 0;
 
+/**
+ * One credit of the episode. A `fixed` row is a paid credit in front of an
+ * operator who may not move its pay, so who it credits and in what role stay
+ * as they are and it cannot be removed.
+ */
 const EpisodeCreditRow = ({
   creators,
+  fixed,
   roles,
   row,
   position,
   onChange,
   onRemove,
+  shareLocked,
 }: {
   creators: Combobox.Item[];
+  fixed: boolean;
   roles: Combobox.Item[];
   row: CreditEditorRow;
   position: number;
   onChange: (row: CreditEditorRow) => void;
   onRemove: () => void;
+  shareLocked: boolean;
 }) => (
   <li className="flex flex-wrap items-center gap-2 border border-border bg-background px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3">
     <Field.Root className="min-w-40 flex-1">
@@ -63,6 +78,7 @@ const EpisodeCreditRow = ({
       </Field.Label>
       <Field.Content>
         <Combobox.Root
+          disabled={fixed}
           items={creators}
           onValueChange={(nextCreatorId) =>
             onChange({ ...row, creatorId: nextCreatorId })
@@ -88,6 +104,7 @@ const EpisodeCreditRow = ({
       </Field.Label>
       <Field.Content>
         <Combobox.Root
+          disabled={fixed}
           items={roles}
           onValueChange={(nextRoleId) =>
             onChange({ ...row, roleId: nextRoleId })
@@ -107,6 +124,7 @@ const EpisodeCreditRow = ({
     <CreditShareInput
       onChange={(shareText) => onChange({ ...row, shareText })}
       position={position}
+      readOnly={shareLocked}
       value={row.shareText}
     />
     {row.source === CreatorCreditSource.EPISODE ? (
@@ -116,6 +134,7 @@ const EpisodeCreditRow = ({
     ) : null}
     <Button
       className="shrink-0"
+      disabled={fixed}
       onClick={onRemove}
       size="icon"
       type="button"
@@ -136,15 +155,23 @@ const EpisodeCreditRow = ({
  * The credits the episode is baked with. The rows are this field's own state,
  * and what the form posts is the hidden field below, so a half-written row
  * stays on screen without the rest of the form having to know about it.
+ *
+ * `sharesLocked` is the field for an operator who may change who the episode
+ * credits and not what any credit is paid: a tenant editor. Each share is shown
+ * and posted as it was read, a row added is paid nothing, and a row paid
+ * anything keeps who it credits and in what role, since dropping it or putting
+ * someone else in its place moves the payout as a new share would.
  */
 export const EpisodeCreatorCreditsField = ({
   creatorRoles,
   creators,
   initialCredits,
+  sharesLocked = false,
 }: {
   creatorRoles: CreatorRoleOption[];
   creators: CreatorOption[];
   initialCredits: EpisodeCreatorCredit[];
+  sharesLocked?: boolean;
 }) => {
   // The save button belongs to the form around this field, which is told
   // whether the shares as typed can be saved whenever that changes.
@@ -155,6 +182,7 @@ export const EpisodeCreatorCreditsField = ({
       ...credit,
       key: String(index),
       shareText: shareBpsToPercentText(shareBps),
+      storedShareBps: shareBps,
     }))
   );
 
@@ -180,7 +208,9 @@ export const EpisodeCreatorCreditsField = ({
           {
             creatorId: row.creatorId,
             roleId: row.roleId,
-            shareBps: sharePercentToBps(row.shareText) ?? 0,
+            shareBps: sharesLocked
+              ? row.storedShareBps
+              : (sharePercentToBps(row.shareText) ?? 0),
           },
         ]
       : []
@@ -197,8 +227,9 @@ export const EpisodeCreatorCreditsField = ({
         key,
         creatorId: "",
         roleId: creatorRoles.at(0)?.id ?? "",
-        shareText: "",
+        shareText: sharesLocked ? "0" : "",
         source: CreatorCreditSource.EPISODE,
+        storedShareBps: 0,
       },
     ]);
   };
@@ -237,17 +268,24 @@ export const EpisodeCreatorCreditsField = ({
           {rows.map((row, index) => (
             <EpisodeCreditRow
               creators={creatorItems}
+              fixed={sharesLocked && row.storedShareBps > 0}
               key={row.key}
               onChange={changeRow}
               onRemove={() => removeRow(row.key)}
               position={index + 1}
               roles={roleItems}
               row={row}
+              shareLocked={sharesLocked}
             />
           ))}
         </ul>
       )}
       {rows.length > 0 ? <CreditShareSummary total={shareTotal} /> : null}
+      {sharesLocked ? (
+        <p className="text-xs text-muted-foreground">
+          <ClientMessage message="admin.series.form.creators_share_admin_only" />
+        </p>
+      ) : null}
       <div>
         <Button
           disabled={creatorItems.length === 0 || roleItems.length === 0}

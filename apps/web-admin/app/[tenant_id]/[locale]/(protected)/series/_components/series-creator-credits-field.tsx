@@ -47,6 +47,12 @@ interface CreditRow {
   roleId: string;
   /** The share box as typed, parsed when the list is summed and posted. */
   shareText: string;
+  /**
+   * What the credit was paid when the editor opened, 0 for a row added since.
+   * With the shares locked, it is what the row posts, and a row paid anything
+   * keeps who it credits and in what role.
+   */
+  storedShareBps: number;
 }
 
 const rowKey = (row: CreditRow): string => row.key;
@@ -79,6 +85,7 @@ const toInitialRows = (
     key: String(index),
     roleId: credit.roleId || leadingRoleId,
     shareText: shareBpsToPercentText(credit.shareBps),
+    storedShareBps: credit.shareBps,
   }));
 };
 
@@ -115,6 +122,8 @@ const toResolvedRoleId = (roleItems: Combobox.Item[], roleId: string): string =>
 interface CreatorCreditRowProps {
   creatorItems: Combobox.Item[];
   creatorId: string;
+  /** Who the row credits and in what role are fixed, and it cannot be removed. */
+  fixed: boolean;
   id: string;
   index: number;
   onCreatorChange: (nextCreatorId: string) => void;
@@ -124,13 +133,15 @@ interface CreatorCreditRowProps {
   position: number;
   roleItems: Combobox.Item[];
   roleId: string;
+  shareLocked: boolean;
   shareText: string;
 }
 
 /**
  * One credit: who, in what role, and where it sits among the credits sharing
  * that role. Both halves stay editable, so correcting a credit is changing the
- * row rather than deleting it and writing it again.
+ * row rather than deleting it and writing it again — unless the row is
+ * `fixed`, a paid credit in front of an operator who may not move its pay.
  *
  * Neither picker carries a visible label — the value in the box is the answer, and the
  * placeholder says what is being asked — so the accessible name comes from a
@@ -143,6 +154,7 @@ interface CreatorCreditRowProps {
 const CreatorCreditRow = ({
   creatorItems,
   creatorId,
+  fixed,
   id,
   index,
   onCreatorChange,
@@ -152,6 +164,7 @@ const CreatorCreditRow = ({
   position,
   roleItems,
   roleId,
+  shareLocked,
   shareText,
 }: CreatorCreditRowProps) => {
   const t = useClientMessages();
@@ -187,6 +200,7 @@ const CreatorCreditRow = ({
         </Field.Label>
         <Field.Content>
           <Combobox.Root
+            disabled={fixed}
             items={creatorItems}
             onValueChange={onCreatorChange}
             value={creatorId}
@@ -212,6 +226,7 @@ const CreatorCreditRow = ({
         </Field.Label>
         <Field.Content>
           <Combobox.Root
+            disabled={fixed}
             items={roleItems}
             onValueChange={onRoleChange}
             value={roleId}
@@ -231,10 +246,12 @@ const CreatorCreditRow = ({
       <CreditShareInput
         onChange={onShareChange}
         position={position}
+        readOnly={shareLocked}
         value={shareText}
       />
       <Button
         className="shrink-0"
+        disabled={fixed}
         onClick={onRemove}
         size="icon"
         type="button"
@@ -283,6 +300,15 @@ interface SeriesCreatorCreditsEditorProps {
    * to know about it.
    */
   initialCredits: SeriesCreatorCredit[];
+  /**
+   * The operator may change who the series credits and not what any credit is
+   * paid: a tenant editor. Each share is shown and posted as it was read, a
+   * row added is paid nothing, and a row paid anything keeps who it credits
+   * and in what role, since dropping it or putting someone else in its place
+   * moves the payout as a new share would. An auditor's form is disabled as a
+   * whole around this field, so it is not locked here.
+   */
+  sharesLocked?: boolean;
 }
 
 /** The credit rows, the controls that add and arrange them, and what they post. */
@@ -290,6 +316,7 @@ const SeriesCreatorCreditsEditor = ({
   creatorRoles,
   creators,
   initialCredits,
+  sharesLocked = false,
 }: SeriesCreatorCreditsEditorProps) => {
   const locale = useAdminLocale();
   // The save button belongs to the form around this field, which is told
@@ -334,7 +361,9 @@ const SeriesCreatorCreditsEditor = ({
           {
             creatorId: row.creatorId,
             roleId: row.roleId,
-            shareBps: sharePercentToBps(row.shareText) ?? 0,
+            shareBps: sharesLocked
+              ? row.storedShareBps
+              : (sharePercentToBps(row.shareText) ?? 0),
           },
         ]
       : []
@@ -355,10 +384,11 @@ const SeriesCreatorCreditsEditor = ({
         key,
         creatorId: "",
         roleId: creatorRoles.at(0)?.id ?? "",
-        shareText: "",
+        shareText: sharesLocked ? "0" : "",
+        storedShareBps: 0,
       },
     ]);
-  }, [creatorRoles]);
+  }, [creatorRoles, sharesLocked]);
 
   /**
    * Writes the rows a share edit or a removal leaves, and tells the form
@@ -445,6 +475,7 @@ const SeriesCreatorCreditsEditor = ({
             <CreatorCreditRow
               creatorItems={creatorItems}
               creatorId={row.creatorId}
+              fixed={sharesLocked && row.storedShareBps > 0}
               id={row.key}
               index={index}
               key={row.key}
@@ -461,6 +492,7 @@ const SeriesCreatorCreditsEditor = ({
               position={index + 1}
               roleItems={row.roleItems}
               roleId={row.roleId}
+              shareLocked={sharesLocked}
               shareText={row.shareText}
             />
           ))}
@@ -468,6 +500,11 @@ const SeriesCreatorCreditsEditor = ({
       )}
       {resolvedRows.length > 0 ? (
         <CreditShareSummary total={shareTotal} />
+      ) : null}
+      {sharesLocked ? (
+        <p className="text-xs text-muted-foreground">
+          <ClientMessage message="admin.series.form.creators_share_admin_only" />
+        </p>
       ) : null}
 
       {creatorItems.length === 0 ? (

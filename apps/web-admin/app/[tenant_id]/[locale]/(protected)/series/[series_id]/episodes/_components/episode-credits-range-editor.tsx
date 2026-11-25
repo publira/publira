@@ -427,6 +427,11 @@ export const EpisodeCreditsRangeFooter = ({
 }) => <Dialog.Footer className="mt-0 shrink-0 pt-4">{children}</Dialog.Footer>;
 
 export interface EpisodeCreditsRangeEditorProps {
+  /**
+   * Whether the operator may change what a credit is paid, which only a tenant
+   * admin may. Without it, Set share is not offered.
+   */
+  canSetShare: boolean;
   canSubmit: boolean;
   credit: CreditPair;
   creatorItems: Combobox.Item[];
@@ -473,6 +478,7 @@ export interface EpisodeCreditsRangeEditorProps {
 }
 
 export const EpisodeCreditsRangeEditor = ({
+  canSetShare,
   canSubmit,
   credit,
   creatorItems,
@@ -558,15 +564,19 @@ export const EpisodeCreditsRangeEditor = ({
                     label: t("admin.series.episodes.credits.operation_remove"),
                     value: "remove",
                   },
-                  {
-                    description: t(
-                      "admin.series.episodes.credits.operation_set_share_description"
-                    ),
-                    label: t(
-                      "admin.series.episodes.credits.operation_set_share"
-                    ),
-                    value: "set_share",
-                  },
+                  ...(canSetShare
+                    ? [
+                        {
+                          description: t(
+                            "admin.series.episodes.credits.operation_set_share_description"
+                          ),
+                          label: t(
+                            "admin.series.episodes.credits.operation_set_share"
+                          ),
+                          value: "set_share",
+                        },
+                      ]
+                    : []),
                 ]}
                 onValueChange={onOperationChange}
                 value={operation}

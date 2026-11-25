@@ -137,6 +137,19 @@ export const isSignedInTenantEditor = (tenantId: string): Promise<boolean> =>
   signedInRoleMeets(tenantId, isTenantEditorRole);
 
 /**
+ * Whether the signed-in operator of `tenantId` writes the catalogue without
+ * administering the tenant: a tenant editor, who changes who is credited and
+ * not what any credit is paid.
+ */
+export const isSignedInTenantEditorButNotAdmin = (
+  tenantId: string
+): Promise<boolean> =>
+  signedInRoleMeets(
+    tenantId,
+    (role) => isTenantEditorRole(role) && !isTenantAdminRole(role)
+  );
+
+/**
  * Resolve the session for work that must not run without one.
  *
  * A Server Action is its own request, so it authenticates independently of the

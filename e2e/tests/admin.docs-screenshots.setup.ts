@@ -31,8 +31,9 @@ import { STOREFRONT_SUBSCRIPTIONS_SCENARIO } from "../src/scenarios/storefront-s
  * Most of it lives on the tenants other suites own, which are applied here as
  * those suites apply them, and the `<nnn>_docs_*` files add to them what only
  * the documentation needs: comments in every state, episodes waiting to be
- * published, an unpublished page, announcements, invitations, a closed royalty statement, the
- * Platform Console's own tenants, operators, and records, campaign banners in
+ * published, an unpublished page, announcements, invitations, a closed royalty
+ * statement and an Editor of its tenant, the Platform Console's own tenants,
+ * operators, and records, campaign banners in
  * every standing, a Google tag saved in the gateway mode, subscription plans
  * in both states, one with a subscriber, a promotion code a reader redeemed,
  * a week of sign-ups followed for the cohorts, API keys, a webhook
@@ -53,6 +54,7 @@ const SCENARIOS = [
   "440_docs_members",
   ROYALTIES_SCENARIO,
   "460_docs_royalties",
+  "860_docs_credit_shares",
   SIGN_IN_PROVIDERS_SCENARIO,
   ADMIN_MFA_SETTINGS_SCENARIO,
   CONTACT_WORKFLOW_SCENARIO,

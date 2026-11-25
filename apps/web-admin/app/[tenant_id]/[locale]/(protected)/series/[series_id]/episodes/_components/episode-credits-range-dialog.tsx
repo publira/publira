@@ -16,6 +16,8 @@ import type { ListEpisodeCreditRangeCatalogResult } from "../episode-types";
 import { EpisodeCreditsRangeForm } from "./episode-credits-range-form";
 
 interface EpisodeCreditsRangeDialogProps {
+  /** Whether Set share is offered: to a tenant admin alone. */
+  canSetShare: boolean;
   seriesId: string;
 }
 
@@ -38,6 +40,7 @@ const emptyCatalog: ListEpisodeCreditRangeCatalogResult = {
  * episodes; this writes on the ones that already exist.
  */
 export const EpisodeCreditsRangeDialog = ({
+  canSetShare,
   seriesId,
 }: EpisodeCreditsRangeDialogProps) => {
   const locale = useAdminLocale();
@@ -123,6 +126,7 @@ export const EpisodeCreditsRangeDialog = ({
             {hasLoaded ? (
               <EpisodeCreditsRangeForm
                 action={bulkEditEpisodeCreditsAction}
+                canSetShare={canSetShare}
                 creatorRoles={catalog.creatorRoles}
                 creatorRolesErrorMessage={catalog.creatorRolesErrorMessage}
                 creators={catalog.creators}

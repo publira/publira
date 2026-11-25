@@ -307,6 +307,11 @@ const mapErrorToMessage = async (
   return rpcErrorMessage(cause, fallbackMessage, {
     locale,
     overrides: {
+      // The credits would leave a credit paid other than before, which only a
+      // tenant admin may: the shares changed after the form read them.
+      forbidden: rpcErrorHasFieldViolation(cause, "creator_credits")
+        ? t("admin.series.form.creators_share_refused")
+        : undefined,
       "invalid-argument": rpcErrorHasFieldViolation(cause, "locale")
         ? t("admin.series.episodes.translations.locale_not_offered")
         : undefined,
@@ -2450,6 +2455,35 @@ const toBulkCreditOperation = (operation: BulkEpisodeCreditOperation) => {
  * range over 100%, which the console can only find out from the server: the
  * other credits on those episodes are not on screen.
  */
+/**
+ * Why an operation over a range was refused to its caller. Only a tenant admin
+ * changes what a credit is paid: Set share is theirs alone, and a replace or a
+ * remove is theirs where the credit is paid on an episode of the range, since
+ * the one carries the share over to someone else and the other drops it. An
+ * add pays nothing, so its refusal is the shared one.
+ */
+const bulkCreditRefusalMessage = async (
+  operation: BulkEpisodeCreditOperation,
+  locale: Locale
+): Promise<string | undefined> => {
+  const t = await getMessagesFor(locale);
+
+  switch (operation.type) {
+    case "set_share": {
+      return t("admin.series.episodes.credits.set_share_admin_only");
+    }
+
+    case "replace":
+    case "remove": {
+      return t("admin.series.episodes.credits.paid_credit_admin_only");
+    }
+
+    default: {
+      return undefined;
+    }
+  }
+};
+
 const mapBulkCreditErrorToMessage = async (
   cause: unknown,
   operation: BulkEpisodeCreditOperation,
@@ -2463,6 +2497,7 @@ const mapBulkCreditErrorToMessage = async (
     {
       locale,
       overrides: {
+        forbidden: await bulkCreditRefusalMessage(operation, locale),
         "invalid-argument":
           operation.type === "set_share"
             ? t("admin.series.episodes.credits.share_over_limit")

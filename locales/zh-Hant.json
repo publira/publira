@@ -2229,6 +2229,8 @@
         "creators_share_over": "分潤合計為{$total}，超出100% 共{$excess}。請降低後再儲存。",
         "creators_share_invalid": "請以0到100的百分比輸入每項分潤，最多保留兩位小數。",
         "creators_share_description": "每位作者旁的百分比是其在一章銷售額中的分潤。分潤以外的部分歸出版方所有。",
+        "creators_share_admin_only": "只有租戶管理員才能變更分潤。您新增的作者分潤為0%，已有分潤的作者將維持不變。",
+        "creators_share_refused": "只有租戶管理員才能變更作者的分潤，而依此內容儲存會改變分潤：開啟此頁面後分潤已被變更。請重新載入頁面後再試。",
         "status": "連載狀態",
         "status_description": "表示是否仍會更新新章節。會顯示在作品頁面上。",
         "schedule": "更新週期",
@@ -2594,6 +2596,8 @@
           "apply_failed": "無法更新署名。請稍後再試。",
           "duplicate": "所選的部分章節已經以該角色署了取代目標作者。請變更取代目標或選擇。",
           "share_over_limit": "依此分潤，所選部分章節的分潤合計將超過100%。請變更分潤或選擇。",
+          "set_share_admin_only": "只有租戶管理員才能變更分潤。",
+          "paid_credit_admin_only": "該作者在所選章節中至少有一章有分潤。只有租戶管理員才能取代或移除有分潤的署名。請將這些章節從選擇中移除，或請租戶管理員處理。",
           "validation": {
             "operation_required": "請選擇一項操作。",
             "credit_required": "請選擇作者與角色。",

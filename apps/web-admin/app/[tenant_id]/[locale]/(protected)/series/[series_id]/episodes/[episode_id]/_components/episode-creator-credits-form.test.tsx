@@ -38,17 +38,20 @@ vi.mock("@publira/ui-components/combobox", () => ({
   Items: () => null,
   Popup: () => null,
   Root: ({
+    disabled,
     id,
     items,
     onValueChange,
     value,
   }: {
+    disabled?: boolean;
     id?: string;
     items: { label: string; value: string }[];
     onValueChange: (value: string) => void;
     value: string;
   }) => (
     <select
+      disabled={disabled}
       id={id}
       onChange={(event) => onValueChange(event.target.value)}
       value={value}
@@ -87,7 +90,8 @@ const teamCredits: EpisodeCreatorCredit[] = [
 
 const renderForm = (
   initialCredits: EpisodeCreatorCredit[] = [guestCredit],
-  action: () => Promise<EpisodeEditActionState> = () => Promise.resolve(null)
+  action: () => Promise<EpisodeEditActionState> = () => Promise.resolve(null),
+  { sharesLocked = false }: { sharesLocked?: boolean } = {}
 ) =>
   render(
     <EpisodeCreatorCreditsForm
@@ -101,6 +105,7 @@ const renderForm = (
       episodePublicId="EP001"
       initialCredits={initialCredits}
       seriesPublicId="SERIES001"
+      sharesLocked={sharesLocked}
       tenantId="TENANT001"
     />,
     {
@@ -125,6 +130,16 @@ const typeShare = (position: number, value: string) => {
     { target: { value } }
   );
 };
+
+const shareBox = (position: number) =>
+  screen.getByRole<HTMLInputElement>("textbox", {
+    name: `Share of author ${position}`,
+  });
+
+const removeButton = (position: number) =>
+  screen.getByRole<HTMLButtonElement>("button", {
+    name: `Remove author ${position}`,
+  });
 
 const saveButton = () =>
   screen.getByRole<HTMLButtonElement>("button", { name: "Save authors" });
@@ -206,6 +221,79 @@ describe("EpisodeCreatorCreditsForm", () => {
       for (const control of submittedControls()) {
         expect(control.matches(":disabled")).toBe(true);
       }
+    });
+  });
+
+  describe("with the shares locked, as an editor sees it", () => {
+    const paidAndUnpaid: EpisodeCreatorCredit[] = [
+      {
+        creatorId: "CREATOR001",
+        roleId: "ROLE001",
+        shareBps: 2500,
+        source: CreatorCreditSource.SERIES,
+      },
+      {
+        creatorId: "CREATOR002",
+        roleId: "ROLE001",
+        shareBps: 0,
+        source: CreatorCreditSource.SERIES,
+      },
+    ];
+
+    const renderLocked = () =>
+      renderForm(paidAndUnpaid, () => Promise.resolve(null), {
+        sharesLocked: true,
+      });
+
+    it("shows each share without letting it be typed over", () => {
+      renderLocked();
+
+      expect(shareBox(1).value).toBe("25");
+      expect(shareBox(1).readOnly).toBe(true);
+      expect(shareBox(2).readOnly).toBe(true);
+      expect(
+        screen.getByText(/^Only a tenant admin can change a share\./u)
+      ).toBeDefined();
+    });
+
+    it("keeps a paid credit as it is and lets an unpaid one go", () => {
+      renderLocked();
+
+      const [paidCreator, paidRole, unpaidCreator] =
+        screen.getAllByRole<HTMLSelectElement>("combobox");
+
+      expect(paidCreator?.disabled).toBe(true);
+      expect(paidRole?.disabled).toBe(true);
+      expect(removeButton(1).disabled).toBe(true);
+      expect(unpaidCreator?.disabled).toBe(false);
+
+      fireEvent.click(removeButton(2));
+
+      expect(postedCredits()).toEqual([
+        { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 2500 },
+      ]);
+    });
+
+    it("adds a credit at a share of 0", () => {
+      renderLocked();
+
+      fireEvent.click(removeButton(2));
+      fireEvent.click(screen.getByRole("button", { name: "Add author" }));
+
+      const added = screen.getAllByRole<HTMLSelectElement>("combobox").at(2);
+
+      if (!added) {
+        throw new Error("the added row has no author picker");
+      }
+
+      fireEvent.change(added, { target: { value: "CREATOR002" } });
+
+      expect(shareBox(2).value).toBe("0");
+      expect(shareBox(2).readOnly).toBe(true);
+      expect(postedCredits()).toEqual([
+        { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 2500 },
+        { creatorId: "CREATOR002", roleId: "ROLE001", shareBps: 0 },
+      ]);
     });
   });
 });

@@ -105,6 +105,7 @@ const creatorRoles = [{ id: "ROLE_ARTIST", name: "Artist" }];
 
 const render = ({
   action = () => Promise.resolve(null),
+  canSetShare = true,
   formEpisodes = episodes,
   initialSelectedIds = [],
 }: {
@@ -112,12 +113,14 @@ const render = ({
     prevState: BulkEditEpisodeCreditsActionState,
     formData: FormData
   ) => Promise<BulkEditEpisodeCreditsActionState>;
+  canSetShare?: boolean;
   formEpisodes?: typeof episodes;
   initialSelectedIds?: readonly string[];
 } = {}) =>
   renderBase(
     <EpisodeCreditsRangeForm
       action={action}
+      canSetShare={canSetShare}
       creatorRoles={creatorRoles}
       creators={creators}
       episodes={formEpisodes}
@@ -348,6 +351,15 @@ describe("EpisodeCreditsRangeForm", () => {
 
     expect(await screen.findByText("Changed 3 episodes")).toBeDefined();
     expect(action).toHaveBeenCalledOnce();
+  });
+
+  // Only a tenant admin changes what a credit is paid.
+  it("does not offer set-share to an editor", () => {
+    render({ canSetShare: false });
+
+    expect(screen.queryByRole("radio", { name: /Set share/u })).toBeNull();
+    expect(screen.getByRole("radio", { name: /Replace/u })).toBeDefined();
+    expect(screen.getByRole("radio", { name: /Remove/u })).toBeDefined();
   });
 
   it("keeps apply disabled and says why while the share is not one", () => {

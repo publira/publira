@@ -169,6 +169,8 @@ export interface EpisodeCreditsRangeFormProps {
     prevState: BulkEditEpisodeCreditsActionState,
     formData: FormData
   ) => Promise<BulkEditEpisodeCreditsActionState>;
+  /** Whether Set share is offered: to a tenant admin alone. */
+  canSetShare: boolean;
   creatorRoles: CreditPickerOption[];
   creatorRolesErrorMessage?: string;
   creators: CreditPickerOption[];
@@ -182,6 +184,7 @@ export interface EpisodeCreditsRangeFormProps {
 
 export const EpisodeCreditsRangeForm = ({
   action,
+  canSetShare,
   creatorRoles,
   creatorRolesErrorMessage,
   creators,
@@ -305,6 +308,7 @@ export const EpisodeCreditsRangeForm = ({
 
   return (
     <EpisodeCreditsRangeEditor
+      canSetShare={canSetShare}
       canSubmit={canSubmit}
       credit={credit}
       creatorItems={creatorItems}
