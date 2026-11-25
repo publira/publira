@@ -119,14 +119,14 @@ func TestSaveWithoutARevisionWritesOverTheStoredRow(t *testing.T) {
 		t.Fatalf("a save at revision 0 over revision 1: %v, want ErrConflict", err)
 	}
 
-	moved := settingsFor(server)
-	moved.Host = "smtp.example.net"
-	saved, err := save(platformsmtp.SaveParams{Settings: moved})
+	resent := settingsFor(server)
+	resent.FromAddress = "mail@example.net"
+	saved, err := save(platformsmtp.SaveParams{Settings: resent})
 	if err != nil {
 		t.Fatalf("second Save: %v", err)
 	}
-	if saved.Host != "smtp.example.net" || saved.Revision != 2 {
-		t.Fatalf("saved = %s at revision %d, want smtp.example.net at 2", saved.Host, saved.Revision)
+	if saved.FromAddress != "mail@example.net" || saved.Revision != 2 {
+		t.Fatalf("saved = %s at revision %d, want mail@example.net at 2", saved.FromAddress, saved.Revision)
 	}
 	if password, err := encryptor.DecryptString(saved.PasswordEncrypted); err != nil || password != "smtp-password" {
 		t.Fatalf("stored password = %q, %v; want the first one kept", password, err)
@@ -315,5 +315,70 @@ func TestATestOfAnotherServerKeepsTheSavedPassword(t *testing.T) {
 	}
 	if logins := elsewhere.Logins(); len(logins) != 1 || logins[0].Password != "its-own-password" {
 		t.Fatalf("logins = %+v, want one with the stated password", logins)
+	}
+}
+
+// A save keeps the saved password only for the server it was saved for: one
+// that names another host, port, username, or encryption and states no
+// password is refused on the password and leaves the row as it was, and the
+// password stated again moves it.
+func TestASaveOfAnotherServerKeepsTheSavedPassword(t *testing.T) {
+	t.Parallel()
+
+	pg := testutil.StartIsolatedPostgres(t)
+	db := pg.OpenPlatformDB(t)
+	encryptor := newEncryptor(t)
+	saved := testutil.StartSMTPServer(t)
+	elsewhere := testutil.StartSMTPServer(t)
+	ctx := context.Background()
+	save := func(p platformsmtp.SaveParams) (dbmodels.PlatformSmtpConfig, error) {
+		return platformsmtp.Save(ctx, db, slog.Default(), encryptor, auditlog.SystemPlatformActor, p)
+	}
+
+	stored, err := save(platformsmtp.SaveParams{Settings: settingsFor(saved), PasswordMode: secretupdate.Replace, Password: "smtp-password"})
+	if err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	with := func(change func(*emailsettings.SMTPSettings)) emailsettings.SMTPSettings {
+		settings := settingsFor(saved)
+		change(&settings)
+		return settings
+	}
+	for _, tc := range []struct {
+		name     string
+		settings emailsettings.SMTPSettings
+	}{
+		{name: "another host", settings: with(func(s *emailsettings.SMTPSettings) { s.Host = "localhost" })},
+		{name: "another port", settings: with(func(s *emailsettings.SMTPSettings) { s.Port = elsewhere.Port })},
+		{name: "another username", settings: with(func(s *emailsettings.SMTPSettings) { s.Username = "someone-else" })},
+		{name: "another encryption", settings: with(func(s *emailsettings.SMTPSettings) { s.Encryption = "starttls" })},
+	} {
+		for _, mode := range []secretupdate.Mode{secretupdate.Unspecified, secretupdate.Unchanged} {
+			revision := stored.Revision
+			_, err := save(platformsmtp.SaveParams{Settings: tc.settings, PasswordMode: mode, ExpectedRevision: &revision})
+			if !errors.Is(err, emailsettings.ErrServerChanged) || fielderr.Field(err) != emailsettings.FieldPassword {
+				t.Fatalf("%s, mode %d: Save = %v on %q, want ErrServerChanged on password", tc.name, mode, err, fielderr.Field(err))
+			}
+		}
+	}
+	row, _, err := platformsmtp.Get(ctx, dbmodels.New(db))
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if row != stored {
+		t.Fatalf("stored row = %+v, want it left as %+v", row, stored)
+	}
+
+	// The settings saved again keep the password, and another server takes
+	// the password stated again, the same one included.
+	if _, err := save(platformsmtp.SaveParams{Settings: settingsFor(saved), PasswordMode: secretupdate.Unchanged}); err != nil {
+		t.Fatalf("Save of the saved server: %v", err)
+	}
+	moved, err := save(platformsmtp.SaveParams{Settings: settingsFor(elsewhere), PasswordMode: secretupdate.Replace, Password: "smtp-password"})
+	if err != nil {
+		t.Fatalf("Save of another server with the password: %v", err)
+	}
+	if moved.Port != elsewhere.Port || !platformsmtp.HasPassword(moved) {
+		t.Fatalf("saved port %d with a password %v, want port %d with one", moved.Port, platformsmtp.HasPassword(moved), elsewhere.Port)
 	}
 }

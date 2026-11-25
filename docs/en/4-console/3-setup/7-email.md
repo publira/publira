@@ -49,7 +49,7 @@ Have these from whoever runs the publisher's mail:
 
 ![The SMTP connection test dialog: Send it to myself, Close, and Run the test.](./email-test-connection.png)
 
-A saved password is never shown again. The field shows that one is stored, and **Change** replaces it. Saving after **Change** with the box left empty removes it, which is how the tenant moves to a relay that takes no credentials: clear **Username** as well, since a username without a password is refused.
+A saved password is never shown again. The field shows that one is stored, and **Change** replaces it. It is kept only for the server it was saved for, so to save another host, port, username, or encryption, choose **Change** and enter it again. Saving after **Change** with the box left empty removes it, which is how the tenant moves to a relay that takes no credentials: clear **Username** as well, since a username without a password is refused.
 
 ## When it stops working
 

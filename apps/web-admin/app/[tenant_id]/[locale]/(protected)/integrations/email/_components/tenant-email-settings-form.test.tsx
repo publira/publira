@@ -467,4 +467,32 @@ describe("TenantEmailSettingsForm", () => {
     expect(username).toHaveProperty("value", "");
     expect(passwordBox().value).toBe("new-secret");
   });
+
+  it("shows the refusal to keep the stored password for another server on the password field", async () => {
+    const refusal =
+      "The saved password is kept only for the server it was saved for. To save another host, port, username, or encryption, choose Change and enter the password again.";
+
+    const saveAction = vi.fn(
+      (_previousState: TenantEmailSettingsFormState, _formData: FormData) =>
+        Promise.resolve<TenantEmailSettingsFormState>({
+          fieldErrors: { password: refusal },
+          message: "Please check the information you entered.",
+          ok: false,
+        })
+    );
+
+    await renderForm(storedSettings(), { saveAction });
+
+    fireEvent.change(screen.getByLabelText(/Host/u), {
+      target: { value: "smtp.elsewhere.example" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const message = await screen.findByText(refusal);
+    const sent = saveAction.mock.calls[0]?.[1];
+    expect(sent?.get("host")).toBe("smtp.elsewhere.example");
+    expect(sent?.get("password_update_mode")).toBe("1");
+    const change = screen.getByRole("button", { name: "Change" });
+    expect(change.parentElement?.parentElement?.contains(message)).toBe(true);
+  });
 });

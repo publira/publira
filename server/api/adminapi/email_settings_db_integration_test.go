@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect/v2"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/publira/publira/server/internal/emailsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
@@ -105,4 +106,63 @@ func TestDBTenantSMTPOverrideRefusesAUsernameWithoutAPassword(t *testing.T) {
 
 	_, err := updateDBTenantEmailSettings(env, tenant, relayOverride(tenant, "mailer", publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_CLEAR, ""))
 	assertRefusedOn(t, err, emailsettings.FieldPassword, emailsettings.ErrPasswordRequired)
+}
+
+// The stored password is kept only for the server it was saved for, whether or
+// not the override is on: a save that names another host, port, username, or
+// encryption and states no password is refused on the password and leaves the
+// settings as they were.
+func TestDBTenantSMTPSaveOfAnotherServerKeepsTheStoredPassword(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	saved, err := updateDBTenantEmailSettings(env, tenant, relayOverride(tenant, "mailer", publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE, "mailer-password"))
+	if err != nil {
+		t.Fatalf("UpdateTenantEmailSettings(with credentials): %v", err)
+	}
+
+	for _, tc := range []struct {
+		name   string
+		change func(*publiraadminv1.UpdateTenantEmailSettingsRequest)
+	}{
+		{name: "another host", change: func(r *publiraadminv1.UpdateTenantEmailSettingsRequest) { r.Host = "relay.elsewhere.example" }},
+		{name: "another port", change: func(r *publiraadminv1.UpdateTenantEmailSettingsRequest) { r.Port = 2525 }},
+		{name: "another username", change: func(r *publiraadminv1.UpdateTenantEmailSettingsRequest) { r.Username = "someone-else" }},
+		{name: "another encryption", change: func(r *publiraadminv1.UpdateTenantEmailSettingsRequest) { r.Encryption = "starttls" }},
+	} {
+		for _, overrideEnabled := range []bool{true, false} {
+			for _, mode := range []publiraadminv1.SecretUpdateMode{
+				publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNSPECIFIED,
+				publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_UNCHANGED,
+			} {
+				req := relayOverride(tenant, "mailer", mode, "")
+				req.SmtpOverrideEnabled = overrideEnabled
+				tc.change(req)
+				_, err := updateDBTenantEmailSettings(env, tenant, req)
+				connectErr, ok := errors.AsType[*connect.Error](err)
+				if !ok || connectErr.Code() != connect.CodeInvalidArgument || violatedField(t, connectErr) != emailsettings.FieldPassword {
+					t.Fatalf("%s, override %v, %v: UpdateTenantEmailSettings = %v, want invalid_argument on password", tc.name, overrideEnabled, mode, err)
+				}
+			}
+		}
+	}
+	got, err := env.emailSettingsClient().GetTenantEmailSettings(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.GetTenantEmailSettingsRequest{Tenant: tenant.tenantContext()})
+	if err != nil {
+		t.Fatalf("GetTenantEmailSettings: %v", err)
+	}
+	if !proto.Equal(got.Settings, saved.Settings) {
+		t.Fatalf("settings = %v, want them left as %v", got.Settings, saved.Settings)
+	}
+
+	// The password stated again goes with the server it is saved beside.
+	moved := relayOverride(tenant, "mailer", publiraadminv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE, "mailer-password")
+	moved.Host = "relay.elsewhere.example"
+	resp, err := updateDBTenantEmailSettings(env, tenant, moved)
+	if err != nil {
+		t.Fatalf("UpdateTenantEmailSettings(another host with the password): %v", err)
+	}
+	if resp.Settings.Host != "relay.elsewhere.example" || !resp.Settings.HasPassword {
+		t.Fatalf("saved settings = %v, want the other host with a password", resp.Settings)
+	}
 }

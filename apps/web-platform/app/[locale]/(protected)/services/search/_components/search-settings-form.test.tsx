@@ -140,6 +140,34 @@ describe("SearchSettingsForm", () => {
     expect(formData.get("password")).toBeNull();
   });
 
+  it("shows the refusal to keep the stored password for another URL on the password field", async () => {
+    const refusal =
+      "The saved password is kept only for the URL it was saved for. To save another URL, choose Replace credentials and enter the username and the password again.";
+
+    actions.updatePlatformSearchSettingsAction.mockResolvedValue({
+      fieldErrors: { password: refusal },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+    await renderForm(storedSettings);
+
+    fireEvent.change(screen.getByRole("textbox", { name: /^URL/u }), {
+      target: { value: "https://search.elsewhere.example" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save search settings" })
+    );
+
+    const message = await screen.findByText(refusal);
+    const formData = submitted(actions.updatePlatformSearchSettingsAction);
+    expect(formData.get("url")).toBe("https://search.elsewhere.example");
+    expect(formData.get("password_update_mode")).toBe(
+      String(SEARCH_PASSWORD_UNCHANGED)
+    );
+    const replace = screen.getByRole("button", { name: "Replace credentials" });
+    expect(replace.parentElement?.parentElement?.contains(message)).toBe(true);
+  });
+
   it("asks for a new password, and sends it, only once the operator replaces the credential", async () => {
     await renderForm(storedSettings);
 

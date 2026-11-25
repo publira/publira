@@ -148,13 +148,24 @@ func HasAnyValue(settings SMTPSettings, hasPassword bool) bool {
 		hasPassword
 }
 
-func EncryptUpdatedPassword(existingEncrypted string, mode secretupdate.Mode, newPassword string, mgr SecretManager) (string, bool, error) {
+// EncryptUpdatedPassword answers the ciphertext a save of settings stores, and
+// whether it holds one: a newly encrypted password, none, or the one saved
+// beside saved. A replacement that repeats the password already sealed with
+// the primary key keeps that ciphertext. The saved password is kept only for
+// the server it was saved for, under the rule [ResolvePasswordForTest] applies,
+// so a save that names another server has to state the password again or clear
+// it.
+func EncryptUpdatedPassword(settings, saved SMTPSettings, savedEncrypted string, mode secretupdate.Mode, newPassword string, mgr SecretManager) (string, bool, error) {
 	resolved, err := secretupdate.Resolve(mode, newPassword, ErrPasswordRequired)
 	if err != nil {
 		return "", false, err
 	}
 	switch resolved {
 	case secretupdate.Replace:
+		decrypter, _ := mgr.(secretupdate.Decrypter)
+		if secretupdate.KeepIfSame(resolved, newPassword, savedEncrypted, decrypter) == secretupdate.Unchanged {
+			return savedEncrypted, true, nil
+		}
 		if mgr == nil {
 			return "", false, ErrSecretManagerUnavailable
 		}
@@ -165,9 +176,14 @@ func EncryptUpdatedPassword(existingEncrypted string, mode secretupdate.Mode, ne
 		return encrypted, true, nil
 	case secretupdate.Clear:
 		return "", false, nil
-	default:
-		return existingEncrypted, existingEncrypted != "", nil
 	}
+	if savedEncrypted == "" {
+		return "", false, nil
+	}
+	if err := keepsSaved(settings, saved); err != nil {
+		return "", false, err
+	}
+	return savedEncrypted, true, nil
 }
 
 // ResolvePasswordForTest answers the password a test of settings sends: the one
@@ -191,19 +207,28 @@ func ResolvePasswordForTest(settings, saved SMTPSettings, savedEncrypted string,
 	if strings.TrimSpace(savedEncrypted) == "" {
 		return "", nil
 	}
-	if Normalize(settings).Username == "" {
-		return "", &fielderr.Invalid{Field: FieldUsername, Err: ErrPasswordWithoutUsername}
-	}
-	if !sameServer(settings, saved) {
-		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrServerChanged}
+	if err := keepsSaved(settings, saved); err != nil {
+		return "", err
 	}
 	return DecryptPassword(savedEncrypted, mgr)
 }
 
-// sameServer reports whether a and b log in to the same server as the same
-// user over the same encryption. Host names are compared without case, as DNS
-// resolves them.
-func sameServer(a, b SMTPSettings) bool {
+// keepsSaved refuses settings the password saved beside saved may not go with:
+// none without a username, and none on another server.
+func keepsSaved(settings, saved SMTPSettings) error {
+	if Normalize(settings).Username == "" {
+		return &fielderr.Invalid{Field: FieldUsername, Err: ErrPasswordWithoutUsername}
+	}
+	if !SameServer(settings, saved) {
+		return &fielderr.Invalid{Field: FieldPassword, Err: ErrServerChanged}
+	}
+	return nil
+}
+
+// SameServer reports whether a and b log in to the same server as the same
+// user over the same encryption, which is what a saved password may be kept
+// and sent for. Host names are compared without case, as DNS resolves them.
+func SameServer(a, b SMTPSettings) bool {
 	a, b = Normalize(a), Normalize(b)
 	return strings.EqualFold(a.Host, b.Host) &&
 		a.Port == b.Port &&

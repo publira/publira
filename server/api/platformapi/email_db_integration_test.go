@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/emailsettings"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirasplatformv1connect "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1/publirasplatformv1connect"
 	"github.com/publira/publira/server/internal/secretcrypto"
@@ -156,6 +157,28 @@ func TestDBUpdatePlatformEmailSettingsRejectsAStaleRevision(t *testing.T) {
 	}
 }
 
+// The stored password is kept only for the server it was saved for: a save of
+// another host that states no password is refused on the password, and the row
+// is left as it was.
+func TestDBUpdatePlatformEmailSettingsKeepsThePasswordOnlyForItsServer(t *testing.T) {
+	t.Parallel()
+
+	client, pg, operator, _ := newEmailSettingsClient(t)
+	revision := seedEmailSettings(t, client, operator)
+	before := readStoredSMTPRow(t, pg)
+
+	hostSave := emailUpdateRequest(revision)
+	hostSave.Host = "smtp.other.example"
+	_, err := updateEmailSettings(context.Background(), client, operator, hostSave)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("UpdatePlatformEmailSettings code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	assertFieldViolation(t, err, emailsettings.FieldPassword)
+	if after := readStoredSMTPRow(t, pg); after != before {
+		t.Fatalf("platform_smtp_config = %+v, want it untouched at %+v", after, before)
+	}
+}
+
 // Two saves from the same revision at the same time. The lock serializes them,
 // so exactly one applies and the other is told the row moved.
 func TestDBUpdatePlatformEmailSettingsConcurrentSavesOneWins(t *testing.T) {
@@ -165,13 +188,13 @@ func TestDBUpdatePlatformEmailSettingsConcurrentSavesOneWins(t *testing.T) {
 
 	shared := seedEmailSettings(t, client, operator)
 
-	// One session saves a new password, the other a new host that keeps the
-	// password it read.
+	// One session saves a new password, the other a new sender address that
+	// keeps the password it read.
 	passwordSave := emailUpdateRequest(shared)
 	passwordSave.PasswordUpdateMode = publirasplatformv1.SecretUpdateMode_SECRET_UPDATE_MODE_REPLACE
 	passwordSave.Password = "second-password"
-	hostSave := emailUpdateRequest(shared)
-	hostSave.Host = "smtp.other.example"
+	senderSave := emailUpdateRequest(shared)
+	senderSave.FromAddress = "mail@other.example"
 
 	type outcome struct {
 		req      *publirasplatformv1.UpdatePlatformEmailSettingsRequest
@@ -184,7 +207,7 @@ func TestDBUpdatePlatformEmailSettingsConcurrentSavesOneWins(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	var wg sync.WaitGroup
-	for _, req := range []*publirasplatformv1.UpdatePlatformEmailSettingsRequest{passwordSave, hostSave} {
+	for _, req := range []*publirasplatformv1.UpdatePlatformEmailSettingsRequest{passwordSave, senderSave} {
 		wg.Add(1)
 		go func(req *publirasplatformv1.UpdatePlatformEmailSettingsRequest) {
 			defer wg.Done()
@@ -223,8 +246,8 @@ func TestDBUpdatePlatformEmailSettingsConcurrentSavesOneWins(t *testing.T) {
 	if stored.revision != shared+1 || stored.revision != winner.settings.GetRevision() {
 		t.Fatalf("revision = %d, want %d", stored.revision, shared+1)
 	}
-	if stored.host != winner.req.GetHost() {
-		t.Fatalf("host = %q, want the winner's %q", stored.host, winner.req.GetHost())
+	if stored.fromAddress != winner.req.GetFromAddress() {
+		t.Fatalf("from_address = %q, want the winner's %q", stored.fromAddress, winner.req.GetFromAddress())
 	}
 	wantPassword := "first-password"
 	if winner.req == passwordSave {

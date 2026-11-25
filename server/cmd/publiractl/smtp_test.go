@@ -229,6 +229,34 @@ func TestSMTPTestExitsOneWhenTheServerRefuses(t *testing.T) {
 	}
 }
 
+// The saved password is kept only for the server it was saved for: a save that
+// names another one with no password is refused naming the password flag and
+// leaves the settings as they were.
+func TestSMTPSetToAnotherServerNeedsThePassword(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	t.Setenv("PUBLIRA_PLATFORM_DB_URL", pg.PlatformURL)
+	setEncryptionKeys(t)
+	first, second := testutil.StartSMTPServer(t), testutil.StartSMTPServer(t)
+
+	mustSMTPCommand(t, testSecretValue, smtpSetArgs(first, "--password-stdin")...)
+	stored := storedSMTPPassword(t, pg)
+
+	code, _, stderr := smtpCommand(t, "", smtpSetArgs(second)...)
+	if code != 1 || !strings.Contains(stderr, "publiractl: --password-stdin: the saved password belongs to another server; give the password as well\n") {
+		t.Fatalf("exit code = %d, stderr = %q; want the refusal naming the password flag", code, stderr)
+	}
+	var port int32
+	if err := pg.DB.QueryRowContext(context.Background(), `SELECT port FROM platform_smtp_config`).Scan(&port); err != nil {
+		t.Fatalf("read platform_smtp_config: %v", err)
+	}
+	if port != first.Port || storedSMTPPassword(t, pg) != stored {
+		t.Fatalf("saved port = %d, want the first server's %d with its password left alone", port, first.Port)
+	}
+
+	mustSMTPCommand(t, testSecretValue, smtpSetArgs(second, "--password-stdin")...)
+}
+
 type invitationRenderer struct{}
 
 func (invitationRenderer) Render(context.Context, emailrenderer.Request) (emailrenderer.Email, error) {
@@ -265,7 +293,7 @@ func TestSMTPSetReachesARunningWorker(t *testing.T) {
 	if err := handler(context.Background(), events[0]); err != nil {
 		t.Fatalf("deliver the first invitation: %v", err)
 	}
-	mustSMTPCommand(t, "", smtpSetArgs(second)...)
+	mustSMTPCommand(t, testSecretValue, smtpSetArgs(second, "--password-stdin")...)
 	if err := handler(context.Background(), events[1]); err != nil {
 		t.Fatalf("deliver the second invitation: %v", err)
 	}

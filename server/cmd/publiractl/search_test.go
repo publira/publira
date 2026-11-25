@@ -143,6 +143,20 @@ func TestSearchSetStoresThePasswordEncrypted(t *testing.T) {
 	if strings.Contains(show, testSecretValue) || !strings.Contains(show, "Password:") || !strings.Contains(show, "saved") {
 		t.Fatalf("show = %q, want the password reported as saved and never printed", show)
 	}
+
+	// The saved password is kept only for the URL it was saved for, so
+	// another URL needs it given again.
+	code, _, stderr = searchCommand(t, "", "set", "--engine", "opensearch", "--url", "https://search.elsewhere.example", "--username", "publira")
+	if code != 1 || !strings.Contains(stderr, "the saved password belongs to another URL; give the password as well") {
+		t.Fatalf("set of another URL with no password: exit code = %d, stderr = %q, want the password refused", code, stderr)
+	}
+	var url string
+	if err := pg.DB.QueryRowContext(context.Background(), "SELECT url FROM platform_search_config").Scan(&url); err != nil {
+		t.Fatalf("read platform_search_config: %v", err)
+	}
+	if url != "https://search.example.com" {
+		t.Fatalf("saved url = %q, want the stored one left alone", url)
+	}
 }
 
 // Elasticsearch is saved, tested, and rebuilt the way OpenSearch is, and the

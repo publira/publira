@@ -68,7 +68,7 @@ A server that took the test message may still deliver it to spam; check the inbo
 
 ### Changing it
 
-In the Platform Console, choose **Email** under **Services** in the sidebar, change the values, and choose **Save**. A saved password is kept unless you choose **Change** beside it; saving the field empty after that removes it. An Operator or a Super admin can save, and an Auditor only sees the screen.
+In the Platform Console, choose **Email** under **Services** in the sidebar, change the values, and choose **Save**. A saved password is kept unless you choose **Change** beside it, and only for the server it was saved for: to save another host, port, username, or encryption, choose **Change** and enter the password again. Saving the field empty after **Change** removes it. An Operator or a Super admin can save, and an Auditor only sees the screen.
 
 ![Username and Password with a password saved: the password is hidden, with Change under it.](./email-saved-password.png)
 
@@ -83,7 +83,7 @@ publiractl smtp test --to operator@example.com
 publiractl smtp show
 ```
 
-`smtp set` replaces every saved setting with the flags it is given, so name all of them each time; a `--reply-to` left out clears the saved one. With the same `--username` and no password, it keeps the saved password.
+`smtp set` replaces every saved setting with the flags it is given, so name all of them each time; a `--reply-to` left out clears the saved one. With the same `--host`, `--port`, `--username`, and `--encryption` and no password, it keeps the saved password; with any other, it is refused until the password is given.
 
 The worker reads the settings for every mail it sends, so a save applies to the next mail, with no restart. Each save and each test is recorded in **Audit logs**.
 

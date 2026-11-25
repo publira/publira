@@ -14,6 +14,7 @@ import {
   updateTenantEmailSettings,
 } from "./email-settings";
 import {
+  SECRET_UPDATE_MODE_REPLACE,
   SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
 } from "./email-settings-shared";
@@ -106,6 +107,14 @@ const passwordWithoutUsernameError = () =>
     ]
   );
 
+const passwordRefusedError = (message: string) =>
+  new ConnectError(message, Code.InvalidArgument, undefined, [
+    {
+      desc: BadRequestSchema,
+      value: { fieldViolations: [{ field: "password" }] },
+    },
+  ]);
+
 const passwordWithoutUsernameMessage =
   "A password needs a username. Enter the username, or remove the password to send without authenticating.";
 
@@ -163,6 +172,44 @@ describe("updateTenantEmailSettings", () => {
       message: "Please check the information you entered.",
       ok: false,
     });
+  });
+
+  it("puts a kept password refused for another server on the password field", async () => {
+    mockUpdateTenantEmailSettings.mockRejectedValueOnce(
+      passwordRefusedError(
+        "the saved password belongs to another server; give the password as well"
+      )
+    );
+
+    await expect(
+      updateTenantEmailSettings(
+        { ...smtpSettingsInput, host: "smtp.elsewhere.example" },
+        "en"
+      )
+    ).resolves.toEqual({
+      fieldErrors: {
+        password:
+          "The saved password is kept only for the server it was saved for. To save another host, port, username, or encryption, choose Change and enter the password again.",
+      },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+  });
+
+  it("leaves a refusal of a password the form stated to the server's detail", async () => {
+    mockUpdateTenantEmailSettings.mockRejectedValueOnce(
+      passwordRefusedError("password is required")
+    );
+
+    await expect(
+      updateTenantEmailSettings(
+        {
+          ...smtpSettingsInput,
+          passwordUpdateMode: SECRET_UPDATE_MODE_REPLACE,
+        },
+        "en"
+      )
+    ).resolves.toEqual({ message: "password is required", ok: false });
   });
 
   it("passes the server's validation detail through", async () => {

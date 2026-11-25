@@ -32,7 +32,11 @@ import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
 
 export type PlatformEmailSettingsFormState =
-  | { fieldErrors?: { username?: string }; message: string; ok: false }
+  | {
+      fieldErrors?: { password?: string; username?: string };
+      message: string;
+      ok: false;
+    }
   | { message: string; ok: true; settings: PlatformSmtpSettings }
   | null;
 

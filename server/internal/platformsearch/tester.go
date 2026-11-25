@@ -132,15 +132,9 @@ func (t Tester) password(settings Settings, mode secretupdate.Mode, password str
 	case secretupdate.Clear:
 		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired}
 	}
-	savedEncrypted = strings.TrimSpace(savedEncrypted)
-	if savedEncrypted == "" {
-		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired}
-	}
-	if username != saved.Username {
-		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrUsernameChanged}
-	}
-	if settings.URL != saved.URL {
-		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrURLChanged}
+	savedEncrypted, err = keptPassword(settings, saved, savedEncrypted)
+	if err != nil {
+		return "", err
 	}
 	if t.Secrets == nil {
 		return "", ErrSecretManagerUnavailable

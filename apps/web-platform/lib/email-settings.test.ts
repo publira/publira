@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   SECRET_UPDATE_MODE_REPLACE,
+  SECRET_UPDATE_MODE_UNCHANGED,
   TEST_EMAIL_RECIPIENT_TYPE_SELF,
   getPlatformEmailSettings,
   platformEmailSettingsCacheTag,
@@ -65,6 +66,14 @@ vi.mock("./api-client", () => ({
     headers: { Authorization: "Bearer service-token" },
   }),
 }));
+
+const passwordRefusedError = (message: string) =>
+  new ConnectError(message, Code.InvalidArgument, undefined, [
+    {
+      desc: BadRequestSchema,
+      value: { fieldViolations: [{ field: "password" }] },
+    },
+  ]);
 
 const smtpAuthenticationError = () =>
   new ConnectError(
@@ -255,6 +264,40 @@ describe("updatePlatformEmailSettings", () => {
       message: "Please check the information you entered.",
       ok: false,
     });
+  });
+
+  it("puts a kept password refused for another server on the password field", async () => {
+    mockUpdatePlatformEmailSettings.mockRejectedValueOnce(
+      passwordRefusedError(
+        "the saved password belongs to another server; give the password as well"
+      )
+    );
+
+    await expect(
+      updatePlatformEmailSettings({
+        ...input,
+        host: "smtp.elsewhere.example",
+        password: "",
+        passwordUpdateMode: SECRET_UPDATE_MODE_UNCHANGED,
+      })
+    ).resolves.toEqual({
+      fieldErrors: {
+        password:
+          "The saved password is kept only for the server it was saved for. To save another host, port, username, or encryption, choose Change and enter the password again.",
+      },
+      message: "Please check the information you entered.",
+      ok: false,
+    });
+  });
+
+  it("leaves a refusal of a password the form stated to the server's detail", async () => {
+    mockUpdatePlatformEmailSettings.mockRejectedValueOnce(
+      passwordRefusedError("password is required")
+    );
+
+    await expect(
+      updatePlatformEmailSettings({ ...input, password: "" })
+    ).resolves.toEqual({ message: "password is required", ok: false });
   });
 
   it("passes the server's validation detail through", async () => {

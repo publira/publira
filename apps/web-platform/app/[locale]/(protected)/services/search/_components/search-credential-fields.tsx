@@ -1,5 +1,6 @@
 "use client";
 
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
@@ -163,6 +164,7 @@ export const SearchCredentialFields = ({
                   ) : null}
                 </div>
               )}
+              <ActionForm.FieldError name="password" />
             </Field.Content>
             <Field.Description>
               {keepsStoredCredential ? (

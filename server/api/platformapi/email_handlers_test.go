@@ -101,7 +101,7 @@ func TestUpdatePlatformEmailSettingsKeepsExistingPassword(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.LockPlatformSMTPConfig)).
 		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).
-			AddRow(true, "smtp.old.example", 587, "old-user", existingEncrypted, "starttls", "old@example.com", "reply-old@example.com", now, now, 3))
+			AddRow(true, "smtp.example.com", 587, "mailer", existingEncrypted, "starttls", "old@example.com", "reply-old@example.com", now, now, 3))
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpdatePlatformSMTPConfig)).
 		WithArgs("smtp.example.com", int32(587), "mailer", existingEncrypted, "starttls", "no-reply@example.com", sql.NullString{String: "reply@example.com", Valid: true}).
 		WillReturnRows(sqlmock.NewRows(platformSMTPColumns()).

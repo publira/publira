@@ -732,13 +732,16 @@ func (r *setupRun) smtpStep(ctx context.Context) error {
 		return nameSMTP(err)
 	}
 	// Without a username the worker sends without authenticating, so there is
-	// no password to ask for, and a saved one is cleared.
+	// no password to ask for, and a saved one is cleared. A saved password is
+	// kept only for the server it was saved for, so another one asks for it
+	// again.
+	savedServer := emailsettings.SMTPSettings{Host: stored.Host, Port: stored.Port, Username: stored.Username, Encryption: stored.Encryption}
 	switch {
 	case settings.Username == "" && password.given():
 		return nameSMTP(&fielderr.Invalid{Field: emailsettings.FieldUsername, Err: emailsettings.ErrPasswordWithoutUsername})
 	case settings.Username == "":
 		params.PasswordMode = secretupdate.Clear
-	case password.given() || !found || !platformsmtp.HasPassword(stored):
+	case password.given() || !found || !platformsmtp.HasPassword(stored) || !emailsettings.SameServer(settings, savedServer):
 		if params.Password, err = r.readSecret(password); err != nil {
 			return err
 		}
