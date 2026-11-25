@@ -592,7 +592,11 @@ type SendTenantSmtpTestEmailRequest struct {
 	Port                int32                  `protobuf:"varint,6,opt,name=port,proto3" json:"port,omitempty"`
 	// Optional, as UpdateTenantEmailSettingsRequest.username is. With one, the
 	// test fails when the server offers no AUTH rather than sending without it.
-	Username           string           `protobuf:"bytes,7,opt,name=username,proto3" json:"username,omitempty"`
+	Username string `protobuf:"bytes,7,opt,name=username,proto3" json:"username,omitempty"`
+	// SECRET_UPDATE_MODE_UNSPECIFIED and SECRET_UPDATE_MODE_UNCHANGED send the
+	// stored password, and only to the host, port, username, and encryption it
+	// was saved with; a test naming another one is refused with a violation of
+	// password until it states its own.
 	PasswordUpdateMode SecretUpdateMode `protobuf:"varint,8,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.admin.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
 	Password           string           `protobuf:"bytes,9,opt,name=password,proto3" json:"password,omitempty"`
 	Encryption         string           `protobuf:"bytes,10,opt,name=encryption,proto3" json:"encryption,omitempty"`

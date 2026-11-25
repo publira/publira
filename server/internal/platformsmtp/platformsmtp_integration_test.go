@@ -245,3 +245,74 @@ func TestAPasswordWithoutAUsernameIsRefusedOnTheUsername(t *testing.T) {
 		t.Fatalf("messages = %d, want none", got)
 	}
 }
+
+// The saved password goes only to the server it was saved for: a test that
+// names another host, port, username, or encryption and states no password of
+// its own is refused on the password, and no server is dialled.
+func TestATestOfAnotherServerKeepsTheSavedPassword(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+	db := pg.OpenPlatformDB(t)
+	encryptor := newEncryptor(t)
+	saved := testutil.StartSMTPServer(t)
+	elsewhere := testutil.StartSMTPServer(t)
+	ctx := context.Background()
+
+	if _, err := platformsmtp.Save(ctx, db, slog.Default(), encryptor, auditlog.SystemPlatformActor, platformsmtp.SaveParams{
+		Settings:     settingsFor(saved),
+		PasswordMode: secretupdate.Replace,
+		Password:     "smtp-password",
+	}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	q := dbmodels.New(db)
+	tester := platformsmtp.Tester{Encryptor: encryptor, SMTP: internalsmtp.NewClient(), Recorder: auditlog.New(q, slog.Default())}
+	with := func(server *testutil.SMTPServer, change func(*emailsettings.SMTPSettings)) emailsettings.SMTPSettings {
+		settings := settingsFor(server)
+		change(&settings)
+		return settings
+	}
+	for _, tc := range []struct {
+		name     string
+		settings emailsettings.SMTPSettings
+	}{
+		// Both servers listen on the same address, so the host is told apart
+		// by its name.
+		{name: "another host", settings: with(saved, func(s *emailsettings.SMTPSettings) { s.Host = "localhost" })},
+		{name: "another port", settings: with(saved, func(s *emailsettings.SMTPSettings) { s.Port = elsewhere.Port })},
+		{name: "another username", settings: with(saved, func(s *emailsettings.SMTPSettings) { s.Username = "someone-else" })},
+		{name: "another encryption", settings: with(saved, func(s *emailsettings.SMTPSettings) { s.Encryption = "starttls" })},
+	} {
+		for _, mode := range []secretupdate.Mode{secretupdate.Unspecified, secretupdate.Unchanged} {
+			_, err := tester.Send(ctx, q, auditlog.SystemPlatformActor, platformsmtp.TestParams{
+				Settings:       tc.settings,
+				PasswordMode:   mode,
+				RecipientType:  emailsettings.TestRecipientTypeCustom,
+				RecipientEmail: "operator@example.com",
+			})
+			if !errors.Is(err, emailsettings.ErrServerChanged) || fielderr.Field(err) != emailsettings.FieldPassword {
+				t.Fatalf("%s, mode %d: Send = %v on %q, want ErrServerChanged on password", tc.name, mode, err, fielderr.Field(err))
+			}
+		}
+	}
+	for name, server := range map[string]*testutil.SMTPServer{"the saved server": saved, "the other server": elsewhere} {
+		if logins, messages := server.Logins(), server.Messages(); len(logins) != 0 || len(messages) != 0 {
+			t.Fatalf("%s saw %d logins and %d messages, want none", name, len(logins), len(messages))
+		}
+	}
+
+	// A password of its own is sent where the test names.
+	if _, err := tester.Send(ctx, q, auditlog.SystemPlatformActor, platformsmtp.TestParams{
+		Settings:       settingsFor(elsewhere),
+		PasswordMode:   secretupdate.Replace,
+		Password:       "its-own-password",
+		RecipientType:  emailsettings.TestRecipientTypeCustom,
+		RecipientEmail: "operator@example.com",
+	}); err != nil {
+		t.Fatalf("Send with a password of its own: %v", err)
+	}
+	if logins := elsewhere.Logins(); len(logins) != 1 || logins[0].Password != "its-own-password" {
+		t.Fatalf("logins = %+v, want one with the stated password", logins)
+	}
+}

@@ -609,7 +609,10 @@ func (r *setupRun) searchStep(ctx context.Context) error {
 		case settings.Username == "" && password.given():
 			return nameSearch(&fielderr.Invalid{Field: platformsearch.FieldUsername, Err: platformsearch.ErrUsernameRequired})
 		case settings.Username == "":
-		case !password.given() && base.HasPassword && base.Username == settings.Username:
+		// The engine is tested before it is saved, and a test sends the
+		// stored password only to the URL and the username it was saved for,
+		// so a moved engine asks for the password again.
+		case !password.given() && base.HasPassword && base.Username == settings.Username && base.URL == strings.TrimSpace(settings.URL):
 			params.SecretMode = secretupdate.Unchanged
 		default:
 			if params.Password, err = r.readSecret(password); err != nil {

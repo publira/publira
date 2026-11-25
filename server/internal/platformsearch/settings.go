@@ -99,6 +99,9 @@ var (
 	// ErrUsernameChanged refuses to keep the stored password under a username
 	// other than the one it was stored with.
 	ErrUsernameChanged = errors.New("the saved password belongs to another username; give the password as well")
+	// ErrURLChanged refuses to send the stored password to an engine other
+	// than the one it was saved for.
+	ErrURLChanged = errors.New("the saved password belongs to another URL; give the password as well")
 	// ErrSecretManagerUnavailable is a password to encrypt or decrypt in a
 	// process started without the keys that do it.
 	ErrSecretManagerUnavailable = errors.New("the search engine has a password, but this process has no secret encryption keys to encrypt or decrypt it")

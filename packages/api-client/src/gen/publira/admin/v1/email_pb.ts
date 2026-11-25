@@ -275,6 +275,11 @@ export type SendTenantSmtpTestEmailRequest = Message<"publira.admin.v1.SendTenan
   username: string;
 
   /**
+   * SECRET_UPDATE_MODE_UNSPECIFIED and SECRET_UPDATE_MODE_UNCHANGED send the
+   * stored password, and only to the host, port, username, and encryption it
+   * was saved with; a test naming another one is refused with a violation of
+   * password until it states its own.
+   *
    * @generated from field: publira.admin.v1.SecretUpdateMode password_update_mode = 8;
    */
   passwordUpdateMode: SecretUpdateMode;

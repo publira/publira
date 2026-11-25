@@ -2,7 +2,7 @@
 title: Email
 description: Send the tenant's mail through the publisher's own SMTP server, and receive readers' replies to contact messages back in the console.
 published: 2026-10-07
-updated: 2026-11-10
+updated: 2026-11-25
 ---
 
 The tenant sends mail to its readers and its staff: address confirmations, password resets, purchase receipts, invitations, replies to contact messages. Until a Tenant admin sets up a server of the tenant's own, all of it goes out through the platform's mail server, from the platform's address, which the operator chooses. **Integrations** › **Email** sends it through the publisher's own SMTP server instead, from an address on the publisher's domain.
@@ -42,7 +42,7 @@ Have these from whoever runs the publisher's mail:
    - **Sender email address**: the address the mail comes from, such as `noreply@comics.example.com`.
    - **Sender name (optional)**: the name readers see beside that address, usually the site's name. Left empty, the tenant's name is used, both for the tenant's mail and for the connection test.
    - **Reply-to address (optional)**: where a reader's reply goes, such as a support address. Left empty, replies go to the sender address. A reply to a contact message keeps its own reply-to address instead.
-3. Choose **Test the connection**, then **Run the test**. The test sends a message through the values in the form, without saving them, to your own address, or to another one if you clear **Send it to myself**. A failed test says which step failed where it can tell: connecting, TLS or STARTTLS, signing in, the server refusing the recipient, or the server taking too long to answer.
+3. Choose **Test the connection**, then **Run the test**. The test sends a message through the values in the form, without saving them, to your own address, or to another one if you clear **Send it to myself**. A failed test says which step failed where it can tell: connecting, TLS or STARTTLS, signing in, the server refusing the recipient, or the server taking too long to answer. The saved password is sent only to the server it was saved for, so to test another host, port, username, or encryption, choose **Change** beside **Password** and enter it again.
 4. Choose **Save**. The next mail the tenant sends goes through the new server.
 
 ![The Outgoing email section with Enable the override ticked: Host, Port, Username, Password, Encryption, Sender name, Sender email address, Reply-to address, Test the connection, and Save.](./email-outgoing.png)

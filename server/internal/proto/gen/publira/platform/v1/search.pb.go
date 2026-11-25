@@ -950,7 +950,9 @@ type TestPlatformSearchConnectionRequest struct {
 	Username string               `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
 	// SECRET_UPDATE_MODE_UNCHANGED tests with the stored password, so an
 	// operator can test a saved configuration without handling its credential
-	// again.
+	// again. The stored password is sent only with the url and the username it
+	// was saved with; a test naming another one is refused with a violation of
+	// password until it states its own.
 	PasswordUpdateMode SecretUpdateMode `protobuf:"varint,4,opt,name=password_update_mode,json=passwordUpdateMode,proto3,enum=publira.platform.v1.SecretUpdateMode" json:"password_update_mode,omitempty"`
 	Password           string           `protobuf:"bytes,5,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields      protoimpl.UnknownFields

@@ -52,7 +52,8 @@ func (r Result) Succeeded() bool {
 type Prober func(ctx context.Context, cfg opensearchbackend.Config) (opensearchbackend.Probe, error)
 
 // TestParams tests settings that may not be saved. The password is SecretMode
-// applied to Password, over the saved one.
+// applied to Password, over the saved one, which is sent only to the URL and
+// the username it was saved for.
 type TestParams struct {
 	Settings   Settings
 	SecretMode secretupdate.Mode
@@ -79,7 +80,7 @@ func (t Tester) Test(ctx context.Context, q Querier, actor auditlog.PlatformActo
 	if err != nil {
 		return Result{}, err
 	}
-	password, err := t.password(settings.Username, p.SecretMode, p.Password, saved.Username.String, saved.PasswordEncrypted.String)
+	password, err := t.password(settings, p.SecretMode, p.Password, FromConfig(saved).Settings, saved.PasswordEncrypted.String)
 	if err != nil {
 		return Result{}, err
 	}
@@ -99,16 +100,19 @@ func (t Tester) TestSaved(ctx context.Context, q Querier, actor auditlog.Platfor
 	if !stored.Engine.HasIndex() {
 		return Result{}, &fielderr.Invalid{Field: FieldEngine, Err: errSQLHasNothingToTest}
 	}
-	password, err := t.password(stored.Username, secretupdate.Unchanged, "", saved.Username.String, saved.PasswordEncrypted.String)
+	password, err := t.password(stored.Settings, secretupdate.Unchanged, "", stored.Settings, saved.PasswordEncrypted.String)
 	if err != nil {
 		return Result{}, err
 	}
 	return t.run(ctx, actor, stored.Settings, password), nil
 }
 
-// password is the password a test sends: the one stated, the saved one, or
-// none, refused where it is half of a credential as a save would refuse it.
-func (t Tester) password(username string, mode secretupdate.Mode, password, savedUsername, savedEncrypted string) (string, error) {
+// password is the password a test of settings sends: the one stated, the saved
+// one, or none, refused where it is half of a credential as a save would
+// refuse it. The saved password is a secret the settings RPCs never answer
+// with, so it goes only to the URL and the username it was saved for.
+func (t Tester) password(settings Settings, mode secretupdate.Mode, password string, saved Settings, savedEncrypted string) (string, error) {
+	username := settings.Username
 	resolved, err := secretupdate.Resolve(mode, password, &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired})
 	if err != nil {
 		if errors.Is(err, secretupdate.ErrInvalidMode) {
@@ -132,8 +136,11 @@ func (t Tester) password(username string, mode secretupdate.Mode, password, save
 	if savedEncrypted == "" {
 		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrPasswordRequired}
 	}
-	if username != savedUsername {
+	if username != saved.Username {
 		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrUsernameChanged}
+	}
+	if settings.URL != saved.URL {
+		return "", &fielderr.Invalid{Field: FieldPassword, Err: ErrURLChanged}
 	}
 	if t.Secrets == nil {
 		return "", ErrSecretManagerUnavailable

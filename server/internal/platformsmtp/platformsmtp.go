@@ -232,8 +232,12 @@ func configParams(p SaveParams, existingPassword string, encryptor emailsettings
 	}, nil
 }
 
-// passwordError names the field behind a password that could not be resolved.
+// passwordError names the field behind a password that could not be resolved,
+// unless err names one already.
 func passwordError(err error) error {
+	if fielderr.Field(err) != "" {
+		return err
+	}
 	if errors.Is(err, secretupdate.ErrInvalidMode) {
 		return &fielderr.Invalid{Field: FieldPasswordUpdateMode, Err: err}
 	}
@@ -254,7 +258,8 @@ func (e *TestFailure) Error() string {
 func (e *TestFailure) Unwrap() error { return e.Err }
 
 // TestParams sends the test message through settings that may not be saved.
-// The password is PasswordMode applied to Password, over the saved one.
+// The password is PasswordMode applied to Password, over the saved one, which
+// is sent only to the server it was saved for.
 type TestParams struct {
 	Settings       emailsettings.SMTPSettings
 	PasswordMode   secretupdate.Mode
@@ -278,7 +283,7 @@ func (t Tester) Send(ctx context.Context, q Querier, actor auditlog.PlatformActo
 	if err != nil {
 		return "", err
 	}
-	password, err := emailsettings.ResolvePasswordForTest(saved.PasswordEncrypted, p.PasswordMode, p.Password, t.Encryptor)
+	password, err := emailsettings.ResolvePasswordForTest(p.Settings, settingsOf(saved, ""), saved.PasswordEncrypted, p.PasswordMode, p.Password, t.Encryptor)
 	if err != nil {
 		return "", passwordError(err)
 	}

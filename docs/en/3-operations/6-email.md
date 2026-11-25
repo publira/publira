@@ -2,7 +2,7 @@
 title: Email
 description: Set the SMTP account the install sends mail through, let a tenant send through its own, and control what the mail looks like and where its links lead.
 published: 2026-10-06
-updated: 2026-11-24
+updated: 2026-11-25
 ---
 
 The install sends mail for its readers, for each tenant's staff, and for the Platform Console's operators. All of it is sent by `publira worker`, through an SMTP server you provide: `publiractl setup` saved the platform's SMTP account, and a tenant can save one of its own. This page covers both, how to test them, and the settings that decide how a mail looks and where its links go.
@@ -59,7 +59,7 @@ The from address has to be one your provider lets that account send as, and your
 
 A test sends one short message through the account and reports whether the server took it.
 
-- In the Platform Console, **Test connection** under **Email** opens **SMTP connection test**, which sends with the values in the form, before they are saved, to you with **Send to me** or to another **Recipient email address**. It sends from `publira server`.
+- In the Platform Console, **Test connection** under **Email** opens **SMTP connection test**, which sends with the values in the form, before they are saved, to you with **Send to me** or to another **Recipient email address**. It sends from `publira server`. The saved password is sent only to the server it was saved for, so to test another host, port, username, or encryption, choose **Change** beside **Password** and enter it again.
 - `publiractl smtp test --to operator@example.com` sends with the settings already saved, from wherever `publiractl` runs, and exits `1` when the server refuses it.
 
 ![The SMTP connection test dialog: Send to me, ticked, Close, and Send test.](./email-connection-test.png)
