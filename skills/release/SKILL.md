@@ -117,7 +117,7 @@ git tag -a vX.Y.Z -m vX.Y.Z <merge commit>
 git push origin vX.Y.Z
 ```
 
-A tag without the `v` starts nothing. Do not create the GitHub Release by hand, before or after: the workflow creates it once the images are pushed, and a Release that already exists has its notes replaced.
+Only a repository administrator can push a `v` tag; anyone else's push is rejected by the `release tags` tag ruleset, so ask one to push it. A tag without the `v` starts nothing. Do not create the GitHub Release by hand, before or after: the workflow creates it once the images are pushed, and a Release that already exists has its notes replaced.
 
 ## 6. Watch the run
 
@@ -130,7 +130,7 @@ The jobs run in order — `Check version`, then `Images` (one `Images / Build / 
 
 ### When `Check version` refuses the tag
 
-Its log names each `package.json` that does not carry the version. Nothing was pushed to `ghcr.io` and no Release exists, so the tag can be moved. Usually the tag is on the wrong commit; otherwise the release pull request did not set the version, and a new one has to. Delete the tag locally and on the remote, then tag the right commit and push again:
+Its log names the tagged commit when `main` does not contain it, or each `package.json` that does not carry the version. Nothing was pushed to `ghcr.io` and no Release exists, so the tag can be moved. Usually the tag is on the wrong commit; otherwise the release pull request did not set the version, and a new one has to. Delete the tag locally and on the remote, then tag the right commit and push again:
 
 ```bash
 git tag -d vX.Y.Z
