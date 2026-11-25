@@ -297,6 +297,10 @@ var (
 // AdminAuthServiceClient is a client for the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceClient interface {
 	Login(context.Context, *v1.AdminAuthServiceLoginRequest) (*v1.AdminAuthServiceLoginResponse, error)
+	// Ends the session the request's access token holds: that token is refused
+	// from then on, until it would have expired, while the account's other
+	// sessions carry on. A request with no token, or with one that holds no
+	// session any more, succeeds and ends nothing.
 	Logout(context.Context, *v1.AdminAuthServiceLogoutRequest) (*v1.AdminAuthServiceLogoutResponse, error)
 	RequestPasswordReset(context.Context, *v1.AdminAuthServiceRequestPasswordResetRequest) (*v1.AdminAuthServiceRequestPasswordResetResponse, error)
 	ConfirmPasswordReset(context.Context, *v1.AdminAuthServiceConfirmPasswordResetRequest) (*v1.AdminAuthServiceConfirmPasswordResetResponse, error)
@@ -357,6 +361,10 @@ func NewAdminAuthServiceClient(client *connect.Client) AdminAuthServiceClient {
 // AdminAuthServiceHandler is an implementation of the publira.admin.v1.AdminAuthService service.
 type AdminAuthServiceHandler interface {
 	Login(context.Context, *v1.AdminAuthServiceLoginRequest) (*v1.AdminAuthServiceLoginResponse, error)
+	// Ends the session the request's access token holds: that token is refused
+	// from then on, until it would have expired, while the account's other
+	// sessions carry on. A request with no token, or with one that holds no
+	// session any more, succeeds and ends nothing.
 	Logout(context.Context, *v1.AdminAuthServiceLogoutRequest) (*v1.AdminAuthServiceLogoutResponse, error)
 	RequestPasswordReset(context.Context, *v1.AdminAuthServiceRequestPasswordResetRequest) (*v1.AdminAuthServiceRequestPasswordResetResponse, error)
 	ConfirmPasswordReset(context.Context, *v1.AdminAuthServiceConfirmPasswordResetRequest) (*v1.AdminAuthServiceConfirmPasswordResetResponse, error)

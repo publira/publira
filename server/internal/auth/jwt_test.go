@@ -404,6 +404,64 @@ func TestWithMediaTokenQuery(t *testing.T) {
 	}
 }
 
+// Signing out records the session under its jti, so two sessions must never
+// share one, including two signed in for the same account in the same instant.
+func TestIssueGivesEverySessionAnIdentifier(t *testing.T) {
+	manager := NewTokenManager([]byte(testSecret))
+	now := time.Now()
+
+	first, expiresAt, err := manager.Issue("user-public-id", AudienceAdmin, "tenant-id", RoleTenantAdmin, 0, now)
+	if err != nil {
+		t.Fatalf("Issue() error = %v", err)
+	}
+	second, _, err := manager.Issue("user-public-id", AudienceAdmin, "tenant-id", RoleTenantAdmin, 0, now)
+	if err != nil {
+		t.Fatalf("Issue() error = %v", err)
+	}
+	firstClaims, err := manager.Verify(first, AudienceAdmin)
+	if err != nil {
+		t.Fatalf("Verify() error = %v", err)
+	}
+	secondClaims, err := manager.Verify(second, AudienceAdmin)
+	if err != nil {
+		t.Fatalf("Verify() error = %v", err)
+	}
+
+	firstID, firstExpiry, ok := firstClaims.SessionID()
+	if !ok {
+		t.Fatalf("SessionID() of an access token ok = false, want an identifier (jti %q)", firstClaims.ID)
+	}
+	// The record is kept until the token expires, so the expiry it is handed
+	// has to be the token's own, to the second the claim carries.
+	if want := expiresAt.Truncate(time.Second); !firstExpiry.Equal(want) {
+		t.Errorf("SessionID() expiry = %v, want %v", firstExpiry, want)
+	}
+	secondID, _, ok := secondClaims.SessionID()
+	if !ok {
+		t.Fatalf("SessionID() of an access token ok = false, want an identifier (jti %q)", secondClaims.ID)
+	}
+	if firstID == secondID {
+		t.Errorf("both sessions carry id %s, want two different ones", firstID)
+	}
+}
+
+// A token signed before access tokens carried a jti still verifies until it
+// expires, and names no session a sign-out could record.
+func TestSessionIDOfATokenWithoutOne(t *testing.T) {
+	manager := NewTokenManager([]byte(testSecret))
+	token, _, err := manager.IssueMediaToken("user-public-id", "tenant-id", "episode-id", 0, time.Now())
+	if err != nil {
+		t.Fatalf("IssueMediaToken() error = %v", err)
+	}
+	claims, err := manager.Verify(token, AudienceMedia)
+	if err != nil {
+		t.Fatalf("Verify() error = %v", err)
+	}
+	if id, _, ok := claims.SessionID(); ok {
+		t.Errorf("SessionID() = %s, want none", id)
+	}
+}
+
 func TestIssueMFAChallengeToken(t *testing.T) {
 	manager := NewTokenManager([]byte(testSecret))
 	// Verify checks exp against the wall clock, so the issue time has to be
@@ -446,21 +504,6 @@ func TestIssueMFAChallengeToken(t *testing.T) {
 		}
 		if firstClaims.CredentialsVersion != 3 {
 			t.Errorf("credentials version = %d, want 3", firstClaims.CredentialsVersion)
-		}
-	})
-
-	// Nothing spends an access token, so it has no identifier to spend it by.
-	t.Run("an access token carries no identifier", func(t *testing.T) {
-		token, _, err := manager.Issue("user-public-id", AudienceAdmin, "tenant-id", RoleTenantAdmin, 0, now)
-		if err != nil {
-			t.Fatalf("Issue() error = %v", err)
-		}
-		claims, err := manager.Verify(token, AudienceAdmin)
-		if err != nil {
-			t.Fatalf("Verify() error = %v", err)
-		}
-		if claims.ID != "" {
-			t.Errorf("access token id = %q, want empty", claims.ID)
 		}
 	})
 

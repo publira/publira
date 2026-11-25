@@ -42,6 +42,7 @@ func issueTestPublicToken(tenantID string) string {
 }
 
 func expectAuthSession(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now time.Time) {
+	expectSessionNotSignedOut(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, testPublicUserPublicID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
@@ -654,4 +655,12 @@ func TestAuthMarkAllAnnouncementsAsRead(t *testing.T) {
 	}
 
 	assertPublicExpectations(t, mock)
+}
+
+// expectSessionNotSignedOut answers the session check's question whether the
+// token's session has signed out: it has not.
+func expectSessionNotSignedOut(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserSessionSignedOut)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 }

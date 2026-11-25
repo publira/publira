@@ -139,6 +139,8 @@ func NewTokenManager(secret []byte) *TokenManager {
 
 // Issue creates a signed JWT access token.
 // tenantID should be the tenant primary key (UUID string); empty for platform tokens.
+// Every access token gets a `jti`, so that signing out can name the one session
+// it ends; [AccessTokenClaims.SessionID] reads it back.
 func (m *TokenManager) Issue(
 	subjectPublicID string,
 	audience string,
@@ -155,12 +157,16 @@ func (m *TokenManager) Issue(
 	if audience == "" {
 		return "", time.Time{}, errors.New("audience is required")
 	}
+	tokenID, err := uuid.NewV7()
+	if err != nil {
+		return "", time.Time{}, err
+	}
 
 	return m.sign(AccessTokenClaims{
 		TenantID:           strings.TrimSpace(tenantID),
 		Role:               strings.TrimSpace(role),
 		CredentialsVersion: credentialsVersion,
-	}, subjectPublicID, audience, "", AccessTokenTTL, now)
+	}, subjectPublicID, audience, tokenID.String(), AccessTokenTTL, now)
 }
 
 // IssueMediaToken creates the short-lived token that travels in an image URL
@@ -326,8 +332,9 @@ func WithMediaTokenQuery(imageURL string, token string) string {
 }
 
 // sign builds the registered claims and returns the signed token. tokenID
-// becomes the `jti`; it is empty for every token nothing has to spend, and
-// carries the identifier an MFA challenge is claimed by.
+// becomes the `jti`: the identifier an MFA challenge is claimed by, and the one
+// a session is recorded under when it signs out. It is empty for a media token,
+// which nothing spends or signs out of.
 func (m *TokenManager) sign(
 	claims AccessTokenClaims,
 	subjectPublicID string,
@@ -353,6 +360,21 @@ func (m *TokenManager) sign(
 		return "", time.Time{}, err
 	}
 	return signed, expiresAt, nil
+}
+
+// SessionID is the identifier a session is recorded under when it signs out,
+// and the expiry the record keeps it for. ok is false for a token issued
+// before access tokens carried a `jti`, which nothing can sign out of until it
+// expires.
+func (c *AccessTokenClaims) SessionID() (id uuid.UUID, expiresAt time.Time, ok bool) {
+	if c == nil || c.ID == "" || c.ExpiresAt == nil {
+		return uuid.UUID{}, time.Time{}, false
+	}
+	id, err := uuid.Parse(c.ID)
+	if err != nil {
+		return uuid.UUID{}, time.Time{}, false
+	}
+	return id, c.ExpiresAt.Time, true
 }
 
 // Verify parses and validates a JWT for the expected audience.

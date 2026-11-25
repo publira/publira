@@ -1906,11 +1906,16 @@ func (q *Queries) SetUserBirthDateByID(ctx context.Context, arg SetUserBirthDate
 const SetUserLastLocale = `-- name: SetUserLastLocale :exec
 UPDATE users
 SET last_locale = $1::text
-WHERE tenant_id = $2
-    AND public_id = $3
-    AND status = 'active'
-    AND credentials_version = $4
-    AND last_locale IS DISTINCT FROM $1::text
+WHERE users.tenant_id = $2
+    AND users.public_id = $3
+    AND users.status = 'active'
+    AND users.credentials_version = $4
+    AND users.last_locale IS DISTINCT FROM $1::text
+    AND NOT EXISTS (
+        SELECT 1
+        FROM user_signed_out_sessions signed_out
+        WHERE signed_out.jti = $5::uuid
+    )
 `
 
 type SetUserLastLocaleParams struct {
@@ -1918,19 +1923,23 @@ type SetUserLastLocaleParams struct {
 	TenantID           uuid.NullUUID `json:"tenant_id"`
 	PublicID           string        `json:"public_id"`
 	CredentialsVersion int32         `json:"credentials_version"`
+	SessionID          uuid.NullUUID `json:"session_id"`
 }
 
 // Records the locale a signed-in reader's request named, on the reader its
 // access token names while that token still signs them in: the account is
-// active and its credentials have not moved since the token was issued. A
-// request in the locale already recorded writes nothing, so a reader browsing
-// in one language costs no write per request.
+// active, its credentials have not moved since the token was issued, and the
+// session the token holds has not been signed out of. A token issued before
+// tokens named their session passes a null session_id. A request in the locale
+// already recorded writes nothing, so a reader browsing in one language costs
+// no write per request.
 func (q *Queries) SetUserLastLocale(ctx context.Context, arg SetUserLastLocaleParams) error {
 	_, err := q.db.ExecContext(ctx, SetUserLastLocale,
 		arg.LastLocale,
 		arg.TenantID,
 		arg.PublicID,
 		arg.CredentialsVersion,
+		arg.SessionID,
 	)
 	return err
 }

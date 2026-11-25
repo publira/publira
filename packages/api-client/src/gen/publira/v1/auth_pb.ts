@@ -3246,6 +3246,11 @@ export const AuthService: GenService<{
     output: typeof ChangePasswordResponseSchema;
   },
   /**
+   * Ends the session the request's access token holds: that token is refused
+   * from then on, until it would have expired, while the account's other
+   * sessions carry on. A request with no token, or with one that holds no
+   * session any more, succeeds and ends nothing.
+   *
    * @generated from rpc publira.v1.AuthService.Logout
    */
   logout: {

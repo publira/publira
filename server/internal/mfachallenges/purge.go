@@ -5,7 +5,9 @@
 // anything the moment that token expires — five minutes after it was issued.
 // A passkey ceremony in user_webauthn_ceremonies is the same kind of row from
 // the other side: a challenge kept until its finish spends it, which means
-// nothing once it has expired unfinished.
+// nothing once it has expired unfinished. A signed-out session in
+// user_signed_out_sessions or platform_user_signed_out_sessions is one more: it
+// refuses the access token it names, which refuses itself once it expires.
 package mfachallenges
 
 import (
@@ -33,6 +35,8 @@ var usedChallengeTables = []struct {
 	{"user_mfa_used_challenges", "jti", "idx_user_mfa_used_challenges_expires_at"},
 	{"platform_user_mfa_used_challenges", "jti", "idx_platform_user_mfa_used_challenges_expires_at"},
 	{"user_webauthn_ceremonies", "challenge", "idx_user_webauthn_ceremonies_expires_at"},
+	{"user_signed_out_sessions", "jti", "idx_user_signed_out_sessions_expires_at"},
+	{"platform_user_signed_out_sessions", "jti", "idx_platform_user_signed_out_sessions_expires_at"},
 }
 
 // Purger deletes the spent challenges whose tokens have expired. Its database

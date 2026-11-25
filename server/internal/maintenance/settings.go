@@ -119,8 +119,8 @@ func LoadRankingSnapshotPurge() (RankingSnapshotPurge, error) {
 	return RankingSnapshotPurge{ChunkSize: size}, nil
 }
 
-// MfaChallengePurge deletes the spent admin MFA challenges whose tokens have
-// expired.
+// MfaChallengePurge deletes the spent MFA challenges, the unfinished passkey
+// ceremonies, and the signed-out sessions whose tokens have expired.
 type MfaChallengePurge struct {
 	ChunkSize int
 	DryRun    bool

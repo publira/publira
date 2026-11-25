@@ -1052,6 +1052,13 @@ type PlatformUserRole struct {
 	PlatformUserID uuid.UUID `json:"platform_user_id"`
 }
 
+type PlatformUserSignedOutSession struct {
+	Jti            uuid.UUID `json:"jti"`
+	PlatformUserID uuid.UUID `json:"platform_user_id"`
+	ExpiresAt      time.Time `json:"expires_at"`
+	SignedOutAt    time.Time `json:"signed_out_at"`
+}
+
 type PlatformWebpushConfig struct {
 	Singleton                bool           `json:"singleton"`
 	VapidPublicKey           string         `json:"vapid_public_key"`
@@ -2265,6 +2272,14 @@ type UserRecommendFeature struct {
 	Features       json.RawMessage `json:"features"`
 	FeatureVersion int32           `json:"feature_version"`
 	ComputedAt     time.Time       `json:"computed_at"`
+}
+
+type UserSignedOutSession struct {
+	Jti         uuid.UUID `json:"jti"`
+	TenantID    uuid.UUID `json:"tenant_id"`
+	UserID      uuid.UUID `json:"user_id"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	SignedOutAt time.Time `json:"signed_out_at"`
 }
 
 type UserViewerPreference struct {

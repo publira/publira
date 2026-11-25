@@ -17,6 +17,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 func platformPasswordResetTokenColumns() []string {
@@ -210,6 +211,7 @@ func TestPlatformAuthRequestEmailChangeSuccess(t *testing.T) {
 		t.Fatalf("GenerateFromPassword: %v", err)
 	}
 
+	expectSessionNotSignedOut(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByPublicID)).
 		WithArgs("PLATUSER001").
 		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
@@ -361,12 +363,60 @@ func TestPlatformAuthGetMeSuccess(t *testing.T) {
 	assertOperatorHandlerExpectations(t, mock)
 }
 
-func TestPlatformAuthLogoutRevokes(t *testing.T) {
+func TestPlatformAuthLogoutRecordsTheSessionItEnds(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	now := time.Now()
+	userID := uuid.Must(uuid.NewV7())
+	token := issueTestPlatformToken("PLATUSER001", rolePlatformOperator)
+	claims, err := testutil.TokenManager().Verify(token, auth.AudiencePlatform)
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	sessionID, expiresAt, ok := claims.SessionID()
+	if !ok {
+		t.Fatal("the test token names no session")
+	}
+
+	expectOperatorAuth(mock, userID, rolePlatformOperator, now)
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.RecordPlatformUserSessionSignedOut)).
+		WithArgs(sessionID, userID, expiresAt).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	if _, err := server.Logout(bearerHandlerContext(t, token), &publirasplatformv1.PlatformAuthServiceLogoutRequest{}); err != nil {
+		t.Fatalf("Logout: %v", err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// A token that no longer holds a session has nothing left to end, and the
+// console drops its cookie either way, so signing out with one succeeds and
+// records nothing.
+func TestPlatformAuthLogoutWithASignedOutTokenRecordsNothing(t *testing.T) {
 	server, mock := newOperatorHandlerTestServer(t)
 
-	_, err := server.Logout(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", "platform_operator")), &publirasplatformv1.PlatformAuthServiceLogoutRequest{})
-	if err != nil {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.PlatformUserSessionSignedOut)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	if _, err := server.Logout(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", rolePlatformOperator)), &publirasplatformv1.PlatformAuthServiceLogoutRequest{}); err != nil {
 		t.Fatalf("Logout: %v", err)
+	}
+	assertOperatorHandlerExpectations(t, mock)
+}
+
+// The sign-out is not answered as done when the record of it could not be
+// written, since the token would go on working.
+func TestPlatformAuthLogoutFailsWhenTheSessionCannotBeRecorded(t *testing.T) {
+	server, mock := newOperatorHandlerTestServer(t)
+	userID := uuid.Must(uuid.NewV7())
+
+	expectOperatorAuth(mock, userID, rolePlatformOperator, time.Now())
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.RecordPlatformUserSessionSignedOut)).
+		WillReturnError(errors.New("connection reset"))
+
+	_, err := server.Logout(bearerHandlerContext(t, issueTestPlatformToken("PLATUSER001", rolePlatformOperator)), &publirasplatformv1.PlatformAuthServiceLogoutRequest{})
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Fatalf("Logout code = %v, want internal", connect.CodeOf(err))
 	}
 	assertOperatorHandlerExpectations(t, mock)
 }

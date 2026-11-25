@@ -292,6 +292,10 @@ var publicDataTables = []struct {
 	{name: "tenant_google_sign_in_config", count: "SELECT count(*) FROM tenant_google_sign_in_config"},
 	{name: "user_identities", count: "SELECT count(*) FROM user_identities"},
 	{name: "sign_in_nonces", count: "SELECT count(*) FROM sign_in_nonces"},
+	// The sessions a tenant's readers have signed out of, which the
+	// storefront's connection records on sign-out and reads on every
+	// signed-in request.
+	{name: "user_signed_out_sessions", count: "SELECT count(*) FROM user_signed_out_sessions"},
 	// What a tenant refuses at sign-up, which the storefront's connection reads
 	// on every sign-up and email change. An entry may be a reader's address.
 	{name: "tenant_email_rejection_settings", count: "SELECT count(*) FROM tenant_email_rejection_settings"},
@@ -552,6 +556,7 @@ func TestDBPublicRoleSeesNothingWithoutTenantSetting(t *testing.T) {
 	seed("sign-up settings", "INSERT INTO tenant_sign_up_settings (tenant_id, sign_up_open, closed_message) VALUES ($1, false, 'Closed')", first.ID)
 	seed("linked identity", "INSERT INTO user_identities (id, tenant_id, user_id, provider, subject, email_at_link, refresh_token_encrypted, refresh_token_client_id) VALUES ($1, $2, $3, 'apple', 'apple-subject', 'member@tenant-a.example.com', 'enc:probe', 'com.example.tenant-a.web')", uuid.Must(uuid.NewV7()), first.ID, member.ID)
 	seed("sign-in nonce", "INSERT INTO sign_in_nonces (tenant_id, nonce_hash, expires_at) VALUES ($1, 'nonce-hash', NOW() + INTERVAL '1 hour')", first.ID)
+	seed("signed-out session", "INSERT INTO user_signed_out_sessions (jti, tenant_id, user_id, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL '1 hour')", uuid.Must(uuid.NewV7()), first.ID, member.ID)
 	env.PG.SeedEpisodeImage(t, first.ID, episode.ID, 1)
 	announcementID := insertAnnouncement(t, env, first.ID, "/series/SERIESA00001", "Tenant A Announcement")
 	seed("announcement read", "INSERT INTO announcement_reads (announcement_id, tenant_id, user_id) VALUES ($1, $2, $3)", announcementID, first.ID, member.ID)

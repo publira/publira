@@ -42,6 +42,16 @@ func TestRunDeletesOnlyExpiredChallenges(t *testing.T) {
 	// and one still open stays.
 	expiredCeremony := insertWebauthnCeremony(t, pg.DB, tenant.ID, admin.ID, cutoff.Add(-time.Minute))
 	openCeremony := insertWebauthnCeremony(t, pg.DB, otherTenant.ID, otherAdmin.ID, cutoff)
+	// So does a signed-out session whose token has expired, on either side,
+	// and one whose token has not stays.
+	expiredSessions := []uuid.UUID{
+		insertSignedOutSession(t, pg.DB, tenant.ID, admin.ID, cutoff.Add(-time.Minute)),
+		insertOperatorSignedOutSession(t, pg.DB, operator.ID, cutoff.Add(-time.Minute)),
+	}
+	retainedSessions := []uuid.UUID{
+		insertSignedOutSession(t, pg.DB, otherTenant.ID, otherAdmin.ID, cutoff),
+		insertOperatorSignedOutSession(t, pg.DB, operator.ID, cutoff.Add(time.Minute)),
+	}
 
 	// The worker runs the purge as publira_content_stats, which reaches no
 	// other platform_ table.
@@ -52,22 +62,22 @@ func TestRunDeletesOnlyExpiredChallenges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
-	if want := (Result{RowCount: 6, DryRun: true}); dry != want {
+	if want := (Result{RowCount: 8, DryRun: true}); dry != want {
 		t.Fatalf("dry run result = %+v, want %+v", dry, want)
 	}
-	if got := countUsedChallenges(t, pg.DB); got != 10 {
-		t.Fatalf("rows after dry run = %d, want 10", got)
+	if got := countUsedChallenges(t, pg.DB); got != 14 {
+		t.Fatalf("rows after dry run = %d, want 14", got)
 	}
 
 	// ChunkSize below the candidate count forces the loop to iterate: two
 	// chunks drain the tenant table's three rows, two more the operator
-	// table's two, the second of which finds the end, and one the ceremonies'
-	// single row.
+	// table's two, the second of which finds the end, and one each the single
+	// rows of the ceremonies and of the two signed-out session tables.
 	result, err := purger.Run(context.Background(), Options{Cutoff: cutoff, ChunkSize: 2})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if want := (Result{RowCount: 6, ChunkCount: 5}); result != want {
+	if want := (Result{RowCount: 8, ChunkCount: 7}); result != want {
 		t.Fatalf("result = %+v, want %+v", result, want)
 	}
 	if webauthnCeremonyExists(t, pg.DB, expiredCeremony) {
@@ -86,6 +96,16 @@ func TestRunDeletesOnlyExpiredChallenges(t *testing.T) {
 			t.Fatalf("retained challenge %s was purged", jti)
 		}
 	}
+	for _, jti := range expiredSessions {
+		if signedOutSessionExists(t, pg.DB, jti) {
+			t.Fatalf("expired signed-out session %s survived the purge", jti)
+		}
+	}
+	for _, jti := range retainedSessions {
+		if !signedOutSessionExists(t, pg.DB, jti) {
+			t.Fatalf("retained signed-out session %s was purged", jti)
+		}
+	}
 
 	// Re-running finds nothing left to delete but still probes each table
 	// once.
@@ -93,7 +113,7 @@ func TestRunDeletesOnlyExpiredChallenges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
-	if want := (Result{ChunkCount: 3}); again != want {
+	if want := (Result{ChunkCount: 5}); again != want {
 		t.Fatalf("second result = %+v, want %+v", again, want)
 	}
 }
@@ -195,6 +215,8 @@ func countUsedChallenges(t *testing.T, db *sql.DB) int64 {
 		SELECT (SELECT count(*) FROM user_mfa_used_challenges)
 			+ (SELECT count(*) FROM platform_user_mfa_used_challenges)
 			+ (SELECT count(*) FROM user_webauthn_ceremonies)
+			+ (SELECT count(*) FROM user_signed_out_sessions)
+			+ (SELECT count(*) FROM platform_user_signed_out_sessions)
 	`).Scan(&count); err != nil {
 		t.Fatalf("count used challenges: %v", err)
 	}
@@ -239,6 +261,50 @@ func webauthnCeremonyExists(t *testing.T, db *sql.DB, challenge string) bool {
 		SELECT EXISTS (SELECT 1 FROM user_webauthn_ceremonies WHERE challenge = $1)
 	`, challenge).Scan(&exists); err != nil {
 		t.Fatalf("look up webauthn ceremony: %v", err)
+	}
+	return exists
+}
+
+func insertSignedOutSession(t *testing.T, db *sql.DB, tenantID, userID uuid.UUID, expiresAt time.Time) uuid.UUID {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	jti := uuid.Must(uuid.NewV7())
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO user_signed_out_sessions (jti, tenant_id, user_id, expires_at)
+		VALUES ($1, $2, $3, $4)
+	`, jti, tenantID, userID, expiresAt); err != nil {
+		t.Fatalf("insert signed-out session: %v", err)
+	}
+	return jti
+}
+
+func insertOperatorSignedOutSession(t *testing.T, db *sql.DB, platformUserID uuid.UUID, expiresAt time.Time) uuid.UUID {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	jti := uuid.Must(uuid.NewV7())
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO platform_user_signed_out_sessions (jti, platform_user_id, expires_at)
+		VALUES ($1, $2, $3)
+	`, jti, platformUserID, expiresAt); err != nil {
+		t.Fatalf("insert operator signed-out session: %v", err)
+	}
+	return jti
+}
+
+func signedOutSessionExists(t *testing.T, db *sql.DB, jti uuid.UUID) bool {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var exists bool
+	if err := db.QueryRowContext(ctx, `
+		SELECT EXISTS (SELECT 1 FROM user_signed_out_sessions WHERE jti = $1)
+			OR EXISTS (SELECT 1 FROM platform_user_signed_out_sessions WHERE jti = $1)
+	`, jti).Scan(&exists); err != nil {
+		t.Fatalf("look up signed-out session: %v", err)
 	}
 	return exists
 }

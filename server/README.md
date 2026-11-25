@@ -716,7 +716,7 @@ Browser cookies are managed on the Next.js side as JWE with `jose`, and only `Au
 | Environment variable | `PUBLIRA_AUTH_JWT_SECRET` (**required**, at least 32 bytes. There is no fallback: if it is unset or too short, `publira server` fails to start. Whoever holds it can sign a token with any `sub` and audience and call every API and the image routes, so issue one per environment, for example with `openssl rand -base64 32`) |
 | TTL | 24h |
 | Audience | `public` / `admin` / `platform` / `media` / `admin-media` / `public-mfa-verify` / `admin-mfa-verify` / `admin-mfa-enroll` / `platform-mfa-verify` / `platform-mfa-enroll` |
-| Revocation | `users.credentials_version` / `platform_users.credentials_version` (incremented on a password change and the like) |
+| Revocation | `users.credentials_version` / `platform_users.credentials_version` (incremented on a password change and the like) ends every session of an account; `Logout` ends the one session it is called with, recording the token's `jti` in `user_signed_out_sessions` / `platform_user_signed_out_sessions` until the token expires |
 | Next cookie | `PUBLIRA_AUTH_SECRET` (**required**, at least 32 bytes. It is for JWE and is separate from the API's JWT secret. There is no fallback: if it is unset or too short, an exception is raised) / cookie names such as `publira_web_storefront_auth` |
 
 ### Sign in with Apple and Google

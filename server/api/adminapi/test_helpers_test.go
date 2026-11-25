@@ -371,6 +371,7 @@ func expectActiveSessionLookup(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID,
 }
 
 func expectActiveSessionLookupWithRole(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, _ string, now time.Time, role string) {
+	expectSessionNotSignedOut(mock)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByPublicIDForTenant)).
 		WithArgs(uuid.NullUUID{UUID: tenantID, Valid: true}, testUserPublicID).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "name", "email", "status", "tenant_id", "created_at"}).
@@ -682,4 +683,12 @@ func mailGuardWith(perAddress, perSource platformpolicy.HourDay) *mailguard.Guar
 	policy.MailRequestsPerAddress = perAddress
 	policy.MailRequestsPerSource = perSource
 	return mailguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), slog.Default())
+}
+
+// expectSessionNotSignedOut answers the session check's question whether the
+// token's session has signed out: it has not.
+func expectSessionNotSignedOut(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UserSessionSignedOut)).
+		WithArgs(sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 }

@@ -532,6 +532,10 @@ type AuthServiceClient interface {
 	RequestPasswordReset(context.Context, *v1.RequestPasswordResetRequest) (*v1.RequestPasswordResetResponse, error)
 	ConfirmPasswordReset(context.Context, *v1.ConfirmPasswordResetRequest) (*v1.ConfirmPasswordResetResponse, error)
 	ChangePassword(context.Context, *v1.ChangePasswordRequest) (*v1.ChangePasswordResponse, error)
+	// Ends the session the request's access token holds: that token is refused
+	// from then on, until it would have expired, while the account's other
+	// sessions carry on. A request with no token, or with one that holds no
+	// session any more, succeeds and ends nothing.
 	Logout(context.Context, *v1.LogoutRequest) (*v1.LogoutResponse, error)
 	GetMe(context.Context, *v1.GetMeRequest) (*v1.GetMeResponse, error)
 	UpdateMe(context.Context, *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error)
@@ -657,6 +661,10 @@ type AuthServiceHandler interface {
 	RequestPasswordReset(context.Context, *v1.RequestPasswordResetRequest) (*v1.RequestPasswordResetResponse, error)
 	ConfirmPasswordReset(context.Context, *v1.ConfirmPasswordResetRequest) (*v1.ConfirmPasswordResetResponse, error)
 	ChangePassword(context.Context, *v1.ChangePasswordRequest) (*v1.ChangePasswordResponse, error)
+	// Ends the session the request's access token holds: that token is refused
+	// from then on, until it would have expired, while the account's other
+	// sessions carry on. A request with no token, or with one that holds no
+	// session any more, succeeds and ends nothing.
 	Logout(context.Context, *v1.LogoutRequest) (*v1.LogoutResponse, error)
 	GetMe(context.Context, *v1.GetMeRequest) (*v1.GetMeResponse, error)
 	UpdateMe(context.Context, *v1.UpdateMeRequest) (*v1.UpdateMeResponse, error)

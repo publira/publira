@@ -95,6 +95,7 @@ type stubTenantQueries struct {
 	rolesErr         error
 	preview          dbmodels.GetEpisodePreviewImageByIDForTenantRow
 	previewErr       error
+	signedOut        bool
 }
 
 func (s stubTenantQueries) GetCreatorImageByIDForTenant(context.Context, dbmodels.GetCreatorImageByIDForTenantParams) (dbmodels.GetCreatorImageByIDForTenantRow, error) {
@@ -287,6 +288,10 @@ func (s stubTenantQueries) GetUserByPublicIDForTenant(context.Context, dbmodels.
 
 func (s stubTenantQueries) GetUserByID(context.Context, uuid.UUID) (dbmodels.User, error) {
 	return s.user, s.userErr
+}
+
+func (s stubTenantQueries) UserSessionSignedOut(context.Context, uuid.UUID) (bool, error) {
+	return s.signedOut, nil
 }
 
 type stubFactory struct {
@@ -895,6 +900,20 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 		assertEncrypted(t, rec, "private, max-age=60")
 		if !isWebP(decrypt(t, rec, bearer, "reader-public-id")) {
 			t.Error("the response did not decrypt to the rendition")
+		}
+	})
+
+	t.Run("a bearer whose session signed out decrypts nothing", func(t *testing.T) {
+		queries := paidEpisodeQueries(mediaID, episodeID, userID, 4)
+		queries.public.EpisodeID = episodeID
+		queries.public.HasPublicAccess = false
+		queries.signedOut = true
+		bearer, _, err := tokens.Issue("reader-public-id", auth.AudiencePublic, tenantID.String(), "", 4, time.Now())
+		if err != nil {
+			t.Fatalf("Issue() error = %v", err)
+		}
+		if rec := serve(t, queries, "", bearer); rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 		}
 	})
 

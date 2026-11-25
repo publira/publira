@@ -177,7 +177,8 @@ func TestDBAnnouncementsAreReadInTheRequestedLocale(t *testing.T) {
 // A signed-in reader's request that names a locale records it as their last
 // locale, whichever RPC it is — a read that never authenticates the token it
 // is sent included — and a request that names none leaves it as it was. A
-// visitor with no session, and a token that does not verify, record nothing.
+// visitor with no session, a token that does not verify, and a token whose
+// session signed out record nothing.
 func TestDBSignedInRequestsRecordTheReadersLastLocale(t *testing.T) {
 	t.Parallel()
 
@@ -258,6 +259,19 @@ func TestDBSignedInRequestsRecordTheReadersLastLocale(t *testing.T) {
 	}
 	if got := lastLocale(); got.String != "zh-Hans" {
 		t.Fatalf("last_locale after a token that does not verify = %v, want zh-Hans kept", got)
+	}
+
+	if _, err := client.Logout(testutil.WithBearer(context.Background(), token), &publirav1.LogoutRequest{Tenant: tenantContext(tenant)}); err != nil {
+		t.Fatalf("Logout: %v", err)
+	}
+	if _, err := pages.ListPublishedPages(testutil.WithBearer(context.Background(), token), &publirav1.ListPublishedPagesRequest{
+		Tenant: tenantContext(tenant),
+		Locale: "en",
+	}); err != nil {
+		t.Fatalf("ListPublishedPages with a signed-out token: %v", err)
+	}
+	if got := lastLocale(); got.String != "zh-Hans" {
+		t.Fatalf("last_locale after a signed-out token = %v, want zh-Hans kept", got)
 	}
 }
 

@@ -942,13 +942,20 @@ RETURNING *;
 -- name: SetUserLastLocale :exec
 -- Records the locale a signed-in reader's request named, on the reader its
 -- access token names while that token still signs them in: the account is
--- active and its credentials have not moved since the token was issued. A
--- request in the locale already recorded writes nothing, so a reader browsing
--- in one language costs no write per request.
+-- active, its credentials have not moved since the token was issued, and the
+-- session the token holds has not been signed out of. A token issued before
+-- tokens named their session passes a null session_id. A request in the locale
+-- already recorded writes nothing, so a reader browsing in one language costs
+-- no write per request.
 UPDATE users
 SET last_locale = sqlc.arg('last_locale')::text
-WHERE tenant_id = sqlc.arg('tenant_id')
-    AND public_id = sqlc.arg('public_id')
-    AND status = 'active'
-    AND credentials_version = sqlc.arg('credentials_version')
-    AND last_locale IS DISTINCT FROM sqlc.arg('last_locale')::text;
+WHERE users.tenant_id = sqlc.arg('tenant_id')
+    AND users.public_id = sqlc.arg('public_id')
+    AND users.status = 'active'
+    AND users.credentials_version = sqlc.arg('credentials_version')
+    AND users.last_locale IS DISTINCT FROM sqlc.arg('last_locale')::text
+    AND NOT EXISTS (
+        SELECT 1
+        FROM user_signed_out_sessions signed_out
+        WHERE signed_out.jti = sqlc.narg('session_id')::uuid
+    );

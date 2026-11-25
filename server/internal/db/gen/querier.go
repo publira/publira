@@ -4498,6 +4498,7 @@ type Querier interface {
 	// prices and the amounts it recorded are amounts in that currency, so the
 	// default cannot change under it.
 	PlatformCurrencyHasSales(ctx context.Context) (bool, error)
+	PlatformUserSessionSignedOut(ctx context.Context, jti uuid.UUID) (bool, error)
 	// Projects one comment's publication as the analytics event for that comment.
 	// episode_comments stays the source of truth: the author, the episode and the
 	// moment the comment became public are copied from the row, and the owning
@@ -4694,6 +4695,8 @@ type Querier interface {
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
 	RecordPlatformUserMfaTotpFailure(ctx context.Context, arg RecordPlatformUserMfaTotpFailureParams) (PlatformUserMfaTotp, error)
+	// Signing out twice with the same token records it once.
+	RecordPlatformUserSessionSignedOut(ctx context.Context, arg RecordPlatformUserSessionSignedOutParams) error
 	// Records what the provider has refunded against one purchase, matched by the
 	// payment the refund notification names. Nothing matches when the payment
 	// belongs to another tenant, another provider, or no purchase here, and the
@@ -4752,6 +4755,8 @@ type Querier interface {
 	// Reaching the threshold starts the lock and puts the counter back to zero,
 	// so the attempt after a lock expires is not immediately the fifth again.
 	RecordUserMfaFailure(ctx context.Context, arg RecordUserMfaFailureParams) (UserMfaLockout, error)
+	// Signing out twice with the same token records it once.
+	RecordUserSessionSignedOut(ctx context.Context, arg RecordUserSessionSignedOutParams) error
 	// Records one attempt at a delivery and what it came to.
 	RecordWebhookDeliveryAttempt(ctx context.Context, arg RecordWebhookDeliveryAttemptParams) error
 	// The same reclaim for the events whose payload holds a secret. A crash
@@ -4981,9 +4986,11 @@ type Querier interface {
 	SetUserIdentityRefreshToken(ctx context.Context, arg SetUserIdentityRefreshTokenParams) (int64, error)
 	// Records the locale a signed-in reader's request named, on the reader its
 	// access token names while that token still signs them in: the account is
-	// active and its credentials have not moved since the token was issued. A
-	// request in the locale already recorded writes nothing, so a reader browsing
-	// in one language costs no write per request.
+	// active, its credentials have not moved since the token was issued, and the
+	// session the token holds has not been signed out of. A token issued before
+	// tokens named their session passes a null session_id. A request in the locale
+	// already recorded writes nothing, so a reader browsing in one language costs
+	// no write per request.
 	SetUserLastLocale(ctx context.Context, arg SetUserLastLocaleParams) error
 	// Points the volume at an uploaded cover, or at none. The cover it pointed at
 	// before is left for the orphan image sweep.
@@ -5413,6 +5420,7 @@ type Querier interface {
 	// billing, which a second one would run beside. A reader whose first payment
 	// failed starts again.
 	UserHoldsLiveSubscription(ctx context.Context, arg UserHoldsLiveSubscriptionParams) (bool, error)
+	UserSessionSignedOut(ctx context.Context, jti uuid.UUID) (bool, error)
 	// The author's own deletion. It applies to a comment staff had removed too,
 	// since the author still sees that comment unchanged. The removal columns
 	// are cleared because no removal is in force on a withdrawn row any more;

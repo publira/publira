@@ -82,7 +82,7 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 // store each site's images and the tenant console's uploads are read from and
 // the orphan image sweep resolves, the search engine the storefront's search
 // answers from and the maintenance role builds the catalog index on, and the
-// spent operator MFA challenges it purges. The object store and the search
+// spent operator MFA challenges and signed-out operator sessions it purges. The object store and the search
 // engine hold their secret encrypted under keys the database does not have.
 // The storefront also reads the Web Push settings, but only the columns that
 // publish the public key, which TestPublicRoleReadsOnlyThePublishedWebPushColumns holds it to,
@@ -97,7 +97,7 @@ func assertRefused(t *testing.T, ctx context.Context, conn *sql.DB, role, statem
 var readablePlatformTables = map[string][]string{
 	"publira_public":        {"platform_config", "platform_policy_config", "platform_search_config", "platform_storage_config", "platform_webpush_config"},
 	"publira_admin":         {"platform_config", "platform_policy_config", "platform_retention_config", "platform_smtp_config", "platform_storage_config"},
-	"publira_content_stats": {"platform_audit_logs", "platform_config", "platform_notifications", "platform_retention_config", "platform_search_config", "platform_storage_config", "platform_user_mfa_used_challenges", "platform_user_roles", "platform_users"},
+	"publira_content_stats": {"platform_audit_logs", "platform_config", "platform_notifications", "platform_retention_config", "platform_search_config", "platform_storage_config", "platform_user_mfa_used_challenges", "platform_user_roles", "platform_user_signed_out_sessions", "platform_users"},
 }
 
 // insertablePlatformTables are, per role, the platform tables it adds rows to:
@@ -109,10 +109,11 @@ var insertablePlatformTables = map[string][]string{
 
 // purgeablePlatformTables are, per role, the platform tables it deletes from:
 // the spent MFA challenge purge drains the platform console's spent challenges
-// on the maintenance pool. A row there names a token identifier and an
-// operator's internal id and nothing an attacker could sign in with.
+// and signed-out sessions on the maintenance pool. A row of either names a
+// token identifier and an operator's internal id and nothing an attacker could
+// sign in with.
 var purgeablePlatformTables = map[string][]string{
-	"publira_content_stats": {"platform_user_mfa_used_challenges"},
+	"publira_content_stats": {"platform_user_mfa_used_challenges", "platform_user_signed_out_sessions"},
 }
 
 // The storefront and the tenant console reach the database as publira_public and

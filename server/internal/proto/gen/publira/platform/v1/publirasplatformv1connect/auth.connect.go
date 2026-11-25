@@ -179,6 +179,10 @@ var (
 // PlatformAuthServiceClient is a client for the publira.platform.v1.PlatformAuthService service.
 type PlatformAuthServiceClient interface {
 	Login(context.Context, *v1.PlatformAuthServiceLoginRequest) (*v1.PlatformAuthServiceLoginResponse, error)
+	// Ends the session the request's access token holds: that token is refused
+	// from then on, until it would have expired, while the account's other
+	// sessions carry on. A request with no token, or with one that holds no
+	// session any more, succeeds and ends nothing.
 	Logout(context.Context, *v1.PlatformAuthServiceLogoutRequest) (*v1.PlatformAuthServiceLogoutResponse, error)
 	VerifyMfa(context.Context, *v1.PlatformAuthServiceVerifyMfaRequest) (*v1.PlatformAuthServiceVerifyMfaResponse, error)
 	GetMfaStatus(context.Context, *v1.PlatformAuthServiceGetMfaStatusRequest) (*v1.PlatformAuthServiceGetMfaStatusResponse, error)
@@ -205,6 +209,10 @@ func NewPlatformAuthServiceClient(client *connect.Client) PlatformAuthServiceCli
 // service.
 type PlatformAuthServiceHandler interface {
 	Login(context.Context, *v1.PlatformAuthServiceLoginRequest) (*v1.PlatformAuthServiceLoginResponse, error)
+	// Ends the session the request's access token holds: that token is refused
+	// from then on, until it would have expired, while the account's other
+	// sessions carry on. A request with no token, or with one that holds no
+	// session any more, succeeds and ends nothing.
 	Logout(context.Context, *v1.PlatformAuthServiceLogoutRequest) (*v1.PlatformAuthServiceLogoutResponse, error)
 	VerifyMfa(context.Context, *v1.PlatformAuthServiceVerifyMfaRequest) (*v1.PlatformAuthServiceVerifyMfaResponse, error)
 	GetMfaStatus(context.Context, *v1.PlatformAuthServiceGetMfaStatusRequest) (*v1.PlatformAuthServiceGetMfaStatusResponse, error)

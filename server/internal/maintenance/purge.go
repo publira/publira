@@ -106,12 +106,13 @@ func (s RankingSnapshotPurge) Run(ctx context.Context, deps Deps) error {
 	return nil
 }
 
-// Run deletes the spent MFA challenges whose tokens have expired, and the
-// passkey ceremonies left unfinished past their expiry.
+// Run deletes the spent MFA challenges whose tokens have expired, the passkey
+// ceremonies left unfinished past their expiry, and the signed-out sessions
+// whose access tokens have expired.
 //
-// The purge has no retention window of its own: a spent challenge is kept only
-// to refuse the token it names, and that token expires five minutes after
-// login. The cutoff is therefore the current time.
+// The purge has no retention window of its own: a spent challenge or a
+// signed-out session is kept only to refuse the token it names, and that token
+// refuses itself once it expires. The cutoff is therefore the current time.
 func (s MfaChallengePurge) Run(ctx context.Context, deps Deps) error {
 	if deps.DB == nil {
 		return errNoDB

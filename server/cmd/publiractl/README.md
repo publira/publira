@@ -534,7 +534,7 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | `aggregate-rankings` | Rebuilds the daily and weekly `content_ranking_snapshots`, tenant-wide and per genre, with the series ones per surface and the tenant-wide series ones per age rating |
 | `purge-content-events` | Deletes `content_events` rows past their retention window |
 | `purge-ranking-snapshots` | Deletes `content_ranking_snapshots` rows past their retention window |
-| `purge-mfa-challenges` | Deletes the spent MFA challenges of a tenant's accounts, on the site and in the console, and of platform operators whose tokens have expired, and the passkey ceremonies left unfinished past their expiry |
+| `purge-mfa-challenges` | Deletes the spent MFA challenges and the signed-out sessions of a tenant's accounts, on the site and in the console, and of platform operators whose tokens have expired, and the passkey ceremonies left unfinished past their expiry |
 | `purge-withdrawn-comments` | Deletes the comments their authors withdrew past the retention window |
 | `purge-orphan-images` | Deletes the image rows and storage objects nothing references |
 | `build-recommend-features` | Rebuilds the daily user and item recommend feature snapshots |
@@ -717,9 +717,9 @@ The first run against a table that has accumulated since before this job existed
 
 ## purge-mfa-challenges
 
-Deletes `user_mfa_used_challenges` and `platform_user_mfa_used_challenges` rows whose challenge token has expired, and `user_webauthn_ceremonies` rows whose ceremony has, across every tenant, in chunked `DELETE`s.
+Deletes `user_mfa_used_challenges` and `platform_user_mfa_used_challenges` rows whose challenge token has expired, `user_signed_out_sessions` and `platform_user_signed_out_sessions` rows whose access token has, and `user_webauthn_ceremonies` rows whose ceremony has, across every tenant, in chunked `DELETE`s.
 
-A row in the first two refuses the second exchange of an MFA challenge token, so it stops meaning anything once that token expires — five minutes after the sign-in that earned it. A ceremony row is the server's half of a passkey registration or assertion, deleted by the finish that spends it, so what is left past its five minutes is one nobody finished. There is no retention setting: the cutoff is the run's UTC timestamp, compared against the row's own `expires_at` exclusively (`expires_at < cutoff`).
+A row in the first two refuses the second exchange of an MFA challenge token, so it stops meaning anything once that token expires — five minutes after the sign-in that earned it. A signed-out session row refuses the access token of a session its holder signed out of, so it stops meaning anything once that token expires — a day after the sign-in. A ceremony row is the server's half of a passkey registration or assertion, deleted by the finish that spends it, so what is left past its five minutes is one nobody finished. There is no retention setting: the cutoff is the run's UTC timestamp, compared against the row's own `expires_at` exclusively (`expires_at < cutoff`).
 
 For local development the `PUBLIRA_CONTENT_STATS_DB_URL` that `task --silent dev-env:env` prints works as-is.
 
