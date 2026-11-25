@@ -11,9 +11,22 @@ import (
 	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/loginguard"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/ratelimit"
 )
+
+// The tenant console checks the password of the same account on top of its own
+// sessions, through loginguard. Both have to count against one allowance, or a
+// guesser holding a session of each would get two budgets to rotate between.
+func TestVerifyPasswordSharesTheTenantConsolesStepUpAllowance(t *testing.T) {
+	tenantID, userID := uuid.New(), uuid.New()
+
+	got := readerActionSubject(actionVerifyPassword, tenantID, userID)
+	if want := loginguard.StepUpSubject(tenantID.String(), userID.String()); got != want {
+		t.Fatalf("storefront step-up subject = %q, want the tenant console's %q", got, want)
+	}
+}
 
 func TestReaderRulesFollowThePlatformPolicy(t *testing.T) {
 	policy := platformpolicy.Defaults()

@@ -127,6 +127,8 @@ The counters live in Redis when `PUBLIRA_REDIS_URL` names one and in this proces
 
 The step-up password check is one of those actions and is charged differently. `ChangePassword`, `DeleteMe` and `RequestEmailChange` ask for the account's password on top of the session, and every RPC that does spends `actionVerifyPassword` — one budget for all of them, because a budget per RPC would hand a guesser one of each to rotate between. The two-step verification RPCs spend the same one for every code they check, `VerifyMfa` at sign-in included, since a code is a secret of the account as its password is. The charge goes **before the verification**, so an attempt past the limit costs no bcrypt and reaches no row, and a verification that succeeds clears the count through `clearReaderAction`: the limit is there for the caller who does not know the password, and that caller never gets that far.
 
+The consoles ask for the password on top of a session too, and they charge the same kind of allowance through `loginguard.Guard.BeginStepUp`, with the same limits and the same order: after the checks that refuse on what the caller typed, before the verification, and cleared by `StepUp.Verified`. The tenant console keys it on the tenant and the account under the very name `actionVerifyPassword` uses, because it signs in the same account the storefront does; the Platform Console keys it on `loginguard.PlatformScope` and the operator.
+
 A public RPC a **guest** may write through charges a second action keyed on the caller instead of on an account, through `chargeClientAction`: there is no account to hold a budget, so a limit that only knew accounts would be no limit at all. `SubmitContactMessage` is the one that does, and it spends both — the client's whoever is asking, and the account's on top when there is one — so signing up does not widen what one client may send. The client's key leaves the tenant out, the way `mailguard`'s origin allowance does, because what it bounds is one caller spreading the same traffic over every storefront on the platform.
 
 No lint covers this — nothing can tell an RPC that writes on a reader's behalf from one that does not, or one that asks for a password from one that does not.
@@ -165,7 +167,7 @@ An RPC that checks a password against an address the caller typed — `Login` on
 
 The charge goes **before the address is looked up**, so the refusal — `resource_exhausted` with `Retry-After` — is the same whether or not an account holds the address, and an attempt past the limit costs no bcrypt and reads no row. Once the password verifies, the handler calls `Attempt.Verified`, whatever it answers after that: the address's count is cleared and the origin's charge for that attempt refunded, so what both allowances count is the guesses.
 
-A new RPC of the same shape joins this guard rather than charging a limiter of its own. The step-up check behind a session is not one: it has an account to charge, and spends `actionVerifyPassword`.
+A new RPC of the same shape joins this guard rather than charging a limiter of its own. The step-up check behind a session is not one: it has an account to charge, and spends `actionVerifyPassword` on the public API and `Guard.BeginStepUp` in the consoles.
 
 No lint covers this — nothing can tell an RPC that checks a password against a typed address from one that does not.
 

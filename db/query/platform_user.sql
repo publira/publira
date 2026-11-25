@@ -16,6 +16,12 @@ FROM platform_users
 WHERE id = $1
 LIMIT 1;
 
+-- name: GetPlatformUserByIDForUpdate :one
+SELECT *
+FROM platform_users
+WHERE id = $1
+FOR UPDATE;
+
 -- name: GetPlatformUserByPublicID :one
 SELECT *
 FROM platform_users

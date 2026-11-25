@@ -14,6 +14,11 @@
 // Both are charged before the address is looked up, so the refusal cannot
 // depend on whether an account exists and an attempt past either allowance costs
 // no bcrypt and reads no row.
+//
+// The consoles also ask for the password again on top of a session, and that
+// check is bounded here too, by [Guard.BeginStepUp]: a session is a place to
+// guess the password of the account it belongs to, so the account holds an
+// allowance of its own for it.
 package loginguard
 
 import (
@@ -136,6 +141,62 @@ func (g *Guard) Begin(ctx context.Context, scope, address string) (*Attempt, err
 func (a *Attempt) Verified(ctx context.Context) {
 	a.guard.limiter.Reset(ctx, a.account, a.rules...)
 	a.guard.limiter.Refund(ctx, a.source)
+}
+
+// StepUp is one password check on top of a session that the guard let through.
+type StepUp struct {
+	guard   *Guard
+	subject string
+	rules   []ratelimit.Rule
+}
+
+// BeginStepUp spends one of the allowances standing in front of a password
+// check made for a signed-in account — accountID within scope, the tenant's id
+// or [PlatformScope] — and answers resource_exhausted once there are none left.
+//
+// It is charged against the account rather than an address or an origin: the
+// session already says whose password is being checked, and the caller holding
+// it is the one the limit is for. The allowance is the one the storefront
+// spends on its own step-up checks, under the same key, because the tenant
+// console signs in the same account, and two budgets for one password would be
+// two to rotate between.
+//
+// A handler calls it after the checks that refuse on what the caller typed
+// rather than on the password, so a request those refuse costs no allowance,
+// and before the verification, so one past the limit costs no bcrypt.
+func (g *Guard) BeginStepUp(ctx context.Context, scope, accountID string) (*StepUp, error) {
+	policy, err := g.policy.Policy(ctx)
+	if err != nil {
+		g.logger.ErrorContext(ctx, "failed to resolve the password verification rate limit", "scope", scope, "error", err)
+		return nil, connect.NewError(connect.CodeInternal, "internal server error")
+	}
+	step := &StepUp{
+		guard:   g,
+		subject: StepUpSubject(scope, accountID),
+		rules:   minuteDayRules(policy.PasswordVerification),
+	}
+	decision, err := g.limiter.Allow(ctx, step.subject, step.rules...)
+	if err != nil {
+		g.logger.ErrorContext(ctx, "failed to charge the password verification rate limit", "scope", scope, "error", err)
+		return nil, connect.NewError(connect.CodeInternal, "internal server error")
+	}
+	if !decision.Allowed {
+		return nil, rpcerrors.NewRateLimitedError(ctx, decision.RetryAfter)
+	}
+	return step, nil
+}
+
+// Verified records that the password was right and clears the account's count:
+// the limit bounds guessing, and the caller who knew the password was not
+// guessing.
+func (s *StepUp) Verified(ctx context.Context) {
+	s.guard.limiter.Reset(ctx, s.subject, s.rules...)
+}
+
+// StepUpSubject names the step-up allowance of one account within scope. The
+// storefront's step-up checks are kept under the same name.
+func StepUpSubject(scope, accountID string) string {
+	return "password.verify:" + scope + ":" + accountID
 }
 
 // accountSubject names the allowance of one address within scope.

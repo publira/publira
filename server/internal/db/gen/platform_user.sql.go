@@ -272,6 +272,29 @@ func (q *Queries) GetPlatformUserByID(ctx context.Context, id uuid.UUID) (Platfo
 	return i, err
 }
 
+const GetPlatformUserByIDForUpdate = `-- name: GetPlatformUserByIDForUpdate :one
+SELECT id, public_id, email, password_hash, name, status, created_at, credentials_version
+FROM platform_users
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) GetPlatformUserByIDForUpdate(ctx context.Context, id uuid.UUID) (PlatformUser, error) {
+	row := q.db.QueryRowContext(ctx, GetPlatformUserByIDForUpdate, id)
+	var i PlatformUser
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Name,
+		&i.Status,
+		&i.CreatedAt,
+		&i.CredentialsVersion,
+	)
+	return i, err
+}
+
 const GetPlatformUserByPublicID = `-- name: GetPlatformUserByPublicID :one
 SELECT id, public_id, email, password_hash, name, status, created_at, credentials_version
 FROM platform_users

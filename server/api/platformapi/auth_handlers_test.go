@@ -223,6 +223,10 @@ func TestPlatformAuthRequestEmailChangeSuccess(t *testing.T) {
 		WithArgs("next@example.com").
 		WillReturnError(sql.ErrNoRows)
 	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetPlatformUserByIDForUpdate)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows(operatorTestUserColumns()).
+			AddRow(userID, "PLATUSER001", "platform@example.com", string(passwordHashBytes), "Platform User", "active", now, int32(1)))
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeletePlatformUserEmailChangeTokensByUserID)).
 		WithArgs(userID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
