@@ -22,8 +22,9 @@ import {
   requiredRecordId,
 } from "#lib/form-schemas";
 import type { AdminMessageAccessor } from "#lib/messages";
+import type { PageUploadForm } from "#lib/page-upload-request";
 import {
-  readPageUploadForm,
+  handlePageUpload,
   refuse,
   respond,
   signInAgain,
@@ -113,27 +114,10 @@ const uploadedBytes = ({ archive, pages }: UploadInput) =>
   (archive?.size ?? 0) +
   (pages ?? []).reduce((total, page) => total + page.size, 0);
 
-/**
- * Adds the page images, ZIP, or ePub the episode edit screen submits.
- *
- * The tenant is the one the host names, the operator must be able to edit it,
- * and the declared length must be within
- * {@link EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES} — all before the body is read,
- * which is what this route is for. The answer is JSON for the screen's `fetch`;
- * a success expires the episode's tags, and the screen refreshes itself.
- */
-export const POST = async (request: NextRequest) => {
-  const form = await readPageUploadForm(request, {
-    maxBytes: EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES,
-    tooLarge: (t) => t("admin.series.episodes.validation.upload_too_large"),
-  });
-
-  if ("response" in form) {
-    return form.response;
-  }
-
-  const { formData, locale, t, tenantId } = form;
-
+const addPages = async (
+  request: NextRequest,
+  { formData, locale, t, tenantId }: PageUploadForm
+) => {
   const upload = readUpload(formData, tenantId, t, locale);
 
   if ("refusal" in upload) {
@@ -174,3 +158,22 @@ export const POST = async (request: NextRequest) => {
     200
   );
 };
+
+/**
+ * Adds the page images, ZIP, or ePub the episode edit screen submits.
+ *
+ * The tenant is the one the host names, the operator must be able to edit it,
+ * and the declared length must be within
+ * {@link EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES} — all before the body is read,
+ * which is what this route is for. The answer is JSON for the screen's `fetch`;
+ * a success expires the episode's tags, and the screen refreshes itself.
+ */
+export const POST = (request: NextRequest) =>
+  handlePageUpload(
+    request,
+    {
+      maxBytes: EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES,
+      tooLarge: (t) => t("admin.series.episodes.validation.upload_too_large"),
+    },
+    (form) => addPages(request, form)
+  );

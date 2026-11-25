@@ -7,8 +7,9 @@ import { isUnauthenticatedError } from "#lib/admin-auth-shared";
 import { tenantDashboardCacheTag } from "#lib/dashboard";
 import { episodesCacheTag } from "#lib/episode";
 import { optionalFileFormSchema } from "#lib/form-schemas";
+import type { PageUploadForm } from "#lib/page-upload-request";
 import {
-  readPageUploadForm,
+  handlePageUpload,
   refuse,
   respond,
   signInAgain,
@@ -33,30 +34,10 @@ const importFormSchema = z.object({
     .catch(undefined),
 });
 
-/**
- * Imports a series and its episodes from a ZIP of page images and a manifest.
- *
- * What it checks before it reads the body is what the page upload checks, by
- * the same code, and for the reason that upload is a Route Handler
- * (`lib/episode-pages-upload.ts`). Nothing is created until the manifest has
- * been checked against the ZIP again here: the screen's check is for the
- * operator, this one is the one that holds.
- *
- * An import that ran answers 200 however far it got, with one row per episode.
- * Every tag it may have touched is expired whether or not it finished.
- */
-export const POST = async (request: NextRequest) => {
-  const form = await readPageUploadForm(request, {
-    maxBytes: SERIES_IMPORT_MAX_BYTES,
-    tooLarge: (t) => t("admin.series.import.too_large"),
-  });
-
-  if ("response" in form) {
-    return form.response;
-  }
-
-  const { formData, locale, t, tenantId } = form;
-
+const importSeries = async (
+  request: NextRequest,
+  { formData, locale, t, tenantId }: PageUploadForm
+) => {
   const parsed = importFormSchema.safeParse(
     toFormDataInput(formData, {
       archive: { kind: "file", name: "archive" },
@@ -139,3 +120,25 @@ export const POST = async (request: NextRequest) => {
     200
   );
 };
+
+/**
+ * Imports a series and its episodes from a ZIP of page images and a manifest.
+ *
+ * What it checks before it reads the body is what the page upload checks, by
+ * the same code, and for the reason that upload is a Route Handler
+ * (`lib/episode-pages-upload.ts`). Nothing is created until the manifest has
+ * been checked against the ZIP again here: the screen's check is for the
+ * operator, this one is the one that holds.
+ *
+ * An import that ran answers 200 however far it got, with one row per episode.
+ * Every tag it may have touched is expired whether or not it finished.
+ */
+export const POST = (request: NextRequest) =>
+  handlePageUpload(
+    request,
+    {
+      maxBytes: SERIES_IMPORT_MAX_BYTES,
+      tooLarge: (t) => t("admin.series.import.too_large"),
+    },
+    (form) => importSeries(request, form)
+  );

@@ -20,7 +20,8 @@ export const EPISODE_PAGES_UPLOAD_PATH = "/api/v1/episode-pages";
  *
  * The console and publira server each hold a submission whole, several times
  * over — the parsed form, the RPC message, and every page a ZIP or ePub
- * unpacks to — so this is what bounds the memory one upload can take.
+ * unpacks to — so this is what bounds the memory one upload can take, and
+ * `lib/upload-allowance.ts` how many of them the console holds at once.
  */
 export const EPISODE_PAGES_UPLOAD_MAX_BYTES = 128 * 1024 * 1024;
 

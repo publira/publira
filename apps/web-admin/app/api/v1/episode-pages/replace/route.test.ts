@@ -7,6 +7,10 @@ import {
   EPISODE_PAGE_IMAGE_MAX_BYTES,
   EPISODE_PAGE_REPLACE_MAX_BYTES,
 } from "#lib/episode-pages-upload";
+import {
+  reserveUploadBytes,
+  TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES,
+} from "#lib/upload-allowance";
 
 const {
   mockAssertSameOrigin,
@@ -223,5 +227,27 @@ describe("POST /api/v1/episode-pages/replace", () => {
       location: expect.stringMatching(/^\/login\?/u),
       ok: false,
     });
+  });
+  it("refuses a replacement while the tenant's other uploads fill its share, before reading the body", async () => {
+    const release = reserveUploadBytes(
+      TENANT_ID,
+      TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES
+    );
+
+    try {
+      const { request, response } = await replace(replaceForm(page()));
+
+      expect(response.status).toBe(429);
+      expect(response.headers.get("retry-after")).toBe("30");
+      expect(await response.json()).toEqual({
+        message:
+          "Other uploads are being processed right now, so this one was not accepted. Wait a moment and send it again.",
+        ok: false,
+      });
+      expect(request.bodyUsed).toBe(false);
+      expect(mockReplaceEpisodeImage).not.toHaveBeenCalled();
+    } finally {
+      release?.();
+    }
   });
 });

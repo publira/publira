@@ -2835,6 +2835,7 @@
         "r18": "R18"
       },
       "tags_unavailable": "Could not load the tags already in use. You can still type a tag name.",
+      "uploads_busy": "Other uploads are being processed right now, so this one was not accepted. Wait a moment and send it again.",
       "availability": {
         "all": "Web and app",
         "web": "Web only",

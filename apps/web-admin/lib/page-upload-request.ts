@@ -14,13 +14,18 @@ import { getMessagesFor } from "#lib/messages";
 import type { AdminMessageAccessor } from "#lib/messages";
 import type { SeriesImportResponse } from "#lib/series-import-manifest";
 import { resolveTenantRouting, SUSPENDED_TENANT } from "#lib/tenant";
+import {
+  reserveUploadBytes,
+  UPLOAD_RETRY_AFTER_SECONDS,
+} from "#lib/upload-allowance";
 
 export const respond = (
   body: EpisodePagesUploadResponse | SeriesImportResponse,
-  status: number
+  status: number,
+  headers: Record<string, string> = {}
 ) =>
   NextResponse.json(body, {
-    headers: { "Cache-Control": "private, no-store" },
+    headers: { ...headers, "Cache-Control": "private, no-store" },
     status,
   });
 
@@ -65,13 +70,18 @@ export interface PageUploadForm {
 }
 
 /**
- * Reads the form of a page upload, once everything that does not need its body
- * holds: the tenant is the one the host names, the operator may edit it, and
- * the declared length is within `maxBytes`. Reading the body only after that
- * is what these routes exist for (`lib/episode-pages-upload.ts`); anything
- * else is answered with the response to send instead.
+ * Reads the form of a page upload and hands it to `handle`, once everything
+ * that does not need its body holds: the tenant is the one the host names, the
+ * operator may edit it, the declared length is within `maxBytes`, and the
+ * uploads the process is already holding leave room for that length
+ * (`lib/upload-allowance.ts`). Reading the body only after that is what these
+ * routes exist for (`lib/episode-pages-upload.ts`); anything else is answered
+ * with the response to send instead.
+ *
+ * The length stays counted until `handle` has answered, since the form and
+ * what the route builds from it are held until then.
  */
-export const readPageUploadForm = async (
+export const handlePageUpload = async (
   request: NextRequest,
   {
     maxBytes,
@@ -80,8 +90,9 @@ export const readPageUploadForm = async (
     maxBytes: number;
     /** What a body declared over `maxBytes` is refused with. */
     tooLarge: (t: AdminMessageAccessor) => string;
-  }
-): Promise<PageUploadForm | { response: NextResponse }> => {
+  },
+  handle: (form: PageUploadForm) => Promise<NextResponse>
+): Promise<NextResponse> => {
   await assertSameOrigin();
 
   let tenantId: string | null;
@@ -95,29 +106,25 @@ export const readPageUploadForm = async (
     // suspended. Its next navigation lands on the page the proxy answers for
     // a suspended console, and until then the message says the same.
     if (routing === SUSPENDED_TENANT) {
-      return {
-        response: refuse(
-          sharedMessage(
-            "admin.errors.suspended_description",
-            suspendedTenantLocale(request)
-          ),
-          503
+      return refuse(
+        sharedMessage(
+          "admin.errors.suspended_description",
+          suspendedTenantLocale(request)
         ),
-      };
+        503
+      );
     }
 
     ({ tenantId } = routing);
   } catch {
-    return {
-      response: new NextResponse("Service Unavailable", {
-        headers: { "Retry-After": "30" },
-        status: 503,
-      }),
-    };
+    return new NextResponse("Service Unavailable", {
+      headers: { "Retry-After": "30" },
+      status: 503,
+    });
   }
 
   if (!tenantId) {
-    return { response: new NextResponse("Not Found", { status: 404 }) };
+    return new NextResponse("Not Found", { status: 404 });
   }
 
   const [locale, operator] = await Promise.all([
@@ -128,15 +135,13 @@ export const readPageUploadForm = async (
   const t = await getMessagesFor(locale);
 
   if (!operator.ok) {
-    return {
-      response: operator.requiresSignIn
-        ? signInAgain(request, t)
-        : refuse(t("errors.rpc.forbidden"), 403),
-    };
+    return operator.requiresSignIn
+      ? signInAgain(request, t)
+      : refuse(t("errors.rpc.forbidden"), 403);
   }
 
   if (!isTenantEditorRole(operator.user.role)) {
-    return { response: refuse(t("errors.rpc.forbidden"), 403) };
+    return refuse(t("errors.rpc.forbidden"), 403);
   }
 
   // A browser always declares the length of a form it sends, and Node holds
@@ -144,16 +149,36 @@ export const readPageUploadForm = async (
   const contentLength = Number(request.headers.get("content-length") ?? "");
 
   if (!Number.isSafeInteger(contentLength) || contentLength <= 0) {
-    return { response: refuse(t("admin.series.episodes.upload_failed"), 411) };
+    return refuse(t("admin.series.episodes.upload_failed"), 411);
   }
 
   if (contentLength > maxBytes) {
-    return { response: refuse(tooLarge(t), 413) };
+    return refuse(tooLarge(t), 413);
+  }
+
+  const release = reserveUploadBytes(tenantId, contentLength);
+
+  if (!release) {
+    return respond(
+      { message: t("admin.series.uploads_busy"), ok: false },
+      429,
+      {
+        "Retry-After": String(UPLOAD_RETRY_AFTER_SECONDS),
+      }
+    );
   }
 
   try {
-    return { formData: await request.formData(), locale, t, tenantId };
-  } catch {
-    return { response: refuse(t("admin.series.episodes.upload_failed"), 400) };
+    let formData: FormData;
+
+    try {
+      formData = await request.formData();
+    } catch {
+      return refuse(t("admin.series.episodes.upload_failed"), 400);
+    }
+
+    return await handle({ formData, locale, t, tenantId });
+  } finally {
+    release();
   }
 };

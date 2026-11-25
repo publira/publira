@@ -7,6 +7,10 @@ import {
   EPISODE_PAGES_UPLOAD_BODY_MAX_BYTES,
   EPISODE_PAGES_UPLOAD_MAX_BYTES,
 } from "#lib/episode-pages-upload";
+import {
+  reserveUploadBytes,
+  TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES,
+} from "#lib/upload-allowance";
 
 const {
   mockAssertSameOrigin,
@@ -52,6 +56,9 @@ const EPISODE_ID = "018f0e6a-4000-7000-8000-000000000001";
 const SERIES_ID = "018f0e6a-3000-7000-8000-000000000001";
 const URL = "https://admin.example.test/api/v1/episode-pages";
 const REFERER = "https://admin.example.test/series/SERIES001/episodes/EP001";
+
+const BUSY =
+  "Other uploads are being processed right now, so this one was not accepted. Wait a moment and send it again.";
 
 const TOO_LARGE =
   "The files are larger than one upload takes. Keep each upload to 128MB or less, or add the pages over several uploads.";
@@ -365,5 +372,86 @@ describe("POST /api/v1/episode-pages", () => {
       location: expect.stringMatching(/^\/login\?/u),
       ok: false,
     });
+  });
+  it("refuses an upload while the tenant's other uploads fill its share, before reading the body", async () => {
+    const release = reserveUploadBytes(
+      TENANT_ID,
+      TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES
+    );
+
+    try {
+      const { request, response } = await upload(
+        pagesForm({
+          pages: new File(["a"], "1.png", { type: "image/png" }),
+          upload_mode: "pages",
+        })
+      );
+
+      expect(response.status).toBe(429);
+      expect(response.headers.get("retry-after")).toBe("30");
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(await response.json()).toEqual({ message: BUSY, ok: false });
+      expect(request.bodyUsed).toBe(false);
+      expect(mockUploadEpisodePages).not.toHaveBeenCalled();
+    } finally {
+      release?.();
+    }
+  });
+
+  it("counts an upload until the API has answered it", async () => {
+    const answer = Promise.withResolvers<{
+      ok: true;
+      uploadedCount: number;
+    }>();
+
+    mockUploadEpisodePages.mockReturnValueOnce(answer.promise);
+
+    const pending = upload(
+      pagesForm({
+        pages: new File(["a"], "1.png", { type: "image/png" }),
+        upload_mode: "pages",
+      })
+    );
+
+    await vi.waitFor(() => expect(mockUploadEpisodePages).toHaveBeenCalled());
+
+    expect(
+      reserveUploadBytes(TENANT_ID, TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES)
+    ).toBeNull();
+
+    answer.resolve({ ok: true, uploadedCount: 1 });
+
+    const { response } = await pending;
+
+    expect(response.status).toBe(200);
+
+    const release = reserveUploadBytes(
+      TENANT_ID,
+      TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES
+    );
+
+    expect(release).not.toBeNull();
+    release?.();
+  });
+
+  it("stops counting an upload the API failed on", async () => {
+    mockUploadEpisodePages.mockRejectedValueOnce(new Error("unreachable"));
+
+    await expect(
+      upload(
+        pagesForm({
+          pages: new File(["a"], "1.png", { type: "image/png" }),
+          upload_mode: "pages",
+        })
+      )
+    ).rejects.toThrow("unreachable");
+
+    const release = reserveUploadBytes(
+      TENANT_ID,
+      TENANT_UPLOADS_IN_FLIGHT_MAX_BYTES
+    );
+
+    expect(release).not.toBeNull();
+    release?.();
   });
 });
