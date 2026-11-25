@@ -2,8 +2,8 @@
 title: Fargate上的Amazon ECS
 description: 在CloudFront和Application Load Balancer之后，以AWS Fargate上的Amazon ECS服务运行安装实例，从其参数和任务定义，一直到首次登录租户控制台。
 published: 2026-11-03
-updated: 2026-11-09
-source_updated: 2026-11-09
+updated: 2026-11-25
+source_updated: 2026-11-25
 ---
 
 本页将安装实例从一个已准备好托管服务的VPC，一直带到首次登录租户控制台；其中每个进程都是AWS Fargate上的一个Amazon ECS服务，边缘则是位于Application Load Balancer前方的CloudFront。它执行的步骤与[安装](../2-installing.md)相同，那一页解释了每个步骤存在的原因、每个密钥保护什么，以及每个数据库角色能访问什么；本页还按照[边缘](../4-edge/index.md#边缘必须做什么)的要求在前方部署边缘。本页只讲ECS和Fargate特有的部分：每个部分对应哪些资源，以及如何用这些资源满足上述两页的每项要求。
@@ -673,7 +673,7 @@ rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
 }
 ```
 
-`web-storefront`使用与`publira server`相同的`PUBLIRA_TRUSTED_PROXIES`，以找出它传给租户的Google tag gateway的读者地址。`web-admin.json`与之相同，只是：把所有出现`web-storefront`的地方都换成`web-admin`；端口用`4000`代替`3000`，健康检查中也是如此；`PUBLIRA_AUTH_SECRET`使用`/publira/admin-auth-secret`；没有`PUBLIRA_TRUSTED_PROXIES`，因为`web-admin`不读取它；另外多一个密钥，即来自`/publira/web-service-token`的`PUBLIRA_WEB_SERVICE_TOKEN`。
+`web-storefront`使用与`publira server`相同的`PUBLIRA_TRUSTED_PROXIES`，以找出它传给租户的Google tag gateway的读者地址。`web-admin.json`与之相同，只是：把所有出现`web-storefront`的地方都换成`web-admin`；端口用`4000`代替`3000`，健康检查中也是如此；`PUBLIRA_AUTH_SECRET`使用`/publira/admin-auth-secret`；没有`PUBLIRA_TRUSTED_PROXIES`，因为`web-admin`不读取它；另外多一个密钥，即来自`/publira/web-service-token`的`PUBLIRA_WEB_SERVICE_TOKEN`。此外，`"memory"`使用`"4096"`代替`"1024"`，`"cpu"`保持`"512"`，Fargate允许这个CPU搭配最多4 GiB的内存。控制台会把一次上传完整地读入内存，而且不止一份；一个任务同时最多接受512 MiB的上传，其中一个租户最多占256 MiB。这足以容纳两次以[租户控制台中的上传](../4-edge/index.md#租户控制台中的上传)所允许的最大ZIP进行的系列导入，而这两次导入同时进行时，控制台的内存达到了约2.8 GiB。若为1024 MiB，任务会在第一次导入时因内存不足而被停止。超出这些限制的上传不会排队等待，而是被拒绝，并显示一条请工作人员稍后重新发送的消息，因此任务需要的内存不会超过这个数值；要同时接受更多上传，就增加任务数。
 
 注册这四个任务定义，并为每个创建一个服务，指定各自使用的安全组、目标组和Cloud Map名称：
 

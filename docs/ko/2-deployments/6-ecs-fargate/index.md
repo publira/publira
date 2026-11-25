@@ -2,8 +2,8 @@
 title: AWS Fargate의 Amazon ECS
 description: 파라미터와 태스크 정의부터 테넌트 콘솔에 처음 로그인하기까지, CloudFront와 Application Load Balancer 뒤에서 AWS Fargate의 Amazon ECS 서비스로 설치 환경을 실행합니다.
 published: 2026-11-03
-updated: 2026-11-09
-source_updated: 2026-11-09
+updated: 2026-11-25
+source_updated: 2026-11-25
 ---
 
 이 페이지는 관리형 서비스를 준비한 VPC에서 시작해 테넌트 콘솔에 처음 로그인하기까지 설치 환경을 만들어 갑니다. 모든 프로세스는 AWS Fargate의 Amazon ECS 서비스이며, 엣지는 Application Load Balancer 앞의 CloudFront입니다. 단계는 [설치](../2-installing.md)와 같습니다. 각 단계가 왜 필요한지, 각 시크릿이 무엇을 보호하는지, 각 데이터베이스 역할이 무엇에 접근할 수 있는지는 그 페이지가 설명하며, 엣지는 [엣지](../4-edge/index.md#엣지가-해야-하는-일)가 요구하는 방식으로 앞에 둡니다. 이 페이지는 ECS와 Fargate에 고유한 부분, 즉 각 구성 요소가 어떤 리소스가 되는지, 그리고 두 페이지의 각 요구 사항을 그 리소스로 어떻게 충족하는지를 다룹니다.
@@ -673,7 +673,7 @@ rule 2002 "[$(host_is admin.comics.example.com)]" "$ADMIN_TG"
 }
 ```
 
-`web-storefront`는 테넌트의 Google tag gateway에 전달할 독자의 주소를 찾기 위해 `publira server`와 같은 `PUBLIRA_TRUSTED_PROXIES`를 받습니다. `web-admin.json`은 다음을 바꾼 것 외에는 같습니다. `web-storefront`가 나오는 모든 곳을 `web-admin`으로, 포트를 헬스 체크에서도 `3000` 대신 `4000`으로, `PUBLIRA_AUTH_SECRET`을 `/publira/admin-auth-secret`으로 하고, `web-admin`이 읽지 않는 `PUBLIRA_TRUSTED_PROXIES`를 빼고, 시크릿 하나(`/publira/web-service-token`의 `PUBLIRA_WEB_SERVICE_TOKEN`)를 추가합니다.
+`web-storefront`는 테넌트의 Google tag gateway에 전달할 독자의 주소를 찾기 위해 `publira server`와 같은 `PUBLIRA_TRUSTED_PROXIES`를 받습니다. `web-admin.json`은 다음을 바꾼 것 외에는 같습니다. `web-storefront`가 나오는 모든 곳을 `web-admin`으로, 포트를 헬스 체크에서도 `3000` 대신 `4000`으로, `PUBLIRA_AUTH_SECRET`을 `/publira/admin-auth-secret`으로 하고, `web-admin`이 읽지 않는 `PUBLIRA_TRUSTED_PROXIES`를 빼고, 시크릿 하나(`/publira/web-service-token`의 `PUBLIRA_WEB_SERVICE_TOKEN`)를 추가합니다. 또한 `"memory"`를 `"1024"` 대신 `"4096"`으로 하고, `"cpu"`는 `"512"` 그대로 둡니다. Fargate는 이 CPU에 최대 4 GiB의 메모리를 허용합니다. 콘솔은 업로드를 통째로, 그것도 여러 벌 메모리에 읽어 들이며, 한 태스크는 동시에 최대 512 MiB의 업로드를 받고 그중 한 테넌트의 몫은 256 MiB까지입니다. 이는 [테넌트 콘솔에서의 업로드](../4-edge/index.md#테넌트-콘솔에서의-업로드)가 허용하는 가장 큰 ZIP으로 시리즈를 두 번 가져올 수 있는 크기이며, 두 가져오기를 동시에 실행하자 콘솔의 메모리는 약 2.8 GiB에 이르렀습니다. 1024 MiB에서는 첫 번째 가져오기에서 태스크가 메모리 부족으로 중지됩니다. 이 제한을 넘는 업로드는 대기하지 않고 거부되며, 스태프에게는 잠시 후 다시 보내라는 메시지가 표시됩니다. 따라서 태스크에 이보다 많은 메모리가 필요한 일은 없으며, 동시에 받을 수 있는 업로드를 늘리려면 태스크를 늘립니다.
 
 네 개를 등록하고, 각각이 쓰는 보안 그룹, 대상 그룹, Cloud Map 이름으로 서비스를 하나씩 만듭니다.
 
