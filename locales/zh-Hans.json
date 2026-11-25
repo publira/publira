@@ -2229,6 +2229,8 @@
         "creators_share_over": "分成合计为{$total}，超出100% 共{$excess}。请降低后再保存。",
         "creators_share_invalid": "请以0到100的百分比输入每项分成，最多保留两位小数。",
         "creators_share_description": "每位作者旁的百分比是其在一章销售额中的分成。分成以外的部分归出版方所有。",
+        "creators_share_admin_only": "只有租户管理员才能变更分成。您添加的作者分成为0%，已有分成的作者将保持不变。",
+        "creators_share_refused": "只有租户管理员才能变更作者的分成，而按此内容保存会改变分成：打开此页面后分成已被变更。请重新加载页面后再试。",
         "status": "连载状态",
         "status_description": "表示是否仍会更新新章节。会显示在系列页面上。",
         "schedule": "更新周期",
@@ -2594,6 +2596,8 @@
           "apply_failed": "无法更新署名。请稍后再试。",
           "duplicate": "所选的部分章节已经以该角色署了替换目标作者。请更改替换目标或选择。",
           "share_over_limit": "按此分成，所选部分章节的分成合计将超过100%。请更改分成或选择。",
+          "set_share_admin_only": "只有租户管理员才能变更分成。",
+          "paid_credit_admin_only": "该作者在所选章节中至少有一章有分成。只有租户管理员才能替换或移除有分成的署名。请将这些章节从选择中移除，或请租户管理员处理。",
           "validation": {
             "operation_required": "请选择一项操作。",
             "credit_required": "请选择作者和角色。",

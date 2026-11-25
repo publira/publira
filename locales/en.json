@@ -2229,6 +2229,8 @@
         "creators_share_over": "The shares add up to {$total}, {$excess} over 100%. Lower them to save.",
         "creators_share_invalid": "Enter each share as a percentage from 0 to 100, with up to two decimal places.",
         "creators_share_description": "The percentage beside each author is their share of an episode's sales. Whatever the shares leave is the publisher's own.",
+        "creators_share_admin_only": "Only a tenant admin can change a share. An author you add is paid nothing, and an author who is paid a share stays credited as they are.",
+        "creators_share_refused": "Only a tenant admin can change what an author is paid, and saving these authors would change it, since a share was changed after this page was opened. Reload the page and try again.",
         "status": "Serialization status",
         "status_description": "Whether new episodes are still coming. Readers see this on the series page.",
         "schedule": "Update schedule",
@@ -2594,6 +2596,8 @@
           "apply_failed": "Could not update the credits. Please try again later.",
           "duplicate": "Some of the selected episodes already credit the author this would become. Change the replacement or the selection.",
           "share_over_limit": "The new share would take some of the selected episodes over 100% in total. Lower the share or change the selection.",
+          "set_share_admin_only": "Only a tenant admin can change a share.",
+          "paid_credit_admin_only": "This author is paid a share on at least one of the selected episodes, and only a tenant admin can replace or remove a paid credit. Leave those episodes out of the selection, or ask a tenant admin.",
           "validation": {
             "operation_required": "Choose an operation.",
             "credit_required": "Choose an author and a role.",

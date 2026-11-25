@@ -23,6 +23,7 @@ export const EpisodeCreatorCreditsForm = ({
   episodePublicId,
   initialCredits,
   seriesPublicId,
+  sharesLocked,
   tenantId,
 }: {
   action: (
@@ -35,6 +36,8 @@ export const EpisodeCreatorCreditsForm = ({
   episodePublicId: string;
   initialCredits: EpisodeCreatorCredit[];
   seriesPublicId: string;
+  /** See `EpisodeCreatorCreditsField`. */
+  sharesLocked: boolean;
   tenantId: string;
 }) => (
   <section className="grid gap-3 border border-border p-4">
@@ -66,6 +69,7 @@ export const EpisodeCreatorCreditsForm = ({
             creatorRoles={creatorRoles}
             creators={creators}
             initialCredits={initialCredits}
+            sharesLocked={sharesLocked}
           />
         </ActionForm.Fieldset>
         <div className="flex justify-end">

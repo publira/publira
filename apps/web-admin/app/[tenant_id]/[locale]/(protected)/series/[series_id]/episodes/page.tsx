@@ -18,6 +18,7 @@ import { Message } from "#components/message";
 import * as PaginationFooter from "#components/pagination-controls";
 import { TenantEditorOnly } from "#components/tenant-role-gate";
 import {
+  isSignedInTenantAdmin,
   isSignedInTenantEditor,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
@@ -105,10 +106,11 @@ const SeriesEpisodeBulkActions = async ({
   const [{ series_id }, tenantId] = await Promise.all([params, getTenantId()]);
   guardPlaceholder(series_id);
 
-  const [seriesResult, timeZone, currency] = await Promise.all([
+  const [seriesResult, timeZone, currency, isTenantAdmin] = await Promise.all([
     getSeries({ publicId: series_id }),
     getTenantDisplayTimeZone(tenantId),
     getTenantCurrency(tenantId),
+    isSignedInTenantAdmin(tenantId),
   ]);
 
   if (!seriesResult.ok) {
@@ -119,7 +121,10 @@ const SeriesEpisodeBulkActions = async ({
   // that take one stay out while the currency cannot be read.
   return (
     <>
-      <EpisodeCreditsRangeDialog seriesId={seriesResult.series.id} />
+      <EpisodeCreditsRangeDialog
+        canSetShare={isTenantAdmin}
+        seriesId={seriesResult.series.id}
+      />
       <EpisodeFreeWindowsDialog
         action={createSeriesFreeWindowsAction}
         seriesId={seriesResult.series.id}

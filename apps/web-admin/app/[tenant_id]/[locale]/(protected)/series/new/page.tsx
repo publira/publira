@@ -11,7 +11,10 @@ import {
   TenantEditorRoute,
   TenantRoleRouteSkeleton,
 } from "#components/tenant-role-gate";
-import { isSignedInTenantEditor } from "#lib/auth-session";
+import {
+  isSignedInTenantEditor,
+  isSignedInTenantEditorButNotAdmin,
+} from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
 import { listCreatorRoles } from "#lib/creator-roles";
 import { listGenres } from "#lib/genre";
@@ -66,6 +69,7 @@ const NewSeriesFormData = async () => {
     purchaseSettingsResult,
     timeZone,
     t,
+    creditSharesLocked,
   ] = await Promise.all([
     // Walk every cursor page so the Combobox can search past the first 100.
     listAllCreators(),
@@ -84,11 +88,13 @@ const NewSeriesFormData = async () => {
     getTenantDisplayTimeZone(tenantId),
     // The placeholders are attributes, which cannot stream in as nodes.
     getMessagesFor(locale),
+    isSignedInTenantEditorButNotAdmin(tenantId),
   ]);
 
   return (
     <SeriesForm
       action={createSeriesAction}
+      creditSharesLocked={creditSharesLocked}
       creatorRoles={creatorRolesResult.creatorRoles}
       creatorRolesErrorMessage={
         creatorRolesResult.ok ? undefined : creatorRolesResult.message

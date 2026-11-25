@@ -2200,6 +2200,55 @@ describe("bulkEditEpisodeCredits", () => {
       ok: false,
     });
   });
+
+  // A replace carries the credit's share over to someone else and a remove
+  // drops it, so the server keeps both to a tenant admin where the credit is
+  // paid on the range.
+  it.each([
+    [
+      "replace",
+      {
+        from: { creatorId: "CREATOR_B", roleId: "ROLE_ARTIST" },
+        to: { creatorId: "CREATOR_C", roleId: "ROLE_ARTIST" },
+        type: "replace",
+      },
+    ],
+    [
+      "remove",
+      {
+        credit: { creatorId: "CREATOR_B", roleId: "ROLE_ARTIST" },
+        type: "remove",
+      },
+    ],
+  ] as const)(
+    "says a refused %s acted on a paid credit",
+    async (_name, operation) => {
+      mockBulkEditEpisodeCredits.mockRejectedValue(
+        new ConnectError(
+          "tenant admin role required to change a credit's share",
+          Code.PermissionDenied
+        )
+      );
+
+      const { bulkEditEpisodeCredits } = await import("./episode");
+
+      const result = await bulkEditEpisodeCredits(
+        {
+          operation,
+          episodeIds: ["EP01"],
+          seriesId: "SERIES001",
+          tenantId: "TENANT001",
+        },
+        "en"
+      );
+
+      expect(result).toEqual({
+        message:
+          "This author is paid a share on at least one of the selected episodes, and only a tenant admin can replace or remove a paid credit. Leave those episodes out of the selection, or ask a tenant admin.",
+        ok: false,
+      });
+    }
+  );
 });
 
 describe("the operator check before a shared read", () => {

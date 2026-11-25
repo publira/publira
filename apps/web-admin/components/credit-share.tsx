@@ -18,14 +18,20 @@ import type { CreditShareTotal } from "#lib/credit-share";
  * The share box on one credit row. It holds the text as typed, so a half-typed
  * `33.` stays on screen instead of being rewritten under the cursor; the list
  * parses it when it sums and when it posts.
+ *
+ * `readOnly` is the box for an operator who reads the share and may not change
+ * it. It stays a labelled box rather than becoming text, so the row keeps its
+ * shape and a screen reader still names whose share it is.
  */
 export const CreditShareInput = ({
   onChange,
   position,
+  readOnly = false,
   value,
 }: {
   onChange: (nextValue: string) => void;
   position: number;
+  readOnly?: boolean;
   value: string;
 }) => (
   <Field.Root className="w-28 shrink-0">
@@ -39,10 +45,11 @@ export const CreditShareInput = ({
       <div className="flex items-center gap-1.5">
         <Input
           aria-invalid={sharePercentToBps(value) === undefined}
-          className="text-right tabular-nums"
+          className="text-right tabular-nums read-only:bg-muted"
           inputMode="decimal"
           onChange={(event) => onChange(event.currentTarget.value)}
           placeholder="0"
+          readOnly={readOnly}
           value={value}
         />
         <span aria-hidden="true" className="text-sm text-muted-foreground">

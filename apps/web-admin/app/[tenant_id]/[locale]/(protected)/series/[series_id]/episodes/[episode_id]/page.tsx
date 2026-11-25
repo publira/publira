@@ -30,6 +30,7 @@ import {
 import { TranslationTabs } from "#components/translation-tabs";
 import {
   isSignedInTenantEditor,
+  isSignedInTenantEditorButNotAdmin,
   redirectToLoginIfSessionRejected,
 } from "#lib/auth-session";
 import { listAllCreators } from "#lib/creator";
@@ -781,9 +782,13 @@ const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
   const context = await resolveEditEpisodeContext(params);
   const { tenantId } = context;
 
-  const [episodeResult, creatorsResult, creatorRolesResult] = await Promise.all(
-    [loadEpisode(context), listAllCreators(), listCreatorRoles()]
-  );
+  const [episodeResult, creatorsResult, creatorRolesResult, sharesLocked] =
+    await Promise.all([
+      loadEpisode(context),
+      listAllCreators(),
+      listCreatorRoles(),
+      isSignedInTenantEditorButNotAdmin(tenantId),
+    ]);
 
   if (!episodeResult.ok) {
     return (
@@ -816,6 +821,7 @@ const EpisodeCreditsSection = async ({ params }: EditEpisodeSectionProps) => {
       episodePublicId={context.episodeId}
       initialCredits={creditsResult.credits}
       seriesPublicId={context.seriesId}
+      sharesLocked={sharesLocked}
       tenantId={tenantId}
     />
   );

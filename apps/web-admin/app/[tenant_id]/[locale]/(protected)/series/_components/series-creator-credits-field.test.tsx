@@ -59,16 +59,19 @@ vi.mock("@publira/ui-components/combobox", async () => {
     Items: () => null,
     Popup: () => null,
     Root: ({
+      disabled,
       items,
       onValueChange,
       value,
     }: {
       children: ReactNode;
+      disabled?: boolean;
       items: { label: string; value: string }[];
       onValueChange: (next: string) => void;
       value: string;
     }) => (
       <Input
+        disabled={disabled}
         onChange={(event) => onValueChange(event.target.value)}
         render={
           <select>
@@ -114,7 +117,8 @@ const creatorRoles = [
 
 const render = (
   initialCredits: SeriesCreatorCredit[],
-  onSavableChange: (next: boolean) => void = vi.fn()
+  onSavableChange: (next: boolean) => void = vi.fn(),
+  { sharesLocked = false }: { sharesLocked?: boolean } = {}
 ) => {
   savable.onChange = onSavableChange;
 
@@ -123,6 +127,7 @@ const render = (
       creatorRoles={creatorRoles}
       creators={creators}
       initialCredits={initialCredits}
+      sharesLocked={sharesLocked}
     />,
     {
       wrapper: ({ children }) => (
@@ -172,6 +177,10 @@ const optionLabels = (control: HTMLSelectElement) =>
   [...control.options].flatMap((option) =>
     option.value === "" ? [] : [option.textContent]
   );
+
+/** The editor as a tenant editor sees it, the shares locked. */
+const renderLocked = (initialCredits: SeriesCreatorCredit[]) =>
+  render(initialCredits, vi.fn(), { sharesLocked: true });
 
 afterEach(cleanup);
 
@@ -416,5 +425,73 @@ describe("SeriesCreatorCredits.Editor", () => {
       )
     ).toBeDefined();
     expect(onSavableChange).toHaveBeenLastCalledWith(false);
+  });
+
+  describe("with the shares locked, as an editor sees it", () => {
+    const paidAndUnpaid = [
+      { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 3000 },
+      { creatorId: "CREATOR002", roleId: "ROLE002", shareBps: 0 },
+    ];
+
+    it("shows each share without letting it be typed over", () => {
+      renderLocked(paidAndUnpaid);
+
+      expect(shareInput(1).value).toBe("30");
+      expect(shareInput(1).readOnly).toBe(true);
+      expect(shareInput(2).readOnly).toBe(true);
+      expect(screen.getByText("Authors 30% · Publisher 70%")).toBeDefined();
+      expect(
+        screen.getByText(/^Only a tenant admin can change a share\./u)
+      ).toBeDefined();
+    });
+
+    // Dropping a paid credit or putting someone else in its place moves the
+    // payout as surely as a new share does, so the API refuses both.
+    it("keeps who a paid credit names and leaves it on the list", () => {
+      renderLocked(paidAndUnpaid);
+
+      expect(creatorPicker(1).disabled).toBe(true);
+      expect(rolePicker(1).disabled).toBe(true);
+      expect(
+        screen.getByRole<HTMLButtonElement>("button", {
+          name: "Remove author 1",
+        }).disabled
+      ).toBe(true);
+    });
+
+    it("lets an unpaid credit be re-credited and removed", () => {
+      renderLocked(paidAndUnpaid);
+
+      expect(creatorPicker(2).disabled).toBe(false);
+      expect(rolePicker(2).disabled).toBe(false);
+
+      fireEvent.change(creatorPicker(2), { target: { value: "CREATOR003" } });
+
+      expect(postedCredits()).toEqual([
+        { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 3000 },
+        { creatorId: "CREATOR003", roleId: "ROLE002", shareBps: 0 },
+      ]);
+
+      fireEvent.click(screen.getByRole("button", { name: "Remove author 2" }));
+
+      expect(postedCredits()).toEqual([
+        { creatorId: "CREATOR001", roleId: "ROLE001", shareBps: 3000 },
+      ]);
+    });
+
+    it("adds a credit at a share of 0", () => {
+      renderLocked(paidAndUnpaid);
+
+      fireEvent.click(screen.getByRole("button", { name: "Add author" }));
+      fireEvent.change(creatorPicker(3), { target: { value: "CREATOR003" } });
+
+      expect(shareInput(3).value).toBe("0");
+      expect(shareInput(3).readOnly).toBe(true);
+      expect(postedCredits().at(-1)).toEqual({
+        creatorId: "CREATOR003",
+        roleId: "ROLE001",
+        shareBps: 0,
+      });
+    });
   });
 });

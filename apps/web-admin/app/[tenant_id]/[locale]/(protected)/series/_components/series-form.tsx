@@ -57,6 +57,11 @@ interface SeriesFormProps {
    * the form and may not; left out, the form is one an editor submits.
    */
   canCreateLabel?: boolean;
+  /**
+   * Whether the operator may change who the series credits but not what any
+   * credit is paid: a tenant editor. Left out, the shares are editable.
+   */
+  creditSharesLocked?: boolean;
   action: (
     prevState: SeriesActionState,
     formData: FormData
@@ -244,6 +249,7 @@ const TranslationFields = ({
 export const SeriesForm = ({
   mode,
   canCreateLabel = true,
+  creditSharesLocked,
   action,
   creators,
   creatorRoles,
@@ -420,6 +426,7 @@ export const SeriesForm = ({
               creatorRoles={creatorRoles}
               creators={creators}
               initialCredits={values.creatorCredits}
+              sharesLocked={creditSharesLocked}
             />
             <p className="text-xs text-muted-foreground">
               <Suspense fallback={<SkeletonLine className="h-3 w-full" />}>

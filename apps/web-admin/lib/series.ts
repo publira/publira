@@ -267,6 +267,11 @@ const mapErrorToMessage = async (
   return rpcErrorMessage(cause, fallbackMessage, {
     locale,
     overrides: {
+      // The credits would leave a credit paid other than before, which only a
+      // tenant admin may: the shares changed after the form read them.
+      forbidden: rpcErrorHasFieldViolation(cause, "creator_credits")
+        ? t("admin.series.form.creators_share_refused")
+        : undefined,
       "invalid-argument": rpcErrorHasFieldViolation(cause, "locale")
         ? t("admin.series.translations.locale_not_offered")
         : await invalidArgumentMessage(cause, locale),
