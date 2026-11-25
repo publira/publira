@@ -2,7 +2,7 @@
 title: Authors and Author roles
 description: Register the people credited on a work, choose what they are credited as, see the series and episodes that credit an Author, link an Author to their own reader account, and delete an Author that nothing refers to.
 published: 2026-10-07
-updated: 2026-11-14
+updated: 2026-11-25
 ---
 
 An Author is a person credited on a work: the writer, the artist, the original author of an adaptation. A series and each of its episodes credit their Authors, each in an Author role, and those credits are what readers see beside a title and what royalties are paid on.
@@ -13,7 +13,7 @@ An Author is a person credited on a work: the writer, the artist, the original a
 
 - **Name**: the name readers see, a pen name if the person publishes under one.
 - **Profile**: an optional biography, shown on the Author's page as written, line breaks included.
-- **Author icon image**: an optional JPEG, PNG, or WebP image of at most 10 MB and at least 256 × 256 pixels. **Adjust the frame** chooses the square cut from it.
+- **Author icon image**: an optional JPEG, PNG, or WebP image of at most 10 MB and at least 256 × 256 pixels. **Adjust the frame** chooses the square cut from it, and a square larger than 512 × 512 pixels is scaled down to that size.
 
 ![The Authors list: Create author at the top, and a row for each Author.](./authors-list.png)
 

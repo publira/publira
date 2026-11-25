@@ -2,7 +2,9 @@ package adminapi
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/png"
@@ -164,5 +166,25 @@ func TestNormalizeCreatorIconImageRejectsACropBelowTheMinimum(t *testing.T) {
 	_, err := normalizeCreatorIconImage(raw, "image/png", &imageproc.CropRect{X: 0, Y: 0, Width: 200, Height: 200})
 	if !errors.Is(err, imageproc.ErrInvalidCrop) {
 		t.Fatalf("error = %v, want an ErrInvalidCrop", err)
+	}
+}
+
+func TestNormalizeCreatorIconImageRefusesADeclaredCanvasOverThePixelLimit(t *testing.T) {
+	// A PNG holding nothing but an IHDR chunk that declares 1.6 billion
+	// pixels: refused from the header, before anything is decoded.
+	var ihdr bytes.Buffer
+	ihdr.WriteString("IHDR")
+	_ = binary.Write(&ihdr, binary.BigEndian, uint32(40_000))
+	_ = binary.Write(&ihdr, binary.BigEndian, uint32(40_000))
+	ihdr.Write([]byte{8, 6, 0, 0, 0})
+	var raw bytes.Buffer
+	raw.Write([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'})
+	_ = binary.Write(&raw, binary.BigEndian, uint32(13))
+	raw.Write(ihdr.Bytes())
+	_ = binary.Write(&raw, binary.BigEndian, crc32.ChecksumIEEE(ihdr.Bytes()))
+
+	_, err := normalizeCreatorIconImage(raw.Bytes(), "image/png", nil)
+	if !errors.Is(err, imageproc.ErrTooManyPixels) {
+		t.Fatalf("error = %v, want an ErrTooManyPixels", err)
 	}
 }

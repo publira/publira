@@ -77,6 +77,116 @@ func sampleCenter(t *testing.T, encoded []byte) (r, g, b uint32) {
 	return cr >> 8, cg >> 8, cb >> 8
 }
 
+// pngHeaderWithDeclaredSize builds a PNG holding nothing but an IHDR chunk.
+// image.DecodeConfig reads only that chunk, so this reproduces an upload that
+// declares huge dimensions while carrying no actual image data.
+func pngHeaderWithDeclaredSize(width, height uint32) []byte {
+	var ihdr bytes.Buffer
+	ihdr.WriteString("IHDR")
+	_ = binary.Write(&ihdr, binary.BigEndian, width)
+	_ = binary.Write(&ihdr, binary.BigEndian, height)
+	ihdr.Write([]byte{8, 6, 0, 0, 0}) // bit depth, color type, compression, filter, interlace
+
+	var buf bytes.Buffer
+	buf.Write([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'})
+	_ = binary.Write(&buf, binary.BigEndian, uint32(13))
+	buf.Write(ihdr.Bytes())
+	_ = binary.Write(&buf, binary.BigEndian, crc32.ChecksumIEEE(ihdr.Bytes()))
+	return buf.Bytes()
+}
+
+// webpHeaderWithDeclaredSize builds a WebP holding nothing but a VP8X chunk,
+// the extended header whose canvas size image.DecodeConfig reports. Like
+// pngHeaderWithDeclaredSize, it declares a canvas it carries no data for.
+func webpHeaderWithDeclaredSize(width, height uint32) []byte {
+	var vp8x bytes.Buffer
+	vp8x.WriteString("VP8X")
+	_ = binary.Write(&vp8x, binary.LittleEndian, uint32(10))
+	vp8x.Write([]byte{0, 0, 0, 0}) // flags and reserved bits
+	for _, edge := range []uint32{width - 1, height - 1} {
+		vp8x.Write([]byte{byte(edge), byte(edge >> 8), byte(edge >> 16)})
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("RIFF")
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(4+vp8x.Len()))
+	buf.WriteString("WEBP")
+	buf.Write(vp8x.Bytes())
+	return buf.Bytes()
+}
+
+// --- the checks every Build function shares ---
+
+// TestEveryBuildRefusesADeclaredCanvasOverThePixelLimit holds each entry
+// point to the pixel limit with a file that is a few dozen bytes yet declares
+// 1.6 billion pixels. The file carries no pixel data, so a refusal for any
+// other reason than ErrTooManyPixels — decoding it and failing — would mean
+// the entry point had gone on to decode it.
+func TestEveryBuildRefusesADeclaredCanvasOverThePixelLimit(t *testing.T) {
+	builds := []struct {
+		name  string
+		build func(raw []byte, contentType string) error
+	}{
+		{"BuildVariants", func(raw []byte, ct string) error {
+			_, err := imageproc.BuildVariants(raw, ct)
+			return err
+		}},
+		{"BuildEyeCatchVariants", func(raw []byte, ct string) error {
+			_, err := imageproc.BuildEyeCatchVariants(raw, ct)
+			return err
+		}},
+		{"BuildEyeCatchAspectVariants", func(raw []byte, ct string) error {
+			_, err := imageproc.BuildEyeCatchAspectVariants(raw, ct, "portrait", nil)
+			return err
+		}},
+		{"BuildIcon", func(raw []byte, ct string) error {
+			_, err := imageproc.BuildIcon(raw, ct)
+			return err
+		}},
+		{"BuildUserIcon", func(raw []byte, ct string) error {
+			_, err := imageproc.BuildUserIcon(raw, ct, nil)
+			return err
+		}},
+		{"BuildCreatorIcon", func(raw []byte, ct string) error {
+			_, err := imageproc.BuildCreatorIcon(raw, ct, nil)
+			return err
+		}},
+		{"BuildLogo", func(raw []byte, ct string) error {
+			_, err := imageproc.BuildLogo(raw, ct)
+			return err
+		}},
+		{"BuildBrandMark", func(raw []byte, ct string) error {
+			_, err := imageproc.BuildBrandMark(raw, ct, "badge")
+			return err
+		}},
+		{"BuildSignInImage", func(raw []byte, ct string) error {
+			_, err := imageproc.BuildSignInImage(raw, ct)
+			return err
+		}},
+		{"BuildEpisodePreview", func(raw []byte, _ string) error {
+			_, err := imageproc.BuildEpisodePreview(raw)
+			return err
+		}},
+	}
+	uploads := []struct {
+		name        string
+		raw         []byte
+		contentType string
+	}{
+		{"PNG", pngHeaderWithDeclaredSize(40_000, 40_000), "image/png"},
+		{"WebP", webpHeaderWithDeclaredSize(40_000, 40_000), "image/webp"},
+	}
+	for _, b := range builds {
+		for _, u := range uploads {
+			t.Run(b.name+"/"+u.name, func(t *testing.T) {
+				if err := b.build(u.raw, u.contentType); !errors.Is(err, imageproc.ErrTooManyPixels) {
+					t.Fatalf("error = %v, want ErrTooManyPixels", err)
+				}
+			})
+		}
+	}
+}
+
 // --- TestBuildVariants ---
 
 func TestBuildVariants_SmallImage_ReturnsOriginalOnly(t *testing.T) {
@@ -545,33 +655,6 @@ func TestBuildIcon_RejectsEmptyData(t *testing.T) {
 	}
 }
 
-// pngHeaderWithDeclaredSize builds a PNG holding nothing but an IHDR chunk.
-// image.DecodeConfig reads only that chunk, so this reproduces an upload that
-// declares huge dimensions while carrying no actual image data.
-func pngHeaderWithDeclaredSize(width, height uint32) []byte {
-	var ihdr bytes.Buffer
-	ihdr.WriteString("IHDR")
-	_ = binary.Write(&ihdr, binary.BigEndian, width)
-	_ = binary.Write(&ihdr, binary.BigEndian, height)
-	ihdr.Write([]byte{8, 6, 0, 0, 0}) // bit depth, color type, compression, filter, interlace
-
-	var buf bytes.Buffer
-	buf.Write([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'})
-	_ = binary.Write(&buf, binary.BigEndian, uint32(13))
-	buf.Write(ihdr.Bytes())
-	_ = binary.Write(&buf, binary.BigEndian, crc32.ChecksumIEEE(ihdr.Bytes()))
-	return buf.Bytes()
-}
-
-func TestBuildIcon_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
-	// A few dozen bytes on upload that decode to 1.6 billion pixels.
-	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
-
-	if _, err := imageproc.BuildIcon(raw, "image/png"); err == nil {
-		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
-	}
-}
-
 // --- TestBuildLogo ---
 
 func TestBuildLogo_KeepsAspectRatioAndEncodesPNG(t *testing.T) {
@@ -652,14 +735,6 @@ func TestBuildLogo_RejectsNonImageContentType(t *testing.T) {
 func TestBuildLogo_RejectsEmptyData(t *testing.T) {
 	if _, err := imageproc.BuildLogo(nil, "image/png"); err == nil {
 		t.Fatal("want error for empty data")
-	}
-}
-
-func TestBuildLogo_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
-	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
-
-	if _, err := imageproc.BuildLogo(raw, "image/png"); err == nil {
-		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
 	}
 }
 
@@ -799,14 +874,6 @@ func TestBuildSignInImage_RejectsEmptyData(t *testing.T) {
 	}
 }
 
-func TestBuildSignInImage_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
-	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
-
-	if _, err := imageproc.BuildSignInImage(raw, "image/png"); err == nil {
-		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
-	}
-}
-
 // --- TestBuildUserIcon ---
 
 func TestBuildUserIcon_CropsNonSquareJPEGToSquareJPEG(t *testing.T) {
@@ -923,10 +990,69 @@ func TestBuildUserIcon_RejectsEmptyData(t *testing.T) {
 	}
 }
 
-func TestBuildUserIcon_RejectsOversizedPixelCountBeforeDecoding(t *testing.T) {
-	raw := pngHeaderWithDeclaredSize(40_000, 40_000)
+// --- TestBuildCreatorIcon ---
 
-	if _, err := imageproc.BuildUserIcon(raw, "image/png", nil); err == nil {
-		t.Fatal("want error for an image whose declared pixel count exceeds the limit")
+func TestBuildCreatorIcon_CropsNonSquareJPEGToSquareJPEG(t *testing.T) {
+	raw := makeJPEG(t, 400, 300)
+	variant, err := imageproc.BuildCreatorIcon(raw, "image/jpeg", nil)
+	if err != nil {
+		t.Fatalf("BuildCreatorIcon: %v", err)
+	}
+	if variant.Width != 300 || variant.Height != 300 {
+		t.Fatalf("size = %dx%d, want 300x300", variant.Width, variant.Height)
+	}
+	if variant.ContentType != "image/jpeg" || variant.Extension != ".jpg" {
+		t.Fatalf("format = %q %q, want image/jpeg .jpg", variant.ContentType, variant.Extension)
+	}
+}
+
+func TestBuildCreatorIcon_StoresAnythingButJPEGAsPNG(t *testing.T) {
+	raw := makePNG(t, 300, 300)
+	variant, err := imageproc.BuildCreatorIcon(raw, "image/png", nil)
+	if err != nil {
+		t.Fatalf("BuildCreatorIcon: %v", err)
+	}
+	if variant.ContentType != "image/png" || variant.Extension != ".png" {
+		t.Fatalf("format = %q %q, want image/png .png", variant.ContentType, variant.Extension)
+	}
+	if _, format, err := image.DecodeConfig(bytes.NewReader(variant.Data)); err != nil || format != "png" {
+		t.Fatalf("encoded format = %q (%v), want png", format, err)
+	}
+}
+
+func TestBuildCreatorIcon_ScalesOversizedSourceDown(t *testing.T) {
+	raw := makePNG(t, 2000, 1600)
+	variant, err := imageproc.BuildCreatorIcon(raw, "image/png", nil)
+	if err != nil {
+		t.Fatalf("BuildCreatorIcon: %v", err)
+	}
+	if variant.Width != imageproc.CreatorIconMaxDimension || variant.Height != imageproc.CreatorIconMaxDimension {
+		t.Fatalf("size = %dx%d, want %dx%d", variant.Width, variant.Height, imageproc.CreatorIconMaxDimension, imageproc.CreatorIconMaxDimension)
+	}
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(variant.Data))
+	if err != nil {
+		t.Fatalf("image.DecodeConfig: %v", err)
+	}
+	if cfg.Width != imageproc.CreatorIconMaxDimension || cfg.Height != imageproc.CreatorIconMaxDimension {
+		t.Fatalf("encoded size = %dx%d, want %dx%d", cfg.Width, cfg.Height, imageproc.CreatorIconMaxDimension, imageproc.CreatorIconMaxDimension)
+	}
+}
+
+func TestBuildCreatorIcon_RejectsTooSmallImage(t *testing.T) {
+	raw := makePNG(t, 400, 200)
+	_, err := imageproc.BuildCreatorIcon(raw, "image/png", nil)
+	if err == nil {
+		t.Fatal("want error for an image whose square is below the minimum")
+	}
+	if errors.Is(err, imageproc.ErrInvalidCrop) {
+		t.Fatalf("error = %v, want one that blames the image rather than a crop", err)
+	}
+}
+
+func TestBuildCreatorIcon_RejectsARectangleBelowTheMinimum(t *testing.T) {
+	raw := makeHalvedPNG(t, 600, 400)
+	_, err := imageproc.BuildCreatorIcon(raw, "image/png", &imageproc.CropRect{X: 0, Y: 0, Width: 200, Height: 200})
+	if !errors.Is(err, imageproc.ErrInvalidCrop) {
+		t.Fatalf("error = %v, want an ErrInvalidCrop", err)
 	}
 }

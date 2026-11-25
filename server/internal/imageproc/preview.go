@@ -2,7 +2,6 @@ package imageproc
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -62,30 +61,18 @@ func EpisodePreviewSize(sourceWidth, sourceHeight int) (width, height int) {
 // before decoding: the declared dimensions are checked first, so an object
 // that claims a huge canvas is refused rather than decoded.
 func BuildEpisodePreview(raw []byte) (Variant, error) {
-	if len(raw) == 0 {
-		return Variant{}, errors.New("image data is required")
-	}
-	if len(raw) > MaxUploadBytes {
-		return Variant{}, fmt.Errorf("image size exceeds %d bytes", MaxUploadBytes)
-	}
-
-	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	// A stored page carries no declared content type, so the one inspect
+	// requires is sniffed from the bytes.
+	in, err := inspect(raw, "", MaxUploadBytes)
 	if err != nil {
-		return Variant{}, errors.New("image is not decodable")
+		return Variant{}, err
 	}
-	if cfg.Width <= 0 || cfg.Height <= 0 {
-		return Variant{}, errors.New("image has invalid dimensions")
-	}
-	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
-		return Variant{}, fmt.Errorf("image dimensions exceed %d pixels", MaxPixels)
-	}
-
-	src, _, err := image.Decode(bytes.NewReader(raw))
+	src, err := in.decode()
 	if err != nil {
-		return Variant{}, errors.New("image is not decodable")
+		return Variant{}, err
 	}
 
-	width, height := EpisodePreviewSize(cfg.Width, cfg.Height)
+	width, height := EpisodePreviewSize(in.config.Width, in.config.Height)
 	// A transparent page would otherwise encode as black, since JPEG has no
 	// alpha: the page is laid on the white it is printed on.
 	reduced := image.NewRGBA(image.Rect(0, 0, width, height))
