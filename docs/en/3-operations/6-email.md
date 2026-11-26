@@ -2,7 +2,7 @@
 title: Email
 description: Set the SMTP account the install sends mail through, let a tenant send through its own, and control what the mail looks like and where its links lead.
 published: 2026-10-06
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 The install sends mail for its readers, for each tenant's staff, and for the Platform Console's operators. All of it is sent by `publira worker`, through an SMTP server you provide: `publiractl setup` saved the platform's SMTP account, and a tenant can save one of its own. This page covers both, how to test them, and the settings that decide how a mail looks and where its links go.
@@ -93,7 +93,7 @@ A tenant's administrators set its own account from the tenant console, under **I
 
 From the next mail on, every mail of that tenant goes through its account, invitations to new administrators included. Turning the override off sends them through the platform's account again.
 
-There is nothing for an operator to set for this, and neither the Platform Console nor `publiractl` changes a tenant's account. If a tenant's mail stops arriving while the platform's test passes, its own account is the first thing to check.
+Neither the Platform Console nor `publiractl` changes a tenant's account. A tenant's server is reached only at a public address: one whose host resolves to a private or loopback address fails its test and sends no mail until you allow that address, as [A tenant's SMTP server on your own network](./12-security/index.md#a-tenants-smtp-server-on-your-own-network) describes. If a tenant's mail stops arriving while the platform's test passes, its own account is the first thing to check.
 
 ## Plain text and HTML
 

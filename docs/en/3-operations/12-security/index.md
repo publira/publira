@@ -2,7 +2,7 @@
 title: Securing an install
 description: How an install keeps tenants and credentials apart, where each secret may go, and how to report a vulnerability.
 published: 2026-10-07
-updated: 2026-11-05
+updated: 2026-11-26
 ---
 
 An install holds the credentials of every tenant's payment provider and mail server, the personal data of every reader, and the keys that seal them. This page is for the operator who keeps them safe: what the install relies on to keep them apart, and where each secret may go. How to replace each secret, what two-step verification and the audit logs give you, and what a web application firewall and rate limits in front of the install should do, are on the pages under [In this section](#in-this-section).
@@ -56,6 +56,12 @@ A tenant chooses the URLs its [webhook endpoints](../../4-console/10-api-keys-an
 When a publisher's receiver runs on your own network, set `PUBLIRA_WEBHOOK_ALLOWED_ADDRESSES` on the worker to the addresses or CIDR ranges it is on, separated by commas or spaces, such as `10.20.0.15, 10.30.0.0/24`. Any tenant on the install can then deliver to those addresses, so list the receiver alone rather than a whole network, and never the addresses of Publira's own processes, your database, or your cloud provider's metadata service. A range that covers every address, such as `0.0.0.0/0`, is refused, and so is a value that is not an address or a range: either stops the worker at startup.
 
 The setting changes only where a delivery may go. The endpoint's URL is still `https`, and the worker still verifies the receiver's certificate. A receiver whose certificate your own certificate authority issued needs that authority trusted: mount a file of PEM certificates in the worker's container and name it in `SSL_CERT_FILE`, which replaces the system's roots, so include the public roots if any tenant delivers to a public receiver.
+
+## A tenant's SMTP server on your own network
+
+A tenant's administrators also choose the host of [the tenant's own SMTP server](../../4-console/3-setup/7-email.md), which `publira server` connects to for their connection test and `publira worker` for every mail the tenant sends. A server whose host resolves to a private, loopback, link-local, or shared address is refused in the same way: the test fails saying so, and the tenant's mail is not sent. The platform's own SMTP account is yours, and reaches any address.
+
+When a publisher's mail server is on your own network, set `PUBLIRA_SMTP_ALLOWED_ADDRESSES` to its addresses or CIDR ranges, in the same form as `PUBLIRA_WEBHOOK_ALLOWED_ADDRESSES`, on both `publira server` and `publira worker`: the server's value governs the test, the worker's the mail. The same care applies: list the mail server alone, since any tenant on the install can then reach it, and a relay there that takes mail without signing in sends whatever a tenant gives it.
 
 ## In this section
 

@@ -161,14 +161,15 @@ const (
 	ReasonSeriesInPromotionCode    = "SERIES_IN_PROMOTION_CODE"
 	// ReasonSignUpClosed refuses a request that would create a reader account
 	// while the tenant does not accept new readers.
-	ReasonSignUpClosed           = "SIGN_UP_CLOSED"
-	ReasonSMTPTestAuthentication = "SMTP_TEST_AUTHENTICATION"
-	ReasonSMTPTestConnection     = "SMTP_TEST_CONNECTION"
-	ReasonSMTPTestRecipient      = "SMTP_TEST_RECIPIENT"
-	ReasonSMTPTestStartTLS       = "SMTP_TEST_STARTTLS"
-	ReasonSMTPTestTLS            = "SMTP_TEST_TLS"
-	ReasonSMTPTestTimeout        = "SMTP_TEST_TIMEOUT"
-	ReasonSMTPTestUnknown        = "SMTP_TEST_UNKNOWN"
+	ReasonSignUpClosed              = "SIGN_UP_CLOSED"
+	ReasonSMTPTestAuthentication    = "SMTP_TEST_AUTHENTICATION"
+	ReasonSMTPTestConnection        = "SMTP_TEST_CONNECTION"
+	ReasonSMTPTestRecipient         = "SMTP_TEST_RECIPIENT"
+	ReasonSMTPTestRestrictedAddress = "SMTP_TEST_RESTRICTED_ADDRESS"
+	ReasonSMTPTestStartTLS          = "SMTP_TEST_STARTTLS"
+	ReasonSMTPTestTLS               = "SMTP_TEST_TLS"
+	ReasonSMTPTestTimeout           = "SMTP_TEST_TIMEOUT"
+	ReasonSMTPTestUnknown           = "SMTP_TEST_UNKNOWN"
 	// ReasonStorageNotConfigured refuses an upload on a platform whose
 	// operator has saved no object store yet.
 	ReasonStorageNotConfigured = "STORAGE_NOT_CONFIGURED"

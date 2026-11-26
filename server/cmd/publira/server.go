@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"os"
 	"strings"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/publira/publira/server/internal/platformpolicy"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
+	"github.com/publira/publira/server/internal/publicaddr"
 	"github.com/publira/publira/server/internal/readguard"
 	"github.com/publira/publira/server/internal/readreplica"
 	"github.com/publira/publira/server/internal/redisurl"
@@ -144,6 +146,10 @@ type serverConfig struct {
 	payments  *paymentprovider.Registry
 	clientIPs *clientip.Resolver
 	tokens    *auth.TokenManager
+	// smtpAllowed is where a tenant's SMTP server may be reached besides a
+	// public address, read where the tenant console's connection test is
+	// served.
+	smtpAllowed []netip.Prefix
 }
 
 func loadServerConfig(roles serverRoles) (serverConfig, error) {
@@ -170,6 +176,13 @@ func loadServerConfig(roles serverRoles) (serverConfig, error) {
 			return serverConfig{}, failed("failed to load config", err)
 		}
 		cfg.payments = providers.New(payments)
+	}
+	if roles.admin {
+		allowed, err := publicaddr.ParseAllowed(os.Getenv("PUBLIRA_SMTP_ALLOWED_ADDRESSES"))
+		if err != nil {
+			return serverConfig{}, failed("PUBLIRA_SMTP_ALLOWED_ADDRESSES is invalid", err)
+		}
+		cfg.smtpAllowed = allowed
 	}
 	clientIPs, err := clientip.FromEnv()
 	if err != nil {
@@ -258,6 +271,7 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 		webServiceToken = newWebServiceToken(logger)
 	}
 	smtpTester := internalsmtp.NewClient()
+	smtpTester.AllowedAddresses = cfg.smtpAllowed
 
 	if pools.admin != nil {
 		// The object store is read from the platform's settings on the admin

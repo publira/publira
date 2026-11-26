@@ -53,6 +53,10 @@ type SMTPSettings struct {
 	FromName    string
 	FromAddress string
 	ReplyTo     string
+	// Platform marks the operator's own settings, whose host may be at any
+	// address. Every other settings are a tenant's, and the sender reaches
+	// their host only at a public address or one the operator allowed.
+	Platform bool
 }
 
 func Normalize(settings SMTPSettings) SMTPSettings {

@@ -372,6 +372,7 @@
       "authentication": "SMTP认证失败。",
       "connection": "无法连接到SMTP服务器。",
       "recipient": "SMTP服务器拒绝了收件人邮箱地址。",
+      "restricted_address": "SMTP服务器的主机解析到私有地址或环回地址，因此无法发送。",
       "starttls": "无法建立STARTTLS。",
       "timeout": "连接SMTP服务器超时。",
       "tls": "无法建立TLS连接。",

@@ -28,6 +28,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/providers"
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
+	"github.com/publira/publira/server/internal/publicaddr"
 	"github.com/publira/publira/server/internal/redisurl"
 	"github.com/publira/publira/server/internal/revalidate"
 	"github.com/publira/publira/server/internal/signin"
@@ -181,11 +182,15 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 		payments = providers.New(paymentsConfig)
 	}
 
-	var webhookAllowedAddresses []netip.Prefix
+	var webhookAllowedAddresses, smtpAllowedAddresses []netip.Prefix
 	if queues.outbox {
-		webhookAllowedAddresses, err = tenantwebhooks.ParseAllowedAddresses(os.Getenv("PUBLIRA_WEBHOOK_ALLOWED_ADDRESSES"))
+		webhookAllowedAddresses, err = publicaddr.ParseAllowed(os.Getenv("PUBLIRA_WEBHOOK_ALLOWED_ADDRESSES"))
 		if err != nil {
 			return half{}, failed("PUBLIRA_WEBHOOK_ALLOWED_ADDRESSES is invalid", err)
+		}
+		smtpAllowedAddresses, err = publicaddr.ParseAllowed(os.Getenv("PUBLIRA_SMTP_ALLOWED_ADDRESSES"))
+		if err != nil {
+			return half{}, failed("PUBLIRA_SMTP_ALLOWED_ADDRESSES is invalid", err)
 		}
 	}
 
@@ -343,10 +348,12 @@ func buildWorker(deps shared, queues workerQueues) (_ half, err error) {
 	}); requester != nil {
 		searchCacheRecorder = requester
 	}
+	mailer := internalsmtp.NewClient()
+	mailer.AllowedAddresses = smtpAllowedAddresses
 	cfg := workerConfig(logger, periodic, outbox.EmailHandlerConfig{
 		DB:        db,
 		Encryptor: encryptor,
-		Mailer:    internalsmtp.NewClient(),
+		Mailer:    mailer,
 		Renderer:  resolveEmailRenderer(logger),
 	}, pushHandlers, outbox.StaffNotificationHandlerConfig{DB: db, Logger: logger},
 		outbox.AnnouncementNotificationHandlerConfig{DB: db, Logger: logger},
