@@ -661,7 +661,10 @@ func (s *adminServer) DisableMfa(
 	if err != nil {
 		return nil, err
 	}
-	if err := mfaflow.Disable(ctx, s.mfaAccount(actor), req.Code); err != nil {
+	required := func(ctx context.Context) (bool, error) {
+		return s.mfaRequiredForRole(ctx, actor.Role)
+	}
+	if err := mfaflow.Disable(ctx, s.mfaAccount(actor), req.Code, required); err != nil {
 		return nil, err
 	}
 	return &publiraadminv1.AdminAuthServiceDisableMfaResponse{Disabled: true}, nil

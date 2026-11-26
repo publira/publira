@@ -402,6 +402,22 @@ func (s *apiServer) clearMfaAction(ctx context.Context, actor mfaActor) {
 	s.clearStepUp(ctx, actor.Tenant.ID, actor.User.ID)
 }
 
+// consoleRequiresMfa reports whether the platform policy holds the account to
+// a second factor in the tenant's console, which its authenticator is one of.
+// The site counts none of the console's passkeys among the account's
+// factors, so for such an account the authenticator is always the last one
+// the site can see, and it is taken off in the console instead.
+func (s *apiServer) consoleRequiresMfa(ctx context.Context, actor mfaActor) (bool, error) {
+	if actor.Role != auth.RoleTenantAdmin {
+		return false, nil
+	}
+	policy, err := s.readerPolicy(ctx)
+	if err != nil {
+		return false, err
+	}
+	return policy.MFARequiredForTenantAdmin, nil
+}
+
 // refuseConsoleFactor refuses setting an authenticator up on the site for an
 // account that holds a passkey in the tenant's console, whatever host it was
 // registered for. The site asks no code of such an account, so its session
@@ -571,6 +587,16 @@ func (s *apiServer) DisableMfa(
 	if !found || !totp.EnabledAt.Valid {
 		return fail("not_enabled", mfaflow.NotEnabledError())
 	}
+	required := func(ctx context.Context) (bool, error) {
+		return s.consoleRequiresMfa(ctx, actor)
+	}
+	mustKeepOne, err := required(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if mustKeepOne {
+		return fail(mfaflow.ReasonLastRequiredFactor, mfaflow.LastRequiredFactorError())
+	}
 	if err := s.chargeMfaAction(ctx, actor, mfaActions.Disabled); err != nil {
 		return nil, err
 	}
@@ -596,7 +622,7 @@ func (s *apiServer) DisableMfa(
 		}
 	}
 
-	if err := mfaflow.Disable(ctx, acct, req.Code); err != nil {
+	if err := mfaflow.Disable(ctx, acct, req.Code, required); err != nil {
 		return nil, err
 	}
 	s.clearMfaAction(ctx, actor)

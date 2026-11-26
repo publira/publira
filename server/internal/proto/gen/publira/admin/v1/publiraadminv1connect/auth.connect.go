@@ -334,6 +334,9 @@ type AdminAuthServiceClient interface {
 	GetMfaStatus(context.Context, *v1.AdminAuthServiceGetMfaStatusRequest) (*v1.AdminAuthServiceGetMfaStatusResponse, error)
 	StartMfaEnrollment(context.Context, *v1.AdminAuthServiceStartMfaEnrollmentRequest) (*v1.AdminAuthServiceStartMfaEnrollmentResponse, error)
 	ConfirmMfaEnrollment(context.Context, *v1.AdminAuthServiceConfirmMfaEnrollmentRequest) (*v1.AdminAuthServiceConfirmMfaEnrollmentResponse, error)
+	// Takes the authenticator off. failed_precondition for an account that
+	// holds none, and, with the MFA_LAST_REQUIRED_FACTOR reason, while it is the
+	// account's last second factor and the tenant requires one of its role.
 	DisableMfa(context.Context, *v1.AdminAuthServiceDisableMfaRequest) (*v1.AdminAuthServiceDisableMfaResponse, error)
 	// Replaces the recovery codes, for an account that proves its
 	// authenticator or one of its passkeys. failed_precondition when the
@@ -358,8 +361,8 @@ type AdminAuthServiceClient interface {
 	BeginPasskeyConfirmation(context.Context, *v1.AdminAuthServiceBeginPasskeyConfirmationRequest) (*v1.AdminAuthServiceBeginPasskeyConfirmationResponse, error)
 	ListPasskeys(context.Context, *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error)
 	RenamePasskey(context.Context, *v1.AdminAuthServiceRenamePasskeyRequest) (*v1.AdminAuthServiceRenamePasskeyResponse, error)
-	// failed_precondition when it is the account's last second factor and the
-	// tenant requires one of its role.
+	// failed_precondition with the MFA_LAST_REQUIRED_FACTOR reason when it is
+	// the account's last second factor and the tenant requires one of its role.
 	DeletePasskey(context.Context, *v1.AdminAuthServiceDeletePasskeyRequest) (*v1.AdminAuthServiceDeletePasskeyResponse, error)
 	// Exchanges the account's password, or proof of one of its second factors,
 	// for the step-up token the RPCs that say "Requires a recent
@@ -406,6 +409,9 @@ type AdminAuthServiceHandler interface {
 	GetMfaStatus(context.Context, *v1.AdminAuthServiceGetMfaStatusRequest) (*v1.AdminAuthServiceGetMfaStatusResponse, error)
 	StartMfaEnrollment(context.Context, *v1.AdminAuthServiceStartMfaEnrollmentRequest) (*v1.AdminAuthServiceStartMfaEnrollmentResponse, error)
 	ConfirmMfaEnrollment(context.Context, *v1.AdminAuthServiceConfirmMfaEnrollmentRequest) (*v1.AdminAuthServiceConfirmMfaEnrollmentResponse, error)
+	// Takes the authenticator off. failed_precondition for an account that
+	// holds none, and, with the MFA_LAST_REQUIRED_FACTOR reason, while it is the
+	// account's last second factor and the tenant requires one of its role.
 	DisableMfa(context.Context, *v1.AdminAuthServiceDisableMfaRequest) (*v1.AdminAuthServiceDisableMfaResponse, error)
 	// Replaces the recovery codes, for an account that proves its
 	// authenticator or one of its passkeys. failed_precondition when the
@@ -430,8 +436,8 @@ type AdminAuthServiceHandler interface {
 	BeginPasskeyConfirmation(context.Context, *v1.AdminAuthServiceBeginPasskeyConfirmationRequest) (*v1.AdminAuthServiceBeginPasskeyConfirmationResponse, error)
 	ListPasskeys(context.Context, *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error)
 	RenamePasskey(context.Context, *v1.AdminAuthServiceRenamePasskeyRequest) (*v1.AdminAuthServiceRenamePasskeyResponse, error)
-	// failed_precondition when it is the account's last second factor and the
-	// tenant requires one of its role.
+	// failed_precondition with the MFA_LAST_REQUIRED_FACTOR reason when it is
+	// the account's last second factor and the tenant requires one of its role.
 	DeletePasskey(context.Context, *v1.AdminAuthServiceDeletePasskeyRequest) (*v1.AdminAuthServiceDeletePasskeyResponse, error)
 	// Exchanges the account's password, or proof of one of its second factors,
 	// for the step-up token the RPCs that say "Requires a recent

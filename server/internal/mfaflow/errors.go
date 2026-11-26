@@ -32,6 +32,29 @@ func NotEnabledError() error {
 	return connect.NewError(connect.CodeFailedPrecondition, "mfa is not enabled")
 }
 
+// ReasonLastRequiredFactor is the audit reason of a change refused because it
+// would take the last second factor away from an account the policy holds to
+// one.
+const ReasonLastRequiredFactor = "last_required_factor"
+
+// ErrLastRequiredFactor is what a transaction changing an account's factors
+// returns on finding the change would leave an account the policy holds to a
+// second factor without one. LastRequiredFactorError is its answer to the
+// client.
+var ErrLastRequiredFactor = errors.New("last required second factor")
+
+// LastRequiredFactorError answers a change that would take the last second
+// factor away from an account the policy holds to one. The reason sets it
+// apart from the RPC's other failed preconditions, such as a factor that is
+// not enabled.
+func LastRequiredFactorError() error {
+	return rpcerrors.NewErrorInfoError(
+		connect.CodeFailedPrecondition,
+		errors.New("the last second factor cannot be removed while two-step verification is required"),
+		rpcerrors.ReasonMfaLastRequiredFactor,
+	)
+}
+
 func alreadyEnabledError() error {
 	return connect.NewError(connect.CodeFailedPrecondition, "mfa is already enabled")
 }

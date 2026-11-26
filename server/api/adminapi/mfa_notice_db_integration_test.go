@@ -146,6 +146,13 @@ func TestAdminMfaRefusedChangesQueueNoNotice(t *testing.T) {
 	authenticator.Origin = passkeyStorefrontOrigin
 	_, err = regenerateWithPasskey(env, tenant, authenticator.Assert(t, beginPasskeyConfirmation(t, env, tenant)))
 	assertPasskeyRefused(t, err, "RegenerateMfaRecoveryCodes with an assertion from the storefront's origin")
+
+	// The tenant comes to require the factor while a passkey stands beside
+	// the authenticator; taking the authenticator off is what makes the
+	// passkey the last one. The server keeps the policy it read for
+	// platformpolicy.CacheTTL, so it is set before the first removal asks
+	// for it.
+	requireTenantAdminMFA(t, env)
 	if _, err := env.authClient().DisableMfa(ctx, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
 		Tenant: tenant.tenantContext(),
 		Code:   "000000",
@@ -166,12 +173,6 @@ func TestAdminMfaRefusedChangesQueueNoNotice(t *testing.T) {
 		t.Fatalf("FinishPasskeyRegistration from the storefront's origin = %v, want invalid_argument", err)
 	}
 
-	// The tenant comes to require the factor while a passkey stands beside
-	// the authenticator; taking the authenticator off is what makes the
-	// passkey the last one. The server keeps the policy it read for
-	// platformpolicy.CacheTTL, so it is set before the first removal asks
-	// for it.
-	requireTenantAdminMFA(t, env)
 	if _, err := env.authClient().DeletePasskey(ctx, &publiraadminv1.AdminAuthServiceDeletePasskeyRequest{
 		Tenant: tenant.tenantContext(),
 		Id:     registered.Passkey.Id,

@@ -1861,6 +1861,10 @@ export const AdminAuthService: GenService<{
     output: typeof AdminAuthServiceConfirmMfaEnrollmentResponseSchema;
   },
   /**
+   * Takes the authenticator off. failed_precondition for an account that
+   * holds none, and, with the MFA_LAST_REQUIRED_FACTOR reason, while it is the
+   * account's last second factor and the tenant requires one of its role.
+   *
    * @generated from rpc publira.admin.v1.AdminAuthService.DisableMfa
    */
   disableMfa: {
@@ -1954,8 +1958,8 @@ export const AdminAuthService: GenService<{
     output: typeof AdminAuthServiceRenamePasskeyResponseSchema;
   },
   /**
-   * failed_precondition when it is the account's last second factor and the
-   * tenant requires one of its role.
+   * failed_precondition with the MFA_LAST_REQUIRED_FACTOR reason when it is
+   * the account's last second factor and the tenant requires one of its role.
    *
    * @generated from rpc publira.admin.v1.AdminAuthService.DeletePasskey
    */

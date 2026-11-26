@@ -39,8 +39,13 @@ func newMfaDBEnv(t *testing.T) *mfaDBEnv {
 
 func newMfaDBEnvWithLoginGuard(t *testing.T, login *loginguard.Guard) *mfaDBEnv {
 	t.Helper()
+	return newMfaDBEnvWith(t, openReaderGuards(), login)
+}
+
+func newMfaDBEnvWith(t *testing.T, guards readerGuards, login *loginguard.Guard) *mfaDBEnv {
+	t.Helper()
 	encryptor := newPublicTestEncryptor(t)
-	env := newPublicDBEnvConfigured(t, openReaderGuards(), openMailGuard(), func(api *apiServer, _ *sql.DB) {
+	env := newPublicDBEnvConfigured(t, guards, openMailGuard(), func(api *apiServer, _ *sql.DB) {
 		api.encryptor = encryptor
 		api.login = login
 	})
@@ -486,6 +491,39 @@ func TestDBMfaDisableKeepsTheCodesOfAConsolePasskey(t *testing.T) {
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1", staff.ID); got != mfa.RecoveryCodeCount {
 		t.Fatalf("recovery codes left = %d, want the console passkey's %d", got, mfa.RecoveryCodeCount)
+	}
+}
+
+// The authenticator is the console's too, so the site does not take it off a
+// tenant admin the platform requires a second factor of: the site sees none
+// of the console's passkeys, and the console decides whether one stays. The
+// refusal comes before the password is checked or anything is spent.
+func TestDBMfaDisableLeavesTheConsoleFactorThePolicyRequires(t *testing.T) {
+	t.Parallel()
+
+	env := newMfaDBEnvWith(t, guardsWith(func(p *platformpolicy.Policy) { p.MFARequiredForTenantAdmin = true }), openLoginGuard())
+	staff := env.PG.SeedTenantUser(t, env.tenant.ID, "MFASTAFFA001", "admin@tenant-a.example.com", "Admin", auth.RoleTenantAdmin)
+	secret, _ := env.enroll(t, staff)
+	seedConsolePasskey(t, env, staff)
+
+	_, err := env.authClient().DisableMfa(env.session(t, staff), &publirav1.DisableMfaRequest{
+		Tenant:   tenantContext(env.tenant),
+		Password: testutil.SeededPassword,
+		Code:     mfaCode(t, secret, 1),
+	})
+	assertReason(t, err, connect.CodeFailedPrecondition, rpcerrors.ReasonMfaLastRequiredFactor)
+	if status := env.status(t, staff); !status.Enabled {
+		t.Fatalf("status after the refusal = %+v, want it still on", status)
+	}
+
+	// A reader is held to nothing.
+	readerSecret, _ := env.enroll(t, env.reader)
+	if _, err := env.authClient().DisableMfa(env.session(t, env.reader), &publirav1.DisableMfaRequest{
+		Tenant:   tenantContext(env.tenant),
+		Password: testutil.SeededPassword,
+		Code:     mfaCode(t, readerSecret, 1),
+	}); err != nil {
+		t.Fatalf("DisableMfa as a reader: %v", err)
 	}
 }
 

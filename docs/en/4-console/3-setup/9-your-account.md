@@ -90,7 +90,7 @@ A recovery code stands in for the app or the passkey once, when you do not have 
 
 ### Turning it off
 
-**Turn off two-step verification**, under **Authenticator app**, removes the authenticator app. It asks for a code from the app or a recovery code. Your passkeys stay, and if you have any, two-step verification stays on with them; to turn it off completely, remove each passkey as well. If the operator requires two-step verification of Tenant admins, a Tenant admin who turns it off with no passkey left is asked to set it up again at their next sign-in.
+**Turn off two-step verification**, under **Authenticator app**, removes the authenticator app. It asks for a code from the app or a recovery code. Your passkeys stay, and if you have any, two-step verification stays on with them; to turn it off completely, remove each passkey as well. If the operator requires two-step verification of Tenant admins, a Tenant admin cannot turn it off while the authenticator app is their only second factor: add a passkey first. The site does not turn it off for a Tenant admin at all, since it cannot see the console's passkeys.
 
 ### A new device, or a lost one
 

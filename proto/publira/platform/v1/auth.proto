@@ -189,6 +189,9 @@ service PlatformAuthService {
   rpc GetMfaStatus(PlatformAuthServiceGetMfaStatusRequest) returns (PlatformAuthServiceGetMfaStatusResponse) {}
   rpc StartMfaEnrollment(PlatformAuthServiceStartMfaEnrollmentRequest) returns (PlatformAuthServiceStartMfaEnrollmentResponse) {}
   rpc ConfirmMfaEnrollment(PlatformAuthServiceConfirmMfaEnrollmentRequest) returns (PlatformAuthServiceConfirmMfaEnrollmentResponse) {}
+  // Takes the authenticator off. failed_precondition for an operator who
+  // holds none, and, with the MFA_LAST_REQUIRED_FACTOR reason, while the
+  // platform policy requires the factor of every operator.
   rpc DisableMfa(PlatformAuthServiceDisableMfaRequest) returns (PlatformAuthServiceDisableMfaResponse) {}
   rpc RegenerateMfaRecoveryCodes(PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) returns (PlatformAuthServiceRegenerateMfaRecoveryCodesResponse) {}
   rpc RequestPasswordReset(PlatformAuthServiceRequestPasswordResetRequest) returns (PlatformAuthServiceRequestPasswordResetResponse) {}

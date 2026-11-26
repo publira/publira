@@ -810,13 +810,9 @@ func TestAdminMfaEnrollChallengeBuysOneSession(t *testing.T) {
 		t.Fatalf("recovery code rows = %d, want the %d of the one confirmation that went through", got, mfa.RecoveryCodeCount)
 	}
 
-	signedIn := testutil.WithBearer(context.Background(), session.AccessToken.Token)
-	if _, err := env.authClient().DisableMfa(signedIn, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
-		Tenant: tenant.tenantContext(),
-		Code:   session.RecoveryCodes[0],
-	}); err != nil {
-		t.Fatalf("DisableMfa: %v", err)
-	}
+	// The account cannot take a required factor off, so an operator resets it
+	// instead, which leaves the challenge's credentials version as it was.
+	resetMfaAsOperator(t, env, tenant)
 	restarted, err := env.authClient().StartMfaEnrollment(context.Background(), &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
 		Tenant:         tenant.tenantContext(),
 		ChallengeToken: login.MfaChallenge.Token,
@@ -918,6 +914,25 @@ func TestAdminLoginDoesNotForceEnrollmentOnAnEditor(t *testing.T) {
 	}
 	if login.AccessToken == nil {
 		t.Fatal("Login returned no access token for an editor")
+	}
+}
+
+// The requirement covers tenant_admin alone, so an editor keeps the choice to
+// turn the authenticator off.
+func TestAdminMfaDisableLeavesAnEditorFree(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	requireTenantAdminMFA(t, env)
+	tenant := seedMfaTenant(t, env)
+	editor := tenant.as(env.PG.SeedTenantUser(t, tenant.Tenant.ID, "TENANTUSER02", "editor@example.com", "Editor", auth.RoleTenantEditor))
+	_, codes := enrollMfa(t, env, editor)
+
+	if _, err := env.authClient().DisableMfa(testutil.WithBearer(context.Background(), editor.token()), &publiraadminv1.AdminAuthServiceDisableMfaRequest{
+		Tenant: editor.tenantContext(),
+		Code:   codes[0],
+	}); err != nil {
+		t.Fatalf("DisableMfa as an editor while tenant admins are required: %v", err)
 	}
 }
 

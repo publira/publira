@@ -8840,7 +8840,11 @@ class AuthServiceApi {
 
   /// Takes the authenticator off, with its recovery codes unless the account
   /// keeps a passkey in the tenant's console that they stand in for too.
-  /// failed_precondition for an account that holds none.
+  /// failed_precondition for an account that holds none, and, with the
+  /// MFA_LAST_REQUIRED_FACTOR reason, for a member of staff whose role the
+  /// platform requires a second factor of in the tenant's console: the site
+  /// sees none of the console's passkeys, so the console takes it off instead,
+  /// where it can tell whether another factor stays.
   $async.Future<DisableMfaResponse> disableMfa(
           $pb.ClientContext? ctx, DisableMfaRequest request) =>
       _client.invoke<DisableMfaResponse>(
