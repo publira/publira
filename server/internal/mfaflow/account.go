@@ -109,6 +109,11 @@ type Account interface {
 	// LogVerification writes the security log line for a sign-in's second
 	// step.
 	LogVerification(ctx context.Context, outcome, reason string)
+	// NotifyChange queues, on q, the mail that tells the account's owner
+	// change was made to its second factors, so the notice commits with the
+	// change or not at all. A principal that sends no such mail does
+	// nothing.
+	NotifyChange(ctx context.Context, q dbmodels.Querier, change Change) error
 	// InternalError logs err with the account it happened to and answers the
 	// generic error the client is given.
 	InternalError(ctx context.Context, msg string, err error) error
@@ -142,6 +147,18 @@ type Actions struct {
 	Disabled                 string
 	RecoveryCodesRegenerated string
 }
+
+// Change is a change to an account's second factors that its owner is told
+// of by mail, so that one they did not make is noticed.
+type Change string
+
+const (
+	ChangeTotpEnabled              Change = "totp_enabled"
+	ChangeTotpDisabled             Change = "totp_disabled"
+	ChangePasskeyRegistered        Change = "passkey_registered"
+	ChangePasskeyRemoved           Change = "passkey_removed"
+	ChangeRecoveryCodesRegenerated Change = "recovery_codes_regenerated"
+)
 
 // The factors an audit entry names as the one that settled a step.
 const (

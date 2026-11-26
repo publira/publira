@@ -151,7 +151,8 @@ func (a *fakeAccount) Actions() Actions {
 func (a *fakeAccount) Audit(_ context.Context, action, outcome, reason string) {
 	a.audits = append(a.audits, action+"/"+outcome+"/"+reason)
 }
-func (a *fakeAccount) LogVerification(context.Context, string, string) {}
+func (a *fakeAccount) LogVerification(context.Context, string, string)              {}
+func (a *fakeAccount) NotifyChange(context.Context, dbmodels.Querier, Change) error { return nil }
 func (a *fakeAccount) InternalError(_ context.Context, msg string, err error) error {
 	return connect.NewError(connect.CodeInternal, msg).WithCause(err)
 }

@@ -702,3 +702,64 @@ func setPlatformUserStatus(t *testing.T, pg *testutil.PostgresEnv, userID uuid.U
 		t.Fatalf("UpdatePlatformUserStatusByID: %v", err)
 	}
 }
+
+func TestPlatformMfaChangedNoticeEmailGoesToTheOperator(t *testing.T) {
+	pg, encryptor := newPlatformEmailEnv(t)
+	operator := seedPlatformOperator(t, pg, "PLATOUTBOX20", "operator@example.com")
+
+	renderer := &recordingPlatformRenderer{}
+	mailer := &recordingPlatformMailer{}
+	handler := outbox.NewPlatformMfaChangedNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	event := newPlatformOutboxEvent(t, outbox.EventTypePlatformMfaChangedNoticeEmail,
+		outbox.PlatformMfaChangedNoticeEmailPayload{
+			PlatformUserID: operator.ID.String(),
+			Change:         "recovery_codes_regenerated",
+			ChangedAt:      "2030-01-15T12:00:00Z",
+		},
+		"platform_mfa_changed_notice_email:"+uuid.Must(uuid.NewV7()).String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 1 {
+		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
+	}
+	request := renderer.requests[0]
+	if request.Template != "platform_console_mfa_changed_notice" {
+		t.Fatalf("template = %q", request.Template)
+	}
+	if request.Data["change"] != "recovery_codes_regenerated" || request.Data["changed_at"] != "2030-01-15T12:00:00Z" {
+		t.Fatalf("change = %v at %v", request.Data["change"], request.Data["changed_at"])
+	}
+	if len(mailer.recipients) != 1 || mailer.recipients[0] != operator.Email {
+		t.Fatalf("recipients = %v, want [%s]", mailer.recipients, operator.Email)
+	}
+}
+
+// An operator holds no passkeys, so the console has no copy for a passkey
+// change and the event will not become sendable on a retry.
+func TestPlatformMfaChangedNoticeEmailFailsPermanentlyOnAPasskeyChange(t *testing.T) {
+	pg, encryptor := newPlatformEmailEnv(t)
+	operator := seedPlatformOperator(t, pg, "PLATOUTBOX21", "operator@example.com")
+
+	mailer := &recordingPlatformMailer{}
+	handler := outbox.NewPlatformMfaChangedNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: &recordingPlatformRenderer{},
+	})
+	event := newPlatformOutboxEvent(t, outbox.EventTypePlatformMfaChangedNoticeEmail,
+		outbox.PlatformMfaChangedNoticeEmailPayload{
+			PlatformUserID: operator.ID.String(),
+			Change:         "passkey_registered",
+			ChangedAt:      "2030-01-15T12:00:00Z",
+		},
+		"platform_mfa_changed_notice_email:"+uuid.Must(uuid.NewV7()).String())
+
+	if err := handler(context.Background(), event); !outbox.IsPermanent(err) {
+		t.Fatalf("handler error = %v, want a permanent failure", err)
+	}
+	if len(mailer.recipients) != 0 {
+		t.Fatalf("sent %d, want none", len(mailer.recipients))
+	}
+}

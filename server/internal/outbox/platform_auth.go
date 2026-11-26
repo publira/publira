@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/locale"
+	"github.com/publira/publira/server/internal/mfaflow"
 	"github.com/publira/publira/server/internal/platformconfig"
 )
 
@@ -29,6 +30,7 @@ const (
 	EventTypePlatformEmailChangeConfirmationEmail = "platform_email_change_confirmation_email"
 	EventTypePlatformEmailChangedNoticeEmail      = "platform_email_changed_notice_email"
 	EventTypePlatformOperatorRoleGrantedEmail     = "platform_operator_role_granted_email"
+	EventTypePlatformMfaChangedNoticeEmail        = "platform_mfa_changed_notice_email"
 )
 
 // PlatformPasswordLinkOperatorAdded is the purpose of the password link mailed
@@ -73,6 +75,34 @@ type PlatformEmailChangedNoticeEmailPayload struct {
 // password of its own, so the mail carries no link that sets one.
 type PlatformOperatorRoleGrantedEmailPayload struct {
 	PlatformUserID string `json:"platform_user_id"`
+}
+
+// PlatformMfaChangedNoticeEmailPayload names the operator whose second factor
+// changed, what changed, and when, as AdminMfaChangedNoticeEmailPayload does
+// for a tenant console account.
+type PlatformMfaChangedNoticeEmailPayload struct {
+	PlatformUserID string `json:"platform_user_id"`
+	Change         string `json:"change"`
+	ChangedAt      string `json:"changed_at"`
+}
+
+// PlatformMfaChangedNoticeEmailEvent is the payload and the idempotency key of
+// the notice that change was made to platformUserID's second factor at
+// changedAt, keyed as AdminMfaChangedNoticeEmailEvent keys a tenant one.
+func PlatformMfaChangedNoticeEmailEvent(platformUserID uuid.UUID, change mfaflow.Change, changedAt time.Time) ([]byte, string, error) {
+	payload, err := json.Marshal(PlatformMfaChangedNoticeEmailPayload{
+		PlatformUserID: platformUserID.String(),
+		Change:         string(change),
+		ChangedAt:      changedAt.UTC().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		return nil, "", fmt.Errorf("marshal %s payload: %w", EventTypePlatformMfaChangedNoticeEmail, err)
+	}
+	key, err := uuid.NewV7()
+	if err != nil {
+		return nil, "", fmt.Errorf("generate %s key: %w", EventTypePlatformMfaChangedNoticeEmail, err)
+	}
+	return payload, EventTypePlatformMfaChangedNoticeEmail + ":" + key.String(), nil
 }
 
 // NewPlatformPasswordResetEmailHandler sends the platform operator's password
@@ -306,6 +336,62 @@ func NewPlatformEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			Data: map[string]any{
 				"new_email":      changeToken.NewEmail,
 				"previous_email": changeToken.CurrentEmail,
+			},
+			TimeZone: delivery.timeZone,
+		})
+	}
+}
+
+// platformMfaChanges are the changes an operator is told of. An operator holds
+// no passkeys.
+var platformMfaChanges = []mfaflow.Change{
+	mfaflow.ChangeTotpEnabled,
+	mfaflow.ChangeTotpDisabled,
+	mfaflow.ChangeRecoveryCodesRegenerated,
+}
+
+// NewPlatformMfaChangedNoticeEmailHandler tells an operator that their
+// authenticator app or recovery codes changed, at the address the account
+// holds when the mail goes out, whatever its status: the warning is for
+// whoever holds the address either way.
+func NewPlatformMfaChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("platform mfa changed notice email"); err != nil {
+			return err
+		}
+		var payload PlatformMfaChangedNoticeEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode platform mfa changed notice email payload: %w", err))
+		}
+		if event.TenantID.Valid {
+			return Permanent(fmt.Errorf("%s event names a tenant", event.EventType))
+		}
+		userID, change, changedAt, err := decodeMfaChange(event, payload.PlatformUserID, payload.Change, payload.ChangedAt, platformMfaChanges)
+		if err != nil {
+			return Permanent(err)
+		}
+
+		operator, err := queries.GetPlatformUserByID(ctx, userID)
+		if errors.Is(err, sql.ErrNoRows) {
+			cfg.logDroppedAuthEmail(ctx, event, userID.String(), "user_not_found")
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("load platform user: %w", err)
+		}
+
+		delivery, err := resolvePlatformDelivery(ctx, queries, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+
+		return deliverEmail(ctx, cfg, delivery.settings, operator.Email, emailrenderer.Request{
+			Template: "platform_console_mfa_changed_notice",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"change":     string(change),
+				"changed_at": changedAt.UTC().Format(time.RFC3339Nano),
 			},
 			TimeZone: delivery.timeZone,
 		})

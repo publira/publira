@@ -377,3 +377,120 @@ func TestAdminEmailChangedNoticeEmailFailsPermanentlyOnAnIncompleteRequest(t *te
 		t.Fatalf("sent %d, want none", len(mailer.recipients))
 	}
 }
+
+// The notice goes to the address the account holds when it is sent, which an
+// address change confirmed in between has moved, and names what changed and
+// when.
+func TestAdminMfaChangedNoticeEmailGoesToTheCurrentAddress(t *testing.T) {
+	pg, tenant, encryptor := newAdminEmailEnv(t)
+	admin := pg.SeedTenantAdmin(t, tenant.ID, "ADMINOUTB010", "admin@example.com", "Admin")
+	ctx := context.Background()
+	if _, err := pg.DB.ExecContext(ctx, `UPDATE users SET email = 'moved@example.com' WHERE id = $1`, admin.ID); err != nil {
+		t.Fatalf("move the address: %v", err)
+	}
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{}
+	handler := outbox.NewAdminMfaChangedNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+	})
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeAdminMfaChangedNoticeEmail,
+		outbox.AdminMfaChangedNoticeEmailPayload{
+			TenantID:  tenant.ID.String(),
+			UserID:    admin.ID.String(),
+			Change:    "passkey_removed",
+			ChangedAt: "2030-01-15T12:00:00Z",
+		},
+		"admin_mfa_changed_notice_email:"+uuid.Must(uuid.NewV7()).String())
+
+	if err := handler(ctx, event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 1 {
+		t.Fatalf("render requests = %d, want 1", len(renderer.requests))
+	}
+	request := renderer.requests[0]
+	if request.Template != "admin_console_mfa_changed_notice" {
+		t.Fatalf("template = %q", request.Template)
+	}
+	if request.Data["change"] != "passkey_removed" || request.Data["changed_at"] != "2030-01-15T12:00:00Z" {
+		t.Fatalf("change = %v at %v", request.Data["change"], request.Data["changed_at"])
+	}
+	if request.Data["tenant_name"] != tenant.Name {
+		t.Fatalf("tenant_name = %v, want %q", request.Data["tenant_name"], tenant.Name)
+	}
+	if len(mailer.recipients) != 1 || mailer.recipients[0] != "moved@example.com" {
+		t.Fatalf("recipients = %v, want [moved@example.com]", mailer.recipients)
+	}
+}
+
+// An account deleted since the change has nobody left to warn.
+func TestAdminMfaChangedNoticeEmailSkipsAnAccountThatIsGone(t *testing.T) {
+	pg, tenant, encryptor := newAdminEmailEnv(t)
+	userID := uuid.Must(uuid.NewV7())
+
+	renderer := &recordingReaderRenderer{}
+	mailer := &recordingReaderMailer{}
+	logger, logs := newAuthEmailDropLogger(t)
+	handler := outbox.NewAdminMfaChangedNoticeEmailHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Encryptor: encryptor, Logger: logger, Mailer: mailer, Renderer: renderer,
+	})
+	event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeAdminMfaChangedNoticeEmail,
+		outbox.AdminMfaChangedNoticeEmailPayload{
+			TenantID:  tenant.ID.String(),
+			UserID:    userID.String(),
+			Change:    "totp_disabled",
+			ChangedAt: "2030-01-15T12:00:00Z",
+		},
+		"admin_mfa_changed_notice_email:"+uuid.Must(uuid.NewV7()).String())
+
+	if err := handler(context.Background(), event); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
+		t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))
+	}
+	assertAuthEmailDropLog(t, logs, event, userID.String(), "user_not_found")
+}
+
+// A payload the server cannot have written will not become sendable on a
+// retry.
+func TestAdminMfaChangedNoticeEmailFailsPermanentlyOnAPayloadItCannotWord(t *testing.T) {
+	cases := map[string]func(p *outbox.AdminMfaChangedNoticeEmailPayload, other uuid.UUID){
+		"unknown change":     func(p *outbox.AdminMfaChangedNoticeEmailPayload, _ uuid.UUID) { p.Change = "passkey_renamed" },
+		"invalid changed_at": func(p *outbox.AdminMfaChangedNoticeEmailPayload, _ uuid.UUID) { p.ChangedAt = "yesterday" },
+		"another tenant's member": func(p *outbox.AdminMfaChangedNoticeEmailPayload, other uuid.UUID) {
+			p.UserID = other.String()
+		},
+	}
+	for name, edit := range cases {
+		t.Run(name, func(t *testing.T) {
+			pg, tenant, encryptor := newAdminEmailEnv(t)
+			admin := pg.SeedTenantAdmin(t, tenant.ID, "ADMINOUTB011", "admin@example.com", "Admin")
+			otherTenant := pg.SeedTenant(t, "ADMINOUT0002", "admin-outbox-other.example.com", "Other Tenant")
+			other := pg.SeedTenantAdmin(t, otherTenant.ID, "ADMINOUTB012", "other@example.com", "Other")
+
+			payload := outbox.AdminMfaChangedNoticeEmailPayload{
+				TenantID:  tenant.ID.String(),
+				UserID:    admin.ID.String(),
+				Change:    "totp_enabled",
+				ChangedAt: "2030-01-15T12:00:00Z",
+			}
+			edit(&payload, other.ID)
+
+			mailer := &recordingReaderMailer{}
+			handler := outbox.NewAdminMfaChangedNoticeEmailHandler(outbox.EmailHandlerConfig{
+				DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: &recordingReaderRenderer{},
+			})
+			event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeAdminMfaChangedNoticeEmail, payload,
+				"admin_mfa_changed_notice_email:"+uuid.Must(uuid.NewV7()).String())
+
+			if err := handler(context.Background(), event); !outbox.IsPermanent(err) {
+				t.Fatalf("handler error = %v, want a permanent failure", err)
+			}
+			if len(mailer.recipients) != 0 {
+				t.Fatalf("sent %d, want none", len(mailer.recipients))
+			}
+		})
+	}
+}

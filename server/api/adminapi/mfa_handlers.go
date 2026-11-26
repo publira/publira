@@ -16,6 +16,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mfa"
 	"github.com/publira/publira/server/internal/mfaflow"
+	"github.com/publira/publira/server/internal/outbox"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
@@ -292,6 +293,25 @@ func (a mfaAccount) Audit(ctx context.Context, action, outcome, reason string) {
 
 func (a mfaAccount) LogVerification(ctx context.Context, outcome, reason string) {
 	auth.AuditEvent(ctx, "admin_mfa_verify", outcome, a.actor.Tenant.PublicID, a.actor.User.PublicID, reason)
+}
+
+func (a mfaAccount) NotifyChange(ctx context.Context, q dbmodels.Querier, change mfaflow.Change) error {
+	return enqueueAdminMfaChangedNoticeEmail(ctx, q, a.actor.Tenant.ID, a.actor.User.ID, change)
+}
+
+// enqueueAdminMfaChangedNoticeEmail queues the notice of one change to a
+// console account's second factors.
+func enqueueAdminMfaChangedNoticeEmail(
+	ctx context.Context,
+	queries Querier,
+	tenantID, userID uuid.UUID,
+	change mfaflow.Change,
+) error {
+	payload, key, err := outbox.AdminMfaChangedNoticeEmailEvent(tenantID, userID, change, time.Now())
+	if err != nil {
+		return err
+	}
+	return insertAdminOutboxEvent(ctx, queries, tenantID, outbox.EventTypeAdminMfaChangedNoticeEmail, payload, key)
 }
 
 func (a mfaAccount) InternalError(ctx context.Context, msg string, err error) error {

@@ -192,6 +192,66 @@ var emailCopyCases = []struct {
 		},
 	},
 	{
+		name:     "admin_console_mfa_changed_notice for totp_enabled",
+		subjects: map[string]string{"en": "Aoto Press admin console two-step verification changed", "ja": "Aoto Press管理画面2段階認証の変更"},
+		request: emailrenderer.Request{
+			Template: "admin_console_mfa_changed_notice",
+			Data: map[string]any{
+				"change":      "totp_enabled",
+				"changed_at":  copyExpiresAt,
+				"tenant_name": "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "admin_console_mfa_changed_notice for totp_disabled",
+		subjects: map[string]string{"en": "Aoto Press admin console two-step verification changed", "ja": "Aoto Press管理画面2段階認証の変更"},
+		request: emailrenderer.Request{
+			Template: "admin_console_mfa_changed_notice",
+			Data: map[string]any{
+				"change":      "totp_disabled",
+				"changed_at":  copyExpiresAt,
+				"tenant_name": "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "admin_console_mfa_changed_notice for passkey_registered",
+		subjects: map[string]string{"en": "Aoto Press admin console two-step verification changed", "ja": "Aoto Press管理画面2段階認証の変更"},
+		request: emailrenderer.Request{
+			Template: "admin_console_mfa_changed_notice",
+			Data: map[string]any{
+				"change":      "passkey_registered",
+				"changed_at":  copyExpiresAt,
+				"tenant_name": "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "admin_console_mfa_changed_notice for passkey_removed",
+		subjects: map[string]string{"en": "Aoto Press admin console two-step verification changed", "ja": "Aoto Press管理画面2段階認証の変更"},
+		request: emailrenderer.Request{
+			Template: "admin_console_mfa_changed_notice",
+			Data: map[string]any{
+				"change":      "passkey_removed",
+				"changed_at":  copyExpiresAt,
+				"tenant_name": "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "admin_console_mfa_changed_notice for recovery_codes_regenerated",
+		subjects: map[string]string{"en": "Aoto Press admin console two-step verification changed", "ja": "Aoto Press管理画面2段階認証の変更"},
+		request: emailrenderer.Request{
+			Template: "admin_console_mfa_changed_notice",
+			Data: map[string]any{
+				"change":      "recovery_codes_regenerated",
+				"changed_at":  copyExpiresAt,
+				"tenant_name": "Aoto Press",
+			},
+		},
+	},
+	{
 		name:     "admin_console_password_reset",
 		subjects: map[string]string{"en": "Aoto Press admin console password reset", "ja": "Aoto Press管理画面パスワード再設定"},
 		request: emailrenderer.Request{
@@ -225,6 +285,39 @@ var emailCopyCases = []struct {
 			Data: map[string]any{
 				"new_email":      "new@example.com",
 				"previous_email": "old@example.com",
+			},
+		},
+	},
+	{
+		name:     "platform_console_mfa_changed_notice for totp_enabled",
+		subjects: map[string]string{"en": "Publira Platform Console two-step verification changed", "ja": "Publiraプラットフォーム管理画面2段階認証の変更"},
+		request: emailrenderer.Request{
+			Template: "platform_console_mfa_changed_notice",
+			Data: map[string]any{
+				"change":     "totp_enabled",
+				"changed_at": copyExpiresAt,
+			},
+		},
+	},
+	{
+		name:     "platform_console_mfa_changed_notice for totp_disabled",
+		subjects: map[string]string{"en": "Publira Platform Console two-step verification changed", "ja": "Publiraプラットフォーム管理画面2段階認証の変更"},
+		request: emailrenderer.Request{
+			Template: "platform_console_mfa_changed_notice",
+			Data: map[string]any{
+				"change":     "totp_disabled",
+				"changed_at": copyExpiresAt,
+			},
+		},
+	},
+	{
+		name:     "platform_console_mfa_changed_notice for recovery_codes_regenerated",
+		subjects: map[string]string{"en": "Publira Platform Console two-step verification changed", "ja": "Publiraプラットフォーム管理画面2段階認証の変更"},
+		request: emailrenderer.Request{
+			Template: "platform_console_mfa_changed_notice",
+			Data: map[string]any{
+				"change":     "recovery_codes_regenerated",
+				"changed_at": copyExpiresAt,
 			},
 		},
 	},
@@ -1442,6 +1535,32 @@ func TestEmailCopyBrandsAPlatformMailWithThePlatform(t *testing.T) {
 		"Before: old@example.com\n\nAfter: new@example.com\n\n" +
 		"If you did not make this change, reset your password right away.\n\n" +
 		"This email was sent by Publira."
+	if email.Text != want {
+		t.Errorf("text =\n%q\nwant\n%q", email.Text, want)
+	}
+}
+
+// A second factor notice says which factor changed and when, in the zone the
+// mail is written for.
+func TestEmailCopyWritesAnMfaChangedNotice(t *testing.T) {
+	email, err := emailCopy(emailrenderer.Request{
+		Template: "admin_console_mfa_changed_notice",
+		Locale:   "en",
+		Data: map[string]any{
+			"change":      "passkey_removed",
+			"changed_at":  "2030-01-15T12:00:00Z",
+			"tenant_name": "Aoto Press",
+		},
+		TimeZone: "Asia/Tokyo",
+	})
+	if err != nil {
+		t.Fatalf("emailCopy: %v", err)
+	}
+	want := "Aoto Press\n\nYour admin console two-step verification was changed\n\n" +
+		"A passkey was removed from your admin console account.\n\n" +
+		"Changed at: Jan 15, 2030, 9:00 PM\n\n" +
+		"If you did not make this change, reset your password right away and review your two-step verification settings.\n\n" +
+		"This email was sent by Aoto Press."
 	if email.Text != want {
 		t.Errorf("text =\n%q\nwant\n%q", email.Text, want)
 	}

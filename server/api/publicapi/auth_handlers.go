@@ -362,7 +362,7 @@ func queueReaderAuthRequest(
 // reader's comment raises are all queued through here.
 func insertPublicOutboxEvent(
 	ctx context.Context,
-	queries *dbmodels.Queries,
+	queries dbmodels.Querier,
 	tenantID uuid.UUID,
 	eventType string,
 	payload []byte,

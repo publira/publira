@@ -401,6 +401,13 @@ func (s *adminServer) storePasskey(
 			return dbmodels.UserWebauthnCredential{}, nil, err
 		}
 	}
+	// The first factor an enroll challenge adds finishes the owner's own
+	// sign-in, so there is nobody to warn.
+	if !actor.FromChallenge {
+		if err := acct.NotifyChange(ctx, q, mfaflow.ChangePasskeyRegistered); err != nil {
+			return dbmodels.UserWebauthnCredential{}, nil, s.internalDBError(ctx, "failed to queue the mfa change notice", err, "user_id", userID)
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return dbmodels.UserWebauthnCredential{}, nil, s.internalDBError(ctx, "failed to commit passkey registration", err, "user_id", userID)
 	}
@@ -718,7 +725,7 @@ func (s *adminServer) DeletePasskey(
 		return nil, err
 	}
 
-	err = s.deletePasskey(ctx, user.ID, rpID, row.ID, required)
+	err = s.deletePasskey(ctx, tenant.ID, user.ID, rpID, row.ID, required)
 	switch {
 	case errors.Is(err, errLastRequiredFactor):
 		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRemoved, auditlog.OutcomeFailure, "last_required_factor")
@@ -739,7 +746,7 @@ func (s *adminServer) DeletePasskey(
 // make a factor again. The account's factors are locked first, so
 // two removals racing over its last two cannot both find the other still
 // there, and a factor added meanwhile is seen before the codes go.
-func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID string, id uuid.UUID, required bool) error {
+func (s *adminServer) deletePasskey(ctx context.Context, tenantID, userID uuid.UUID, rpID string, id uuid.UUID, required bool) error {
 	tx, err := s.beginTenantTx(ctx)
 	if err != nil {
 		return s.internalDBError(ctx, "failed to begin passkey removal transaction", err, "user_id", userID.String())
@@ -774,6 +781,9 @@ func (s *adminServer) deletePasskey(ctx context.Context, userID uuid.UUID, rpID 
 				return s.internalDBError(ctx, "failed to delete mfa recovery codes", err, "user_id", userID.String())
 			}
 		}
+	}
+	if err := enqueueAdminMfaChangedNoticeEmail(ctx, q, tenantID, userID, mfaflow.ChangePasskeyRemoved); err != nil {
+		return s.internalDBError(ctx, "failed to queue the mfa change notice", err, "user_id", userID.String())
 	}
 	if err := tx.Commit(); err != nil {
 		return s.internalDBError(ctx, "failed to commit passkey removal", err, "user_id", userID.String())

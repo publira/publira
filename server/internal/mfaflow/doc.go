@@ -50,6 +50,18 @@
 // account across signing in, disabling, and regenerating alike. The recovery
 // codes go when the account's last factor does.
 //
+// # Telling the owner
+//
+// Turning the authenticator on or off and replacing the recovery codes queue,
+// in the transaction that makes the change, the mail that tells the account's
+// owner of it, through [Account.NotifyChange], so a change they did not make
+// does not go unnoticed. The first factor an enroll challenge adds finishes
+// the owner's own sign-in and queues none. A tenant console account is told
+// whichever side made the change, the site included, since the authenticator
+// and the codes are the console's too; a reader who holds no console role is
+// told nothing. The tenant side's passkeys queue the same mail from the admin
+// API.
+//
 // # The two sides
 //
 // For tenant staff, mfa_required_for_tenant_admin in the platform policy
