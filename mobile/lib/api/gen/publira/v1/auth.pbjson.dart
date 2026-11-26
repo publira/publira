@@ -65,6 +65,7 @@ const LoginRequest$json = {
     },
     {'1': 'email', '3': 2, '4': 1, '5': 9, '10': 'email'},
     {'1': 'password', '3': 3, '4': 1, '5': 9, '10': 'password'},
+    {'1': 'device_token', '3': 4, '4': 1, '5': 9, '10': 'deviceToken'},
   ],
 };
 
@@ -72,7 +73,7 @@ const LoginRequest$json = {
 final $typed_data.Uint8List loginRequestDescriptor = $convert.base64Decode(
     'CgxMb2dpblJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy52MS5UZW5hbn'
     'RDb250ZXh0UgZ0ZW5hbnQSFAoFZW1haWwYAiABKAlSBWVtYWlsEhoKCHBhc3N3b3JkGAMgASgJ'
-    'UghwYXNzd29yZA==');
+    'UghwYXNzd29yZBIhCgxkZXZpY2VfdG9rZW4YBCABKAlSC2RldmljZVRva2Vu');
 
 @$core.Deprecated('Use loginResponseDescriptor instead')
 const LoginResponse$json = {
@@ -102,6 +103,14 @@ const LoginResponse$json = {
       '6': '.publira.v1.MfaChallenge',
       '10': 'mfaChallenge'
     },
+    {
+      '1': 'device',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.publira.types.v1.LoginDevice',
+      '10': 'device'
+    },
   ],
 };
 
@@ -110,7 +119,8 @@ final $typed_data.Uint8List loginResponseDescriptor = $convert.base64Decode(
     'Cg1Mb2dpblJlc3BvbnNlEioKBHVzZXIYASABKAsyFi5wdWJsaXJhLnR5cGVzLnYxLlVzZXJSBH'
     'VzZXISQAoMYWNjZXNzX3Rva2VuGAIgASgLMh0ucHVibGlyYS50eXBlcy52MS5BY2Nlc3NUb2tl'
     'blILYWNjZXNzVG9rZW4SPQoNbWZhX2NoYWxsZW5nZRgDIAEoCzIYLnB1YmxpcmEudjEuTWZhQ2'
-    'hhbGxlbmdlUgxtZmFDaGFsbGVuZ2U=');
+    'hhbGxlbmdlUgxtZmFDaGFsbGVuZ2USNQoGZGV2aWNlGAQgASgLMh0ucHVibGlyYS50eXBlcy52'
+    'MS5Mb2dpbkRldmljZVIGZGV2aWNl');
 
 @$core.Deprecated('Use mfaChallengeDescriptor instead')
 const MfaChallenge$json = {
@@ -2927,6 +2937,7 @@ const $core.Map<$core.String, $core.Map<$core.String, $core.dynamic>>
   '.publira.types.v1.UserIconVariant': $0.UserIconVariant$json,
   '.publira.types.v1.AccessToken': $0.AccessToken$json,
   '.publira.v1.MfaChallenge': MfaChallenge$json,
+  '.publira.types.v1.LoginDevice': $0.LoginDevice$json,
   '.publira.v1.LoginWithIdTokenRequest': LoginWithIdTokenRequest$json,
   '.publira.v1.LoginWithIdTokenResponse': LoginWithIdTokenResponse$json,
   '.publira.v1.ListMyIdentitiesRequest': ListMyIdentitiesRequest$json,

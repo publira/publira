@@ -44,7 +44,7 @@ func newOperatorHandlerTestServer(t *testing.T) (*platformServer, sqlmock.Sqlmoc
 		tokens:   testutil.TokenManager(),
 		logger:   slog.Default(),
 		mail:     openMailGuard(),
-		login:    loginguard.NewDefault(),
+		login:    loginguard.NewDefault(testutil.TokenManager()),
 	}, mock
 }
 

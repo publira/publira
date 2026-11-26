@@ -6,8 +6,10 @@ import {
   encryptPayload,
   encryptSessionPayload,
   isSessionExpired,
+  loginDeviceCookie,
   resolveAuthSecret,
   sessionCookieOptions,
+  toLoginDevice,
 } from "./index";
 
 const SECRET = "test-secret-value-that-is-long-enough-000000";
@@ -162,6 +164,67 @@ describe("web-session", () => {
       process.env.NODE_ENV = "development";
 
       expect(sessionCookieOptions(new Date(FUTURE)).secure).toBe(false);
+    });
+  });
+
+  describe("toLoginDevice", () => {
+    it("keeps the token and reads its expiry as an instant", () => {
+      expect(
+        toLoginDevice({ expiresAt: FUTURE, token: " device-token " })
+      ).toEqual({
+        expiresAt: Temporal.Instant.from(FUTURE),
+        token: "device-token",
+      });
+    });
+
+    it("answers null for a response that carries no device", () => {
+      expect(toLoginDevice(undefined)).toBeNull();
+    });
+
+    it("answers null for an empty token", () => {
+      expect(toLoginDevice({ expiresAt: FUTURE, token: "  " })).toBeNull();
+    });
+
+    it("answers null for an expiry that is not an instant", () => {
+      expect(
+        toLoginDevice({ expiresAt: "next month", token: "device-token" })
+      ).toBeNull();
+      expect(
+        toLoginDevice({ expiresAt: "", token: "device-token" })
+      ).toBeNull();
+    });
+  });
+
+  describe("loginDeviceCookie", () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    afterEach(() => {
+      if (originalNodeEnv === undefined) {
+        delete process.env.NODE_ENV;
+
+        return;
+      }
+
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    it("writes the token under the session cookie's attributes, expiring with the device", () => {
+      process.env.NODE_ENV = "production";
+
+      expect(
+        loginDeviceCookie("publira_example_login_device", {
+          expiresAt: Temporal.Instant.from(FUTURE),
+          token: "device-token",
+        })
+      ).toEqual({
+        expires: new Date(FUTURE),
+        httpOnly: true,
+        name: "publira_example_login_device",
+        path: "/",
+        sameSite: "lax",
+        secure: true,
+        value: "device-token",
+      });
     });
   });
 });

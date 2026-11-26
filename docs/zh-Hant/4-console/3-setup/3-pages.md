@@ -2,8 +2,8 @@
 title: 頁面
 description: 在富文字編輯器中撰寫網站自己的頁面、發布及還原其版本、翻譯頁面、刪除讀者無法開啟的頁面、將其中兩個頁面設為讀者同意的服務條款與隱私權政策，並了解網站在讀者瀏覽器中儲存的內容。
 published: 2026-11-03
-updated: 2026-11-14
-source_updated: 2026-11-14
+updated: 2026-11-26
+source_updated: 2026-11-26
 ---
 
 **頁面**位於**網站**下，存放出版社為網站撰寫的頁面：服務條款、隱私權政策、介紹出版社的頁面、投稿指南，以及其他任何不屬於系列的內容。頁面在富文字編輯器中撰寫，以版本保存，並可以翻譯成網站的每一種語言。
@@ -114,6 +114,7 @@ Publira沒有用於法律文字的特殊頁面類型。服務條款與隱私權�
 | Cookie | 設定時機 | 內容 | 保留期間 |
 | --- | --- | --- | --- |
 | `publira_web_storefront_auth` | 讀者登入時 | 讀者的工作階段，以只有網站持有的金鑰加密 | 直到工作階段結束：登入後一天，或讀者登出時 |
+| `publira_web_storefront_login_device` | 讀者輸入正確密碼時 | 網站為此瀏覽器取得的權杖，讓別人以同一電子郵件地址試錯的密碼不會使讀者無法從此瀏覽器登入 | 最後一次以密碼登入後90天。登出後仍會保留 |
 | `publira_web_storefront_signup_pending_email`、`publira_web_storefront_reset_password_email`、`publira_web_storefront_resend_verification_email` | 讀者送出註冊表單、要求重設密碼，或再次要求確認連結時 | 郵件寄送的電子郵件地址，讓下一個頁面可以顯示該地址，而不必將它放進頁面的網址中 | 一分鐘 |
 | `publira_web_storefront_sign_in` | 讀者選擇**透過Apple繼續**或**透過Google繼續**時 | 進行中的登入，經過加密，用來核對Apple或Google的回應 | 十分鐘，或直到收到回應為止 |
 | `publira_web_storefront_sign_up` | 首次透過Apple或Google登入的讀者看到**完成註冊**時 | Apple或Google傳回的讀者相關資訊，經過加密，保留到讀者同意條款為止 | 四分鐘 |

@@ -10,6 +10,10 @@ message AdminAuthServiceLoginRequest {
   publira.types.v1.TenantContext tenant = 1;
   string email = 2;
   string password = 3;
+  // The token of the LoginDevice the previous sign-in from this device to
+  // this address answered, or empty. One that is expired, forged, or issued
+  // for another address is treated as absent rather than refused.
+  string device_token = 4;
 }
 
 message AdminAuthServiceLoginResponse {
@@ -18,6 +22,9 @@ message AdminAuthServiceLoginResponse {
   publira.types.v1.User user = 1;
   publira.types.v1.AccessToken access_token = 2;
   AdminAuthServiceMfaChallenge mfa_challenge = 3;
+  // Set on every answer to a password that was right, a challenge for the
+  // second factor included, for the device to send as device_token next time.
+  publira.types.v1.LoginDevice device = 4;
 }
 
 // What the account still owes before the login can finish.

@@ -63,8 +63,9 @@ describe("loginPlatform", () => {
       user: { name: "Admin", publicId: "usr_1", role: "platform_super_admin" },
     });
 
-    const result = await loginPlatform("admin@example.com", "secret");
+    const result = await loginPlatform("admin@example.com", "secret", "");
     expect(result).toEqual({
+      device: null,
       kind: "session",
       ok: true,
       session: {
@@ -73,8 +74,54 @@ describe("loginPlatform", () => {
       },
     });
     expect(mockLogin).toHaveBeenCalledWith(
-      { email: "admin@example.com", password: "secret" },
+      { deviceToken: "", email: "admin@example.com", password: "secret" },
       { headers: { "X-Forwarded-For": "203.0.113.7" } }
+    );
+  });
+
+  it("presents the browser's device token and hands back the device the API issued", async () => {
+    mockLogin.mockResolvedValueOnce({
+      accessToken: { expiresAt: "2026-03-22T00:00:00Z", token: "tok_abc" },
+      device: { expiresAt: "2026-06-20T00:00:00Z", token: "device-new" },
+    });
+
+    const result = await loginPlatform(
+      "admin@example.com",
+      "secret",
+      "device-old"
+    );
+
+    expect(mockLogin).toHaveBeenCalledWith(
+      expect.objectContaining({ deviceToken: "device-old" }),
+      expect.anything()
+    );
+    expect(result).toMatchObject({
+      device: {
+        expiresAt: Temporal.Instant.from("2026-06-20T00:00:00Z"),
+        token: "device-new",
+      },
+      kind: "session",
+    });
+  });
+
+  it("hands back the device a right password was issued even when a second factor is owed", async () => {
+    mockLogin.mockResolvedValueOnce({
+      device: { expiresAt: "2026-06-20T00:00:00Z", token: "device-new" },
+      mfaChallenge: {
+        expiresAt: "2026-03-22T00:05:00Z",
+        kind: MfaChallengeKind.VERIFY,
+        token: "challenge-token",
+      },
+    });
+
+    await expect(loginPlatform("a@b.com", "secret", "")).resolves.toMatchObject(
+      {
+        device: {
+          expiresAt: Temporal.Instant.from("2026-06-20T00:00:00Z"),
+          token: "device-new",
+        },
+        kind: "challenge",
+      }
     );
   });
 
@@ -92,9 +139,10 @@ describe("loginPlatform", () => {
         },
       });
 
-      await expect(loginPlatform("a@b.com", "secret")).resolves.toEqual({
+      await expect(loginPlatform("a@b.com", "secret", "")).resolves.toEqual({
         challengeKind,
         challengeToken: "challenge-token",
+        device: null,
         expiresAt: Temporal.Instant.from("2026-03-22T00:05:00Z"),
         kind: "challenge",
         ok: true,
@@ -113,7 +161,7 @@ describe("loginPlatform", () => {
       },
     });
 
-    await expect(loginPlatform("a@b.com", "secret")).resolves.toEqual({
+    await expect(loginPlatform("a@b.com", "secret", "")).resolves.toEqual({
       ok: false,
       refusal: "processing",
     });
@@ -122,7 +170,7 @@ describe("loginPlatform", () => {
   it("refuses the credentials when the API returns no session", async () => {
     mockLogin.mockResolvedValueOnce({ user: {} });
 
-    await expect(loginPlatform("a@b.com", "x")).resolves.toEqual({
+    await expect(loginPlatform("a@b.com", "x", "")).resolves.toEqual({
       ok: false,
       refusal: "credentials",
     });
@@ -133,7 +181,7 @@ describe("loginPlatform", () => {
       new ConnectError("invalid credentials", Code.Unauthenticated)
     );
 
-    await expect(loginPlatform("a@b.com", "wrong")).resolves.toEqual({
+    await expect(loginPlatform("a@b.com", "wrong", "")).resolves.toEqual({
       ok: false,
       refusal: "credentials",
     });
@@ -144,7 +192,7 @@ describe("loginPlatform", () => {
       new ConnectError("rate limited", Code.ResourceExhausted)
     );
 
-    await expect(loginPlatform("a@b.com", "secret")).resolves.toEqual({
+    await expect(loginPlatform("a@b.com", "secret", "")).resolves.toEqual({
       ok: false,
       refusal: "rate-limited",
     });
@@ -153,7 +201,7 @@ describe("loginPlatform", () => {
   it("rethrows unexpected errors", async () => {
     mockLogin.mockRejectedValueOnce(new Error("network error"));
 
-    await expect(loginPlatform("a@b.com", "x")).rejects.toThrow(
+    await expect(loginPlatform("a@b.com", "x", "")).rejects.toThrow(
       "network error"
     );
   });

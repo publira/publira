@@ -341,8 +341,9 @@ func (s *failingStore) Add(context.Context, string, time.Duration) (bool, error)
 	return false, s.err
 }
 
-func (s *failingStore) Forget(context.Context, string) error { return nil }
-func (s *failingStore) Decr(context.Context, string) error   { return nil }
+func (s *failingStore) Forget(context.Context, string) error       { return nil }
+func (s *failingStore) Decr(context.Context, string) error         { return nil }
+func (s *failingStore) Get(context.Context, string) (int64, error) { return 0, s.err }
 
 func TestTieredStoreKeepsLimitingWhenTheSharedCounterIsGone(t *testing.T) {
 	clock := &fakeClock{now: testStart}
@@ -383,8 +384,9 @@ func (s *takenStore) Add(context.Context, string, time.Duration) (bool, error) {
 	return !s.now().Before(s.freeAfter), nil
 }
 
-func (s *takenStore) Forget(context.Context, string) error { return nil }
-func (s *takenStore) Decr(context.Context, string) error   { return nil }
+func (s *takenStore) Forget(context.Context, string) error       { return nil }
+func (s *takenStore) Decr(context.Context, string) error         { return nil }
+func (s *takenStore) Get(context.Context, string) (int64, error) { return 0, nil }
 
 func TestTieredStoreDoesNotOutlastTheSharedClaim(t *testing.T) {
 	clock := &fakeClock{now: testStart}
@@ -425,8 +427,9 @@ func (s *sharedStore) Add(context.Context, string, time.Duration) (bool, error) 
 	return true, nil
 }
 
-func (s *sharedStore) Forget(context.Context, string) error { return nil }
-func (s *sharedStore) Decr(context.Context, string) error   { return nil }
+func (s *sharedStore) Forget(context.Context, string) error       { return nil }
+func (s *sharedStore) Decr(context.Context, string) error         { return nil }
+func (s *sharedStore) Get(context.Context, string) (int64, error) { return s.count, nil }
 
 func TestTieredStoreChargesWhatEveryInstanceSpentTogether(t *testing.T) {
 	clock := &fakeClock{now: testStart}
@@ -438,5 +441,84 @@ func TestTieredStoreChargesWhatEveryInstanceSpentTogether(t *testing.T) {
 
 	if decision := mustAllow(t, limiter, "reader", Rule{Limit: 3, Window: time.Minute}); decision.Allowed {
 		t.Fatal("an action past the shared count = allowed, want the shared counter to decide")
+	}
+}
+
+func TestGenerationStartsAtZeroAndAdvances(t *testing.T) {
+	limiter, _ := newTestLimiter(t)
+	ctx := context.Background()
+
+	if got, err := limiter.Generation(ctx, "address"); err != nil || got != 0 {
+		t.Fatalf("Generation before any advance = (%d, %v), want (0, nil)", got, err)
+	}
+	for want := int64(1); want <= 2; want++ {
+		if got, err := limiter.Advance(ctx, "address", time.Hour); err != nil || got != want {
+			t.Fatalf("Advance = (%d, %v), want (%d, nil)", got, err, want)
+		}
+		if got, err := limiter.Generation(ctx, "address"); err != nil || got != want {
+			t.Fatalf("Generation = (%d, %v), want (%d, nil)", got, err, want)
+		}
+	}
+	if got, err := limiter.Generation(ctx, "other"); err != nil || got != 0 {
+		t.Fatalf("another name's Generation = (%d, %v), want (0, nil)", got, err)
+	}
+}
+
+// A generation lasts from its first advance, so a later one does not push its
+// end further out, and once it ends the name is back at zero.
+func TestGenerationExpiresFromTheFirstAdvance(t *testing.T) {
+	limiter, clock := newTestLimiter(t)
+	ctx := context.Background()
+
+	if _, err := limiter.Advance(ctx, "address", time.Hour); err != nil {
+		t.Fatalf("Advance: %v", err)
+	}
+	clock.advance(30 * time.Minute)
+	if _, err := limiter.Advance(ctx, "address", time.Hour); err != nil {
+		t.Fatalf("Advance: %v", err)
+	}
+	clock.advance(30 * time.Minute)
+	if got, err := limiter.Generation(ctx, "address"); err != nil || got != 0 {
+		t.Fatalf("Generation an hour after the first advance = (%d, %v), want (0, nil)", got, err)
+	}
+}
+
+// A generation is not a counter: charging a subject of the same name leaves it
+// where it was.
+func TestGenerationIsApartFromTheCounters(t *testing.T) {
+	limiter, _ := newTestLimiter(t)
+	ctx := context.Background()
+
+	mustAllow(t, limiter, "address", Rule{Limit: 10, Window: time.Minute})
+	if got, err := limiter.Generation(ctx, "address"); err != nil || got != 0 {
+		t.Fatalf("Generation after a charge = (%d, %v), want (0, nil)", got, err)
+	}
+}
+
+func TestAdvanceRejectsAnUnusableTTL(t *testing.T) {
+	limiter, _ := newTestLimiter(t)
+
+	if _, err := limiter.Advance(context.Background(), "address", 0); err == nil {
+		t.Fatal("Advance with no ttl = nil error, want it rejected")
+	}
+}
+
+// The generation an operator advanced lives in Redis alone, so the shared
+// store's is the one read, and this process's copy is read only while Redis
+// does not answer.
+func TestTieredStoreReadsTheSharedValue(t *testing.T) {
+	ctx := context.Background()
+	memory := NewMemoryStore()
+	if _, err := memory.Incr(ctx, "key", time.Hour); err != nil {
+		t.Fatalf("Incr: %v", err)
+	}
+
+	shared := &tieredStore{memory: memory, remote: &sharedStore{count: 3}}
+	if got, err := shared.Get(ctx, "key"); err != nil || got != 3 {
+		t.Fatalf("Get with Redis answering = (%d, %v), want (3, nil)", got, err)
+	}
+	down := &tieredStore{memory: memory, remote: &failingStore{err: errors.New("redis is down")}}
+	if got, err := down.Get(ctx, "key"); err != nil || got != 1 {
+		t.Fatalf("Get with Redis down = (%d, %v), want this process's (1, nil)", got, err)
 	}
 }

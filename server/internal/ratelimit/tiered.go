@@ -103,6 +103,18 @@ func (s *tieredStore) Decr(ctx context.Context, key string) error {
 	return nil
 }
 
+// Get reads Redis, which is where a value nothing in this process wrote is
+// kept, and reads this process's copy only while Redis will not answer.
+func (s *tieredStore) Get(ctx context.Context, key string) (int64, error) {
+	shared, err := s.remote.Get(ctx, key)
+	if err != nil {
+		s.degraded(ctx, "failed to read the shared rate limit counter", err)
+		return s.memory.Get(ctx, key)
+	}
+	s.recovered(ctx)
+	return shared, nil
+}
+
 // degraded reports that Redis did not answer. The key is deliberately left out
 // of the record: it names the reader, the episode and a digest of what they
 // wrote, none of which says anything about the outage.

@@ -213,7 +213,7 @@ func (s *apiServer) Login(
 	// Charged before the address is looked up, so the refusal is the same
 	// whether or not it holds an account and costs no bcrypt. The tenant
 	// console charges the same allowance for the same account.
-	attempt, err := s.login.Begin(ctx, tenant.ID.String(), req.Email)
+	attempt, err := s.login.Begin(ctx, tenant.ID.String(), req.Email, req.DeviceToken)
 	if err != nil {
 		auth.AuditEvent(ctx, "login", "failure", tenant.PublicID, "", "rate_limited")
 		return nil, err
@@ -231,7 +231,7 @@ func (s *apiServer) Login(
 		auth.AuditEvent(ctx, "login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
-	attempt.Verified(ctx)
+	device := attempt.Verified(ctx)
 	if user.Status != "active" || !user.EmailVerifiedAt.Valid {
 		auth.AuditEvent(ctx, "login", "failure", tenant.PublicID, user.PublicID, "email_not_verified")
 		return nil, connect.NewError(connect.CodeFailedPrecondition, "email is not verified")
@@ -243,7 +243,7 @@ func (s *apiServer) Login(
 	}
 	if challenge != nil {
 		auth.AuditEvent(ctx, "login", "success", tenant.PublicID, user.PublicID, "mfa_challenge_issued")
-		return &publirav1.LoginResponse{MfaChallenge: challenge}, nil
+		return &publirav1.LoginResponse{MfaChallenge: challenge, Device: device}, nil
 	}
 	role, err := s.tenantRole(ctx, user.ID)
 	if err != nil {
@@ -260,7 +260,7 @@ func (s *apiServer) Login(
 		return nil, err
 	}
 	auth.AuditEvent(ctx, "login", "success", tenant.PublicID, user.PublicID, "token_issued")
-	return &publirav1.LoginResponse{User: account, AccessToken: accessToken}, nil
+	return &publirav1.LoginResponse{User: account, AccessToken: accessToken, Device: device}, nil
 }
 
 // The reader auth mails are enqueued as outbox_events rows in the

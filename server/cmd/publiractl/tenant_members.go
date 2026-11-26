@@ -30,6 +30,7 @@ var tenantMemberGroup = commandGroup{
 		{name: "update-role", summary: "Change a member's console role", setup: setupMemberUpdateRole},
 		{name: "remove", summary: "Take every console role from a member", setup: setupMemberRemove},
 		{name: "reset-mfa", summary: "Remove a user's two-step verification, for one who lost every second factor and recovery code", setup: setupMemberResetMFA},
+		tenantUnlockSignInCommand,
 	},
 }
 

@@ -15,6 +15,10 @@ import {
 } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
 import { getPlatformLocale } from "#lib/locale";
+import {
+  readLoginDeviceToken,
+  writeLoginDeviceCookie,
+} from "#lib/login-device-cookie";
 import { getMessagesFor } from "#lib/messages";
 import { MFA_PATH, writeMfaChallenge } from "#lib/mfa-challenge";
 import { writePlatformSessionCookie } from "#lib/platform-session-cookie";
@@ -55,7 +59,11 @@ export const loginAction = async (
 
   const { email, next: nextPath, password } = parsed.data;
 
-  const result = await loginPlatform(email, password);
+  const result = await loginPlatform(
+    email,
+    password,
+    await readLoginDeviceToken()
+  );
 
   if (!result.ok) {
     // A refusal for too many attempts came before the password was checked,
@@ -78,6 +86,10 @@ export const loginAction = async (
       }
     }
   }
+
+  // The password was right whether or not a second factor is still owed, so
+  // the device is kept in both cases.
+  await writeLoginDeviceCookie(result.device);
 
   if (result.kind === "challenge") {
     await writeMfaChallenge({

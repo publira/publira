@@ -51,6 +51,12 @@ const (
 	// for an authenticator and no longer.
 	MFAChallengeTTL = 5 * time.Minute
 
+	// LoginDeviceTTL is how long the device a password sign-in was made from is
+	// remembered by the sign-in limit. Every sign-in from the device answers a
+	// fresh token, so it only runs out for a device nobody has signed in from
+	// for that long, which is one the limit may treat as never seen.
+	LoginDeviceTTL = 90 * 24 * time.Hour
+
 	JWTIssuer = "publira"
 
 	AudiencePublic   = "public"
@@ -92,6 +98,12 @@ const (
 	// cannot finish at the site with the challenge it earned there, nor the
 	// other way round.
 	AudiencePublicMFAVerify = "public-mfa-verify"
+	// AudienceLoginDevice marks the token a sign-in whose password was right
+	// hands the device it came from, for the sign-in limit to tell a device
+	// that has signed in to an address before from one that never has. It
+	// authorizes nothing: no RPC accepts it in place of a session, and its
+	// subject names an address digest rather than an account.
+	AudienceLoginDevice = "login-device"
 )
 
 // AccessTokenClaims are the claims embedded in API access tokens.
@@ -280,6 +292,39 @@ func (m *TokenManager) IssueMFAChallengeToken(
 	}, subjectPublicID, strings.TrimSpace(audience), tokenID.String(), MFAChallengeTTL, now)
 }
 
+// IssueLoginDeviceToken signs the token that remembers a device as one a
+// password sign-in to subject — the sign-in limit's name for an address within
+// its scope — was made from. Its `jti` is what the limit charges that device's
+// attempts to, so every token is a device of its own.
+func (m *TokenManager) IssueLoginDeviceToken(subject string, now time.Time) (token string, expiresAt time.Time, err error) {
+	subject = strings.TrimSpace(subject)
+	if subject == "" {
+		return "", time.Time{}, errors.New("subject is required")
+	}
+	tokenID, err := uuid.NewV7()
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	return m.sign(AccessTokenClaims{}, subject, AudienceLoginDevice, tokenID.String(), LoginDeviceTTL, now)
+}
+
+// VerifyLoginDeviceToken answers the `jti` of token when it is a login device
+// token this deployment signed for subject and has not expired, and an error
+// otherwise.
+func (m *TokenManager) VerifyLoginDeviceToken(token, subject string) (string, error) {
+	claims, err := m.Verify(token, AudienceLoginDevice)
+	if err != nil {
+		return "", err
+	}
+	if claims.Subject != strings.TrimSpace(subject) {
+		return "", errors.New("the device token names another address")
+	}
+	if strings.TrimSpace(claims.ID) == "" {
+		return "", errors.New("the device token names no device")
+	}
+	return claims.ID, nil
+}
+
 func (m *TokenManager) issueScopedMediaToken(
 	subjectPublicID string,
 	tenantID string,
@@ -332,9 +377,10 @@ func WithMediaTokenQuery(imageURL string, token string) string {
 }
 
 // sign builds the registered claims and returns the signed token. tokenID
-// becomes the `jti`: the identifier an MFA challenge is claimed by, and the one
-// a session is recorded under when it signs out. It is empty for a media token,
-// which nothing spends or signs out of.
+// becomes the `jti`: the identifier an MFA challenge is claimed by, the one
+// a session is recorded under when it signs out, and the one a login device's
+// attempts are charged to. It is empty for a media token, which nothing spends
+// or signs out of.
 func (m *TokenManager) sign(
 	claims AccessTokenClaims,
 	subjectPublicID string,

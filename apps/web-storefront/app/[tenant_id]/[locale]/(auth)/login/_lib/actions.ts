@@ -22,6 +22,10 @@ import {
 import { writePublicSessionCookie } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
+import {
+  readLoginDeviceToken,
+  writeLoginDeviceCookie,
+} from "#lib/login-device-cookie";
 import { getMessagesFor } from "#lib/messages";
 import type { StorefrontMessageAccessor } from "#lib/messages";
 import { MFA_CHALLENGE_PATH, writeMfaChallenge } from "#lib/mfa-challenge";
@@ -110,7 +114,12 @@ export const loginAction = async (formData: FormData): Promise<void> => {
     tenantId,
   } = parsed.data;
 
-  const result = await loginPublic(email, password, tenantId);
+  const result = await loginPublic(
+    email,
+    password,
+    tenantId,
+    await readLoginDeviceToken()
+  );
 
   if (!result.ok) {
     // A refusal for too many attempts came before the password was checked,
@@ -129,6 +138,10 @@ export const loginAction = async (formData: FormData): Promise<void> => {
 
     redirect(errorPath);
   }
+
+  // The password was right whether or not a second factor is still owed, so
+  // the device is kept in both cases.
+  await writeLoginDeviceCookie(result.device);
 
   if ("mfaChallenge" in result) {
     await writeMfaChallenge({

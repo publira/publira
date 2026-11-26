@@ -363,7 +363,7 @@ func NewWithAsyncRecorder(db *sql.DB, queries Querier, storageProvider storage.P
 // over the ones the deployment shares. newAPI leaves it on in-process counters,
 // so no test that signs in reaches the Redis the environment may name.
 func (s *adminServer) shareLoginGuard() {
-	s.login = loginguard.NewShared(s.policy, s.logger)
+	s.login = loginguard.NewShared(s.policy, s.tokens, s.logger)
 }
 
 // Register mounts the publira.admin.v1 services on mux. Whatever mux this is
@@ -408,7 +408,7 @@ func newAPI(db *sql.DB, queries Querier, storageProvider storage.Provider, logge
 
 		policy:           policy,
 		mail:             mail,
-		login:            loginguard.NewDefault(),
+		login:            loginguard.NewDefault(tokens),
 		paymentProviders: providers.Registry(),
 		inboundProviders: inboundproviders.Registry(),
 		apiKeyLimiter:    ratelimit.New(ratelimit.NewMemoryStore()),

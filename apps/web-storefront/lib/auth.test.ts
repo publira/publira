@@ -170,7 +170,9 @@ describe("web-storefront auth", () => {
       accessToken: {},
     });
 
-    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+    await expect(
+      loginPublic("a@b.com", "pw", "TENANT001", "")
+    ).resolves.toEqual({
       ok: false,
       refusal: "credentials",
     });
@@ -182,7 +184,9 @@ describe("web-storefront auth", () => {
       new ConnectError("invalid credentials", Code.Unauthenticated)
     );
 
-    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+    await expect(
+      loginPublic("a@b.com", "pw", "TENANT001", "")
+    ).resolves.toEqual({
       ok: false,
       refusal: "credentials",
     });
@@ -194,7 +198,9 @@ describe("web-storefront auth", () => {
       new ConnectError("rate limited", Code.ResourceExhausted)
     );
 
-    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+    await expect(
+      loginPublic("a@b.com", "pw", "TENANT001", "")
+    ).resolves.toEqual({
       ok: false,
       refusal: "rate-limited",
     });
@@ -206,12 +212,65 @@ describe("web-storefront auth", () => {
       accessToken: { expiresAt: "2030-01-01T00:00:00Z", token: "tok" },
     });
 
-    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+    await expect(
+      loginPublic("a@b.com", "pw", "TENANT001", "")
+    ).resolves.toEqual({
+      device: null,
       ok: true,
       session: {
         accessToken: "tok",
         expiresAt: new Date("2030-01-01T00:00:00Z"),
       },
+    });
+    expect(mockLogin).toHaveBeenCalledWith(
+      {
+        deviceToken: "",
+        email: "a@b.com",
+        password: "pw",
+        tenant: { tenantId: "TENANT001" },
+      },
+      expect.anything()
+    );
+  });
+
+  it("loginPublic: presents the browser's device token and answers the device the API issued", async () => {
+    const { loginPublic } = await importAuth();
+    mockLogin.mockResolvedValueOnce({
+      accessToken: { expiresAt: "2030-01-01T00:00:00Z", token: "tok" },
+      device: { expiresAt: "2030-03-31T00:00:00Z", token: "device-new" },
+    });
+
+    await expect(
+      loginPublic("a@b.com", "pw", "TENANT001", "device-old")
+    ).resolves.toMatchObject({
+      device: {
+        expiresAt: Temporal.Instant.from("2030-03-31T00:00:00Z"),
+        token: "device-new",
+      },
+      ok: true,
+    });
+    expect(mockLogin).toHaveBeenCalledWith(
+      expect.objectContaining({ deviceToken: "device-old" }),
+      expect.anything()
+    );
+  });
+
+  it("loginPublic: answers the device a right password was issued along with a challenge", async () => {
+    const { loginPublic } = await importAuth();
+    mockLogin.mockResolvedValueOnce({
+      device: { expiresAt: "2030-03-31T00:00:00Z", token: "device-new" },
+      mfaChallenge: { expiresAt: "2030-01-01T00:05:00Z", token: "chl" },
+    });
+
+    await expect(
+      loginPublic("a@b.com", "pw", "TENANT001", "")
+    ).resolves.toEqual({
+      device: {
+        expiresAt: Temporal.Instant.from("2030-03-31T00:00:00Z"),
+        token: "device-new",
+      },
+      mfaChallenge: { expiresAt: "2030-01-01T00:05:00Z", token: "chl" },
+      ok: true,
     });
   });
 
@@ -221,7 +280,10 @@ describe("web-storefront auth", () => {
       mfaChallenge: { expiresAt: "2030-01-01T00:05:00Z", token: "chl" },
     });
 
-    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+    await expect(
+      loginPublic("a@b.com", "pw", "TENANT001", "")
+    ).resolves.toEqual({
+      device: null,
       mfaChallenge: { expiresAt: "2030-01-01T00:05:00Z", token: "chl" },
       ok: true,
     });
@@ -233,7 +295,9 @@ describe("web-storefront auth", () => {
       mfaChallenge: { expiresAt: "soon", token: "chl" },
     });
 
-    await expect(loginPublic("a@b.com", "pw", "TENANT001")).resolves.toEqual({
+    await expect(
+      loginPublic("a@b.com", "pw", "TENANT001", "")
+    ).resolves.toEqual({
       ok: false,
       refusal: "credentials",
     });

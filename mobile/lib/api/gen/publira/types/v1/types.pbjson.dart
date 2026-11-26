@@ -419,6 +419,20 @@ final $typed_data.Uint8List accessTokenDescriptor = $convert.base64Decode(
     'CgtBY2Nlc3NUb2tlbhIUCgV0b2tlbhgBIAEoCVIFdG9rZW4SHQoKZXhwaXJlc19hdBgCIAEoCV'
     'IJZXhwaXJlc0F0');
 
+@$core.Deprecated('Use loginDeviceDescriptor instead')
+const LoginDevice$json = {
+  '1': 'LoginDevice',
+  '2': [
+    {'1': 'token', '3': 1, '4': 1, '5': 9, '10': 'token'},
+    {'1': 'expires_at', '3': 2, '4': 1, '5': 9, '10': 'expiresAt'},
+  ],
+};
+
+/// Descriptor for `LoginDevice`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List loginDeviceDescriptor = $convert.base64Decode(
+    'CgtMb2dpbkRldmljZRIUCgV0b2tlbhgBIAEoCVIFdG9rZW4SHQoKZXhwaXJlc19hdBgCIAEoCV'
+    'IJZXhwaXJlc0F0');
+
 @$core.Deprecated('Use creatorRoleDescriptor instead')
 const CreatorRole$json = {
   '1': 'CreatorRole',

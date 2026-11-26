@@ -70,6 +70,21 @@ message AccessToken {
   string expires_at = 2;
 }
 
+// LoginDevice is what a sign-in whose password was right hands the device it
+// was made from. The device sends the token back as device_token on its next
+// password sign-in to the same address, which then counts against an allowance
+// of that device's own rather than the one every other device trying the
+// address shares, so a stranger spending that one cannot lock the owner out
+// from where they signed in before. It is not a credential: it never stands in
+// for the password, and a sign-in that sends it still has to get the password
+// right. Each sign-in answers a new one, which replaces the one held.
+message LoginDevice {
+  string token = 1;
+  // RFC 3339. The device drops the token then, and the next sign-in from it
+  // counts as one from a device never seen.
+  string expires_at = 2;
+}
+
 // One entry of the creator-role vocabulary a tenant curates: original author,
 // artist, writer, supervisor, and whatever else its catalogue needs. It orders
 // the credits everywhere they are shown, so the leading role leads without

@@ -58,6 +58,9 @@ type Store interface {
 	// Decr takes one back from the counter at key. A counter that has already
 	// expired stays absent rather than coming back below zero.
 	Decr(ctx context.Context, key string) error
+	// Get reads the counter at key, and answers zero for one that does not
+	// exist or has expired.
+	Get(ctx context.Context, key string) (int64, error)
 }
 
 // Limiter charges actions against a Store.
@@ -157,6 +160,38 @@ func (l *Limiter) Refund(ctx context.Context, decision Decision) {
 	for _, key := range decision.charged {
 		_ = l.store.Decr(ctx, key)
 	}
+}
+
+// Generation reads the generation of name: zero until [Limiter.Advance] first
+// moves it, and zero again once its expiry passes.
+//
+// A generation is the part of a subject that lets an operator lift what the
+// subject has spent without knowing every counter it was charged under. A
+// caller that names its subjects with the generation in them starts every
+// counter afresh when the generation moves, which is the one way to lift a
+// count that every instance of a server also holds in its own memory: a
+// counter deleted from Redis alone would come back as the higher of the two
+// on the next charge.
+func (l *Limiter) Generation(ctx context.Context, name string) (int64, error) {
+	return l.store.Get(ctx, generationKey(name))
+}
+
+// Advance moves the generation of name on by one and answers the new one. It
+// lasts ttl from the first advance, and ttl has to be at least the longest
+// window any subject named under the generation is charged against: a
+// generation that expired while a counter of the generation before it was still
+// running would bring that counter back.
+func (l *Limiter) Advance(ctx context.Context, name string, ttl time.Duration) (int64, error) {
+	if ttl <= 0 {
+		return 0, fmt.Errorf("ratelimit: generation of %q would last %s, want a positive time", name, ttl)
+	}
+	return l.store.Incr(ctx, generationKey(name), ttl)
+}
+
+// generationKey is where the generation of name is kept. The separator is one
+// no subject's counter uses, so a generation never shares a key with a count.
+func generationKey(name string) string {
+	return "generation|" + name
 }
 
 // bucket names the counter for the window rule is in at now, and reports how

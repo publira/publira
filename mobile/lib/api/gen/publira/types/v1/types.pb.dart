@@ -439,6 +439,86 @@ class AccessToken extends $pb.GeneratedMessage {
   void clearExpiresAt() => $_clearField(2);
 }
 
+/// LoginDevice is what a sign-in whose password was right hands the device it
+/// was made from. The device sends the token back as device_token on its next
+/// password sign-in to the same address, which then counts against an allowance
+/// of that device's own rather than the one every other device trying the
+/// address shares, so a stranger spending that one cannot lock the owner out
+/// from where they signed in before. It is not a credential: it never stands in
+/// for the password, and a sign-in that sends it still has to get the password
+/// right. Each sign-in answers a new one, which replaces the one held.
+class LoginDevice extends $pb.GeneratedMessage {
+  factory LoginDevice({
+    $core.String? token,
+    $core.String? expiresAt,
+  }) {
+    final result = LoginDevice._();
+    if (token != null) result.token = token;
+    if (expiresAt != null) result.expiresAt = expiresAt;
+    return result;
+  }
+
+  LoginDevice._();
+
+  factory LoginDevice.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LoginDevice()..mergeFromBuffer(data, registry);
+  factory LoginDevice.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LoginDevice()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LoginDevice',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'publira.types.v1'),
+      createEmptyInstance: LoginDevice.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'token')
+    ..aOS(2, _omitFieldNames ? '' : 'expiresAt')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LoginDevice clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LoginDevice copyWith(void Function(LoginDevice) updates) =>
+      super.copyWith((message) => updates(message as LoginDevice))
+          as LoginDevice;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use LoginDevice() / LoginDevice.new instead')
+  static LoginDevice create() => LoginDevice._();
+  static $pb.GeneratedMessage $_createMessage() => LoginDevice._();
+  @$core.override
+  LoginDevice createEmptyInstance() => LoginDevice._();
+  @$core.pragma('dart2js:noInline')
+  static LoginDevice getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<LoginDevice>(
+          LoginDevice.$_createMessage);
+  static LoginDevice? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get token => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set token($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearToken() => $_clearField(1);
+
+  /// RFC 3339. The device drops the token then, and the next sign-in from it
+  /// counts as one from a device never seen.
+  @$pb.TagNumber(2)
+  $core.String get expiresAt => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set expiresAt($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExpiresAt() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearExpiresAt() => $_clearField(2);
+}
+
 /// One entry of the creator-role vocabulary a tenant curates: original author,
 /// artist, writer, supervisor, and whatever else its catalogue needs. It orders
 /// the credits everywhere they are shown, so the leading role leads without

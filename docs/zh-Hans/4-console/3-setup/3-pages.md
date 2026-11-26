@@ -2,8 +2,8 @@
 title: 页面
 description: 在富文本编辑器中撰写网站自己的页面，发布和回滚其版本，进行翻译，删除读者无法访问的页面，将其中两个页面设为读者需要同意的服务条款和隐私政策，并了解网站在读者浏览器中存储的内容。
 published: 2026-11-03
-updated: 2026-11-14
-source_updated: 2026-11-14
+updated: 2026-11-26
+source_updated: 2026-11-26
 ---
 
 **网站**下的**页面**存放出版社为网站撰写的页面：服务条款、隐私政策、介绍出版社的页面、投稿指南，以及其他任何不属于系列的内容。页面在富文本编辑器中撰写，按版本保存，并且可以翻译成网站的每种语言。
@@ -114,6 +114,7 @@ Publira没有专门用于法律文本的页面类型。服务条款和隐私政�
 | Cookie | 设置时机 | 内容 | 保留期限 |
 | --- | --- | --- | --- |
 | `publira_web_storefront_auth` | 读者登录时 | 读者的会话，使用只有网站持有的密钥加密 | 直到会话结束：登录一天后，或读者退出登录时 |
+| `publira_web_storefront_login_device` | 读者输入正确的密码时 | 网站为此浏览器获得的令牌，使别人用同一电子邮件地址试错的密码不会让读者无法从此浏览器登录 | 最后一次用密码登录后90天。退出登录后仍会保留 |
 | `publira_web_storefront_signup_pending_email`、`publira_web_storefront_reset_password_email`、`publira_web_storefront_resend_verification_email` | 读者提交注册表单、请求重置密码或再次请求确认链接时 | 消息所发送到的电子邮件地址，以便下一个页面无需将其放入页面地址即可显示它 | 一分钟 |
 | `publira_web_storefront_sign_in` | 读者选择**通过Apple继续**或**通过Google继续**时 | 正在进行的登录，已加密，用于核对Apple或Google的应答 | 十分钟，或直到应答到达 |
 | `publira_web_storefront_sign_up` | 首次通过Apple或Google登录的读者看到**完成注册**时 | Apple或Google返回的读者信息，已加密，保存到读者同意条款为止 | 四分钟 |

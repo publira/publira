@@ -22,7 +22,7 @@ func newStepUpLimitedEnv(t *testing.T, limit int) *adminDBEnv {
 
 	policy := platformpolicy.Defaults()
 	policy.PasswordVerification = platformpolicy.MinuteDay{PerMinute: limit, PerDay: limit}
-	return newAdminDBEnvWithLoginGuard(t, loginguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), nil))
+	return newAdminDBEnvWithLoginGuard(t, loginguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), testutil.TokenManager(), nil))
 }
 
 func tryEmailChange(t *testing.T, env *adminDBEnv, tenant adminDBTenant, password string) error {

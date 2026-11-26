@@ -16,6 +16,10 @@ import {
   tenantIdFormSchema,
 } from "#lib/auth-input";
 import { assertSameOrigin } from "#lib/csrf";
+import {
+  readLoginDeviceToken,
+  writeLoginDeviceCookie,
+} from "#lib/login-device-cookie";
 import { getMessagesFor } from "#lib/messages";
 import { MFA_PATH, writeMfaChallenge } from "#lib/mfa-challenge";
 
@@ -67,11 +71,21 @@ export const loginAction = async (formData: FormData): Promise<void> => {
 
   const { email, next: nextPath, password, tenantId } = parsed.data;
 
-  const result = await loginAdmin(email, password, tenantId, locale);
+  const result = await loginAdmin(
+    email,
+    password,
+    tenantId,
+    locale,
+    await readLoginDeviceToken()
+  );
 
   if (!result.ok) {
     redirect(buildLoginErrorPath(result.message, nextPath));
   }
+
+  // The password was right whether or not a second factor is still owed, so
+  // the device is kept in both cases.
+  await writeLoginDeviceCookie(result.device);
 
   if (result.kind === "challenge") {
     try {

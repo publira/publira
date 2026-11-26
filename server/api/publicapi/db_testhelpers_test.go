@@ -177,7 +177,7 @@ func openLoginGuard() *loginguard.Guard {
 func stepUpGuardWith(perAccount platformpolicy.MinuteDay) *loginguard.Guard {
 	policy := openPolicy()
 	policy.PasswordVerification = perAccount
-	return loginguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), nil)
+	return loginguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), testutil.TokenManager(), nil)
 }
 
 // openMailGuard is openReaderGuards for the mail limit: the cases that are not

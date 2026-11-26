@@ -85,13 +85,66 @@ describe("loginAdmin", () => {
       accessToken: { expiresAt: "2026-09-03T00:00:00Z", token: "session" },
     });
 
-    const result = await loginAdmin(...credentials, "en");
+    const result = await loginAdmin(...credentials, "en", "");
 
     expect(result).toEqual({
       accessToken: "session",
+      device: null,
       expiresAt: Temporal.Instant.from("2026-09-03T00:00:00Z"),
       kind: "session",
       ok: true,
+    });
+    expect(mockLogin).toHaveBeenCalledWith(
+      {
+        deviceToken: "",
+        email: "admin@example.com",
+        password: "hunter2",
+        tenant: { tenantId: "tenant_001" },
+      },
+      expect.anything()
+    );
+  });
+
+  it("presents the browser's device token and hands back the device the API issued", async () => {
+    mockLogin.mockResolvedValueOnce({
+      accessToken: { expiresAt: "2026-09-03T00:00:00Z", token: "session" },
+      device: { expiresAt: "2026-12-02T00:00:00Z", token: "device-new" },
+    });
+
+    const result = await loginAdmin(...credentials, "en", "device-old");
+
+    expect(mockLogin).toHaveBeenCalledWith(
+      expect.objectContaining({ deviceToken: "device-old" }),
+      expect.anything()
+    );
+    expect(result).toMatchObject({
+      device: {
+        expiresAt: Temporal.Instant.from("2026-12-02T00:00:00Z"),
+        token: "device-new",
+      },
+      kind: "session",
+    });
+  });
+
+  it("hands back the device a right password was issued even when a second factor is owed", async () => {
+    mockLogin.mockResolvedValueOnce({
+      device: { expiresAt: "2026-12-02T00:00:00Z", token: "device-new" },
+      mfaChallenge: {
+        expiresAt: "2026-09-03T00:05:00Z",
+        kind: MfaChallengeKind.VERIFY,
+        methods: [MfaMethod.TOTP],
+        token: "challenge",
+      },
+    });
+
+    const result = await loginAdmin(...credentials, "en", "");
+
+    expect(result).toMatchObject({
+      device: {
+        expiresAt: Temporal.Instant.from("2026-12-02T00:00:00Z"),
+        token: "device-new",
+      },
+      kind: "challenge",
     });
   });
 
@@ -105,11 +158,12 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "en");
+    const result = await loginAdmin(...credentials, "en", "");
 
     expect(result).toEqual({
       challengeKind: "verify",
       challengeToken: "challenge",
+      device: null,
       expiresAt: Temporal.Instant.from("2026-09-03T00:05:00Z"),
       kind: "challenge",
       methods: ["totp"],
@@ -127,7 +181,7 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "en");
+    const result = await loginAdmin(...credentials, "en", "");
 
     expect(result).toMatchObject({
       kind: "challenge",
@@ -145,7 +199,7 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "en");
+    const result = await loginAdmin(...credentials, "en", "");
 
     expect(result).toMatchObject({
       challengeKind: "enroll",
@@ -163,7 +217,7 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "en");
+    const result = await loginAdmin(...credentials, "en", "");
 
     expect(result).toMatchObject({ ok: false });
   });
@@ -178,7 +232,7 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "en");
+    const result = await loginAdmin(...credentials, "en", "");
 
     expect(result).toMatchObject({ ok: false });
   });
@@ -188,7 +242,7 @@ describe("loginAdmin", () => {
       accessToken: { expiresAt: "not-a-date", token: "session" },
     });
 
-    const result = await loginAdmin(...credentials, "en");
+    const result = await loginAdmin(...credentials, "en", "");
 
     expect(result).toMatchObject({ ok: false });
   });
@@ -203,7 +257,7 @@ describe("loginAdmin", () => {
       },
     });
 
-    const result = await loginAdmin(...credentials, "en");
+    const result = await loginAdmin(...credentials, "en", "");
 
     // Signing in on the password alone would make the second factor optional.
     expect(result).toEqual({
@@ -218,7 +272,7 @@ describe("loginAdmin", () => {
     );
     const t = await getMessagesFor("en");
 
-    await expect(loginAdmin(...credentials, "en")).resolves.toEqual({
+    await expect(loginAdmin(...credentials, "en", "")).resolves.toEqual({
       message: t("admin.auth.errors.login_failed"),
       ok: false,
     });
@@ -232,7 +286,7 @@ describe("loginAdmin", () => {
     );
     const t = await getMessagesFor("en");
 
-    await expect(loginAdmin(...credentials, "en")).resolves.toEqual({
+    await expect(loginAdmin(...credentials, "en", "")).resolves.toEqual({
       message: t("errors.rpc.rate-limited"),
       ok: false,
     });

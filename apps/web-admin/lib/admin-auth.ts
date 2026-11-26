@@ -14,6 +14,8 @@ import {
 import type { Locale } from "@publira/i18n";
 import { parseInstant } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { toLoginDevice } from "@publira/web-session";
+import type { LoginDevice } from "@publira/web-session";
 import { cacheLife, cacheTag } from "next/cache";
 
 import {
@@ -37,12 +39,17 @@ export {
  * `"session"` is the whole login. `"challenge"` is the half of it a password
  * can settle on its own: the account owes a second factor, and the console
  * holds a short-lived challenge token until it is presented.
+ *
+ * Both carry the login device the right password was issued, for the next
+ * password sign-in from this browser to present, or `null` from a server that
+ * issues none.
  */
 export type AdminLoginResult =
   | {
       ok: true;
       kind: "session";
       accessToken: string;
+      device: LoginDevice | null;
       expiresAt: Temporal.Instant;
     }
   | {
@@ -50,6 +57,7 @@ export type AdminLoginResult =
       kind: "challenge";
       challengeKind: MfaChallengeKindName;
       challengeToken: string;
+      device: LoginDevice | null;
       expiresAt: Temporal.Instant;
       methods: MfaMethodName[];
     }
@@ -240,11 +248,16 @@ const toMethodNames = (methods: readonly MfaMethod[]): MfaMethodName[] =>
     return [];
   });
 
+/**
+ * Sign in with a password. `deviceToken` is the login device token this
+ * browser holds, empty when it holds none.
+ */
 export const loginAdmin = async (
   email: string,
   password: string,
   tenantId: string,
-  locale: Locale
+  locale: Locale,
+  deviceToken: string
 ): Promise<AdminLoginResult> => {
   const t = await getMessagesFor(locale);
 
@@ -256,6 +269,7 @@ export const loginAdmin = async (
   try {
     const response = await apiClient.auth.login(
       {
+        deviceToken,
         email,
         password,
         tenant: { tenantId },
@@ -264,6 +278,7 @@ export const loginAdmin = async (
     );
 
     const challenge = response.mfaChallenge;
+    const device = toLoginDevice(response.device);
 
     if (challenge) {
       const challengeKind = toChallengeKindName(challenge.kind);
@@ -277,6 +292,7 @@ export const loginAdmin = async (
       return {
         challengeKind,
         challengeToken,
+        device,
         expiresAt: challengeExpiresAt,
         kind: "challenge",
         methods: toMethodNames(challenge.methods),
@@ -293,6 +309,7 @@ export const loginAdmin = async (
 
     return {
       accessToken,
+      device,
       expiresAt,
       kind: "session",
       ok: true,

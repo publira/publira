@@ -8,6 +8,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/data_export.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/login_device_store.dart';
 import 'package:publira/auth/notification_settings.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
@@ -51,6 +52,38 @@ class InMemorySessionStore implements SessionStore {
       throw error;
     }
     session = null;
+  }
+}
+
+/// [LoginDeviceStore] that keeps the device in memory, for the same reason
+/// as [InMemorySessionStore].
+class InMemoryLoginDeviceStore implements LoginDeviceStore {
+  InMemoryLoginDeviceStore({this.device, this.readError, this.writeError});
+
+  LoginDevice? device;
+
+  /// Thrown by [read], standing in for a keychain that cannot be read.
+  Object? readError;
+
+  /// Thrown by [write], standing in for a keychain that refuses one.
+  Object? writeError;
+
+  @override
+  Future<LoginDevice?> read() async {
+    final error = readError;
+    if (error != null) {
+      throw error;
+    }
+    return device;
+  }
+
+  @override
+  Future<void> write(LoginDevice device) async {
+    final error = writeError;
+    if (error != null) {
+      throw error;
+    }
+    this.device = device;
   }
 }
 

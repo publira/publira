@@ -208,7 +208,7 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 	// Redis is named have to be one set rather than one per namespace. The
 	// policy is read as the least of the logins held here that may read it.
 	policy := platformpolicy.NewResolver(dbmodels.New(pools.leastPrivileged()), platformpolicy.CacheTTL, logger)
-	login := loginguard.NewShared(policy, logger)
+	login := loginguard.NewShared(policy, tokens, logger)
 	mail := mailguard.NewShared(policy, logger)
 	// The read limit of a storefront's API and images, held once so the two
 	// share one client for Redis and one read of the policy. A console's hosts

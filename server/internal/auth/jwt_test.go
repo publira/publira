@@ -558,3 +558,60 @@ func TestIssueMFAChallengeToken(t *testing.T) {
 		}
 	})
 }
+
+func TestLoginDeviceToken(t *testing.T) {
+	m := NewTokenManager([]byte("0123456789abcdef0123456789abcdef"))
+	now := time.Now()
+	const subject = "tenant:digest"
+
+	token, expiresAt, err := m.IssueLoginDeviceToken(subject, now)
+	if err != nil {
+		t.Fatalf("IssueLoginDeviceToken: %v", err)
+	}
+	if !expiresAt.Equal(now.Add(LoginDeviceTTL)) {
+		t.Fatalf("expiresAt = %v, want %v", expiresAt, now.Add(LoginDeviceTTL))
+	}
+	device, err := m.VerifyLoginDeviceToken(token, subject)
+	if err != nil || device == "" {
+		t.Fatalf("VerifyLoginDeviceToken = (%q, %v), want a device", device, err)
+	}
+	other, _, err := m.IssueLoginDeviceToken(subject, now)
+	if err != nil {
+		t.Fatalf("IssueLoginDeviceToken: %v", err)
+	}
+	if second, _ := m.VerifyLoginDeviceToken(other, subject); second == device {
+		t.Fatalf("two sign-ins answered the same device %q, want one each", device)
+	}
+
+	t.Run("another subject", func(t *testing.T) {
+		if _, err := m.VerifyLoginDeviceToken(token, "tenant:other"); err == nil {
+			t.Fatal("verified for another subject, want it rejected")
+		}
+	})
+	t.Run("expired", func(t *testing.T) {
+		old, _, err := m.IssueLoginDeviceToken(subject, now.Add(-LoginDeviceTTL-time.Minute))
+		if err != nil {
+			t.Fatalf("IssueLoginDeviceToken: %v", err)
+		}
+		if _, err := m.VerifyLoginDeviceToken(old, subject); err == nil {
+			t.Fatal("verified an expired token, want it rejected")
+		}
+	})
+	t.Run("another audience", func(t *testing.T) {
+		session, _, err := m.Issue("USER0000001", AudiencePublic, "tenant", "", 1, now)
+		if err != nil {
+			t.Fatalf("Issue: %v", err)
+		}
+		if _, err := m.VerifyLoginDeviceToken(session, "USER0000001"); err == nil {
+			t.Fatal("verified an access token as a device token, want it rejected")
+		}
+		if _, err := m.Verify(token, AudiencePublic); err == nil {
+			t.Fatal("verified a device token as an access token, want it rejected")
+		}
+	})
+	t.Run("no subject", func(t *testing.T) {
+		if _, _, err := m.IssueLoginDeviceToken(" ", now); err == nil {
+			t.Fatal("issued a token for no subject, want it rejected")
+		}
+	})
+}

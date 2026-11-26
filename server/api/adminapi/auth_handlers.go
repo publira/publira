@@ -159,7 +159,7 @@ func (s *adminServer) Login(
 	// Charged before the address is looked up, so the refusal is the same
 	// whether or not it holds an account and costs no bcrypt. The storefront
 	// charges the same allowance for the same account.
-	attempt, err := s.login.Begin(ctx, tenant.ID.String(), req.Email)
+	attempt, err := s.login.Begin(ctx, tenant.ID.String(), req.Email, req.DeviceToken)
 	if err != nil {
 		auth.AuditEvent(ctx, "admin_login", "failure", tenant.PublicID, "", "rate_limited")
 		return nil, err
@@ -177,7 +177,7 @@ func (s *adminServer) Login(
 		auth.AuditEvent(ctx, "admin_login", "failure", tenant.PublicID, user.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
-	attempt.Verified(ctx)
+	device := attempt.Verified(ctx)
 	if user.Status != "active" {
 		auth.AuditEvent(ctx, "admin_login", "failure", tenant.PublicID, user.PublicID, "user_inactive")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
@@ -218,7 +218,7 @@ func (s *adminServer) Login(
 			return nil, err
 		}
 		auth.AuditEvent(ctx, "admin_login", "success", tenant.PublicID, user.PublicID, "mfa_challenge_issued")
-		return &publiraadminv1.AdminAuthServiceLoginResponse{MfaChallenge: challenge}, nil
+		return &publiraadminv1.AdminAuthServiceLoginResponse{MfaChallenge: challenge, Device: device}, nil
 	}
 
 	token, expiresAt, err := s.tokens.Issue(user.PublicID, auth.AudienceAdmin, tenant.ID.String(), role, user.CredentialsVersion, time.Now())
@@ -229,6 +229,7 @@ func (s *adminServer) Login(
 	resp := &publiraadminv1.AdminAuthServiceLoginResponse{
 		User:        &publirattypesv1.User{PublicId: user.PublicID, Name: user.Name, Role: role},
 		AccessToken: &publirattypesv1.AccessToken{Token: token, ExpiresAt: auth.FormatExpiresAt(expiresAt)},
+		Device:      device,
 	}
 	auth.AuditEvent(ctx, "admin_login", "success", tenant.PublicID, user.PublicID, "token_issued")
 	return resp, nil

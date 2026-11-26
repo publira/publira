@@ -10,7 +10,7 @@ The session itself is issued by the Go API. Nothing here signs a token or decide
 
 | Import | What it provides |
 | --- | --- |
-| `@publira/web-session` | Sealing, opening, and the cookie attributes for the session cookie |
+| `@publira/web-session` | Sealing, opening, and the cookie attributes for the session cookie, and the login device cookie beside it |
 | `@publira/web-session/cookie-name` | `profileCookieName`, the local development profile suffix for **any** cookie name |
 
 `./cookie-name` is separate because it has nothing to do with sessions and is imported from places that have no business pulling in `jose` — `@publira/i18n` names the locale cookies through it.
@@ -27,6 +27,9 @@ The session itself is issued by the Go API. Nothing here signs a token or decide
 | `isSessionExpired(expiresAt, now?)` | Whether the stored expiry has passed. An unparseable value counts as expired |
 | `resolveAuthSecret()` | Reads `PUBLIRA_AUTH_SECRET` and rejects a value too short to key A256GCM |
 | `sessionCookieOptions(expiresAt)` | The cookie attributes: `httpOnly`, `path: "/"`, `sameSite: "lax"`, `expires`, and `secure` in production |
+| `LoginDevice` | The login device token a `Login` response carries, with its expiry as a `Temporal.Instant` |
+| `toLoginDevice(device)` | Reads the `device` of a `Login` response, or `null` when it is absent, its token is empty, or its expiry is not an instant |
+| `loginDeviceCookie(name, device)` | The cookie that keeps the token: the session cookie's attributes, expiring with the device. Each app names its own and leaves it in place on sign-out |
 | `buildBearerHeaders(accessToken)` | The per-call options that put `Authorization: Bearer …` on a ConnectRPC call |
 | `profileCookieName(baseName)` | `baseName` with the local development profile suffix appended |
 

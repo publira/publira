@@ -7,6 +7,8 @@ import {
 import { MfaChallengeKind } from "@publira/api-client/platform/auth";
 import { parseInstant } from "@publira/utils";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { toLoginDevice } from "@publira/web-session";
+import type { LoginDevice } from "@publira/web-session";
 import { cacheLife, cacheTag } from "next/cache";
 
 import {
@@ -52,14 +54,24 @@ export type GetPlatformCurrentOperatorResult =
  * A right password that still owes a second factor earns a challenge rather
  * than a session, and `processing` is a response the console cannot hold: the
  * password was right, so it is no reason to say the credentials were not.
+ *
+ * A session and a challenge both carry the login device the right password was
+ * issued, for the next password sign-in from this browser to present, or
+ * `null` from a server that issues none.
  */
 export type PlatformLoginResult =
-  | { ok: true; kind: "session"; session: PlatformSession }
+  | {
+      ok: true;
+      kind: "session";
+      device: LoginDevice | null;
+      session: PlatformSession;
+    }
   | {
       ok: true;
       kind: "challenge";
       challengeKind: MfaChallengeKindName;
       challengeToken: string;
+      device: LoginDevice | null;
       expiresAt: Temporal.Instant;
     }
   | { ok: false; refusal: "credentials" | "processing" | "rate-limited" };
@@ -83,13 +95,19 @@ const toChallengeKindName = (
   return null;
 };
 
+/**
+ * Sign in with a password. `deviceToken` is the login device token this
+ * browser holds, empty when it holds none.
+ */
 export const loginPlatform = async (
   email: string,
-  password: string
+  password: string,
+  deviceToken: string
 ): Promise<PlatformLoginResult> => {
   try {
     const response = await apiClient.auth.login(
       {
+        deviceToken,
         email,
         password,
       },
@@ -97,6 +115,7 @@ export const loginPlatform = async (
     );
 
     const challenge = response.mfaChallenge;
+    const device = toLoginDevice(response.device);
 
     if (challenge) {
       const challengeKind = toChallengeKindName(challenge.kind);
@@ -110,6 +129,7 @@ export const loginPlatform = async (
       return {
         challengeKind,
         challengeToken,
+        device,
         expiresAt,
         kind: "challenge",
         ok: true,
@@ -125,7 +145,7 @@ export const loginPlatform = async (
       return { ok: false, refusal: "credentials" };
     }
 
-    return { kind: "session", ok: true, session };
+    return { kind: "session", ok: true, device, session };
   } catch (error) {
     if (isRejectedRequestRpcError(error)) {
       return {

@@ -18,6 +18,8 @@ import type {
   User,
 } from "@publira/api-client/public/types";
 import { dropFailedCacheEntry } from "@publira/utils/cached-read";
+import { toLoginDevice } from "@publira/web-session";
+import type { LoginDevice } from "@publira/web-session";
 import { cacheLife } from "next/cache";
 import pRetry, { AbortError } from "p-retry";
 
@@ -193,20 +195,34 @@ const toNotificationPreferenceCells = (
  * settles. A refused one says whether the credentials were wrong or too many
  * attempts had been made for the password to be checked at all: the second is
  * no reason to tell the reader their password is wrong.
+ *
+ * A session and a challenge both carry the login device the right password was
+ * issued, for the next password sign-in from this browser to present, or
+ * `null` from a server that issues none.
  */
 export type PublicLoginResult =
-  | { ok: true; session: PublicSession }
-  | { mfaChallenge: PublicMfaChallenge; ok: true }
+  | { device: LoginDevice | null; ok: true; session: PublicSession }
+  | {
+      device: LoginDevice | null;
+      mfaChallenge: PublicMfaChallenge;
+      ok: true;
+    }
   | { ok: false; refusal: "credentials" | "rate-limited" };
 
+/**
+ * Sign in with a password. `deviceToken` is the login device token this
+ * browser holds, empty when it holds none.
+ */
 export const loginPublic = async (
   email: string,
   password: string,
-  tenantId: string
+  tenantId: string,
+  deviceToken: string
 ): Promise<PublicLoginResult> => {
   try {
     const response = await apiClient.auth.login(
       {
+        deviceToken,
         email,
         password,
         tenant: { tenantId },
@@ -214,10 +230,11 @@ export const loginPublic = async (
       await buildClientAddressHeaders()
     );
 
+    const device = toLoginDevice(response.device);
     const mfaChallenge = toPublicMfaChallenge(response.mfaChallenge);
 
     if (mfaChallenge) {
-      return { mfaChallenge, ok: true };
+      return { device, mfaChallenge, ok: true };
     }
 
     const { token: accessToken, expiresAt } = response.accessToken ?? {};
@@ -227,6 +244,7 @@ export const loginPublic = async (
     }
 
     return {
+      device,
       ok: true,
       session: { accessToken, expiresAt: new Date(expiresAt) },
     };

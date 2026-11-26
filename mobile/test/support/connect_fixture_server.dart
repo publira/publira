@@ -1037,6 +1037,11 @@ class ConnectFixtureServer {
   /// Whether the challenge issued last has bought a session already.
   var mfaChallengeSpent = true;
 
+  /// The device `Login` hands back whenever the password was right, with the
+  /// challenge as well as with the session. `null` answers none, as a server
+  /// from before login device tokens does.
+  pb.LoginDevice? loginDevice;
+
   /// Whether `StartMfaEnrollment` has set an authenticator up that
   /// `ConfirmMfaEnrollment` can turn on.
   var mfaEnrollmentStarted = false;
@@ -4101,7 +4106,10 @@ class ConnectFixtureServer {
       if (memberMfaEnabled) {
         await _writeMessage(
           request,
-          pb.LoginResponse(mfaChallenge: _issueMfaChallenge()),
+          pb.LoginResponse(
+            mfaChallenge: _issueMfaChallenge(),
+            device: loginDevice,
+          ),
         );
         return;
       }
@@ -4114,6 +4122,7 @@ class ConnectFixtureServer {
             role: 'member',
           ),
           accessToken: _accessToken(memberAccessToken),
+          device: loginDevice,
         ),
       );
       return;
@@ -4147,6 +4156,7 @@ class ConnectFixtureServer {
           role: 'member',
         ),
         accessToken: _accessToken(signedUpAccessToken),
+        device: loginDevice,
       ),
     );
   }

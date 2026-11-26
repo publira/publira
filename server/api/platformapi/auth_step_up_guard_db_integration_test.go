@@ -26,7 +26,7 @@ func newStepUpLimitedServer(t *testing.T, limit int) (*httptest.Server, *testuti
 
 	policy := platformpolicy.Defaults()
 	policy.PasswordVerification = platformpolicy.MinuteDay{PerMinute: limit, PerDay: limit}
-	ts, pg := newDBIntegrationEnvWithLoginGuard(t, loginguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), nil))
+	ts, pg := newDBIntegrationEnvWithLoginGuard(t, loginguard.New(testutil.Limiter(), platformpolicy.Fixed(policy), testutil.TokenManager(), nil))
 	return ts, pg, pg.SeedPlatformOperator(t, "PLATUSER001", "operator@example.com", "Platform Operator")
 }
 

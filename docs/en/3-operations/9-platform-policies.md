@@ -2,7 +2,7 @@
 title: Platform defaults and policies
 description: Choose the defaults, security limits, community limits, and retention periods every tenant inherits, and what a tenant can change for itself.
 published: 2026-10-06
-updated: 2026-11-25
+updated: 2026-11-26
 ---
 
 An install runs on a handful of settings that no tenant owns: the language, time zone, and currency new tenants start from, the limits that keep one reader or one address from overwhelming the platform, and how long expiring records are kept. This page says what each group protects against, how to change it, and which parts a tenant's administrators can change for their own tenant.
@@ -114,14 +114,20 @@ Two more limits guard signing in itself, with a password, to a tenant's site, it
 
 | On the Security page | Flags | What it guards |
 | --- | --- | --- |
-| **Sign-in attempts per address per minute** and **per day** | `--login-attempts-per-account-per-minute` and `--login-attempts-per-account-per-day` | Passwords tried for one address. An address counts within its own tenant, where the tenant's site and its tenant console share one count, or within the Platform Console. A sign-in with the right password clears the count, so it slows someone guessing one account's password, not a person who mistyped |
+| **Sign-in attempts per address per minute** and **per day** | `--login-attempts-per-account-per-minute` and `--login-attempts-per-account-per-day` | Passwords tried for one address from one client address, or from one browser or app that has signed in to it before. An address counts within its own tenant, where the tenant's site and its tenant console share one count, or within the Platform Console. A sign-in with the right password clears the count where it was made, so it slows someone guessing one account's password, not a person who mistyped |
 | **Failed sign-ins per source per hour** and **per day** | `--login-attempts-per-source-per-hour` and `--login-attempts-per-source-per-day` | Failed sign-ins from one client address, across every address, every tenant, and the Platform Console, so one client cannot try a password against a long list of addresses. A sign-in with the right password does not count against it |
 
 ![The sign-in attempt limits on Security: sign-in attempts per address per minute and per day, and failed sign-ins per source per hour and per day.](./platform-policies-sign-in-attempts.png)
 
 An attempt over either limit is refused before the password is checked, and refused the same way whether or not the address has an account, so the refusal tells a guesser nothing about which addresses are registered. The sign-in screen then says "Too many requests in a short time. Please wait a moment and try again." rather than that the email address or password is incorrect, since the password may well have been right. Two-step verification is a separate check after the password, and these limits do not count its codes.
 
-The per-account limit also lets anyone who knows an address keep its owner from signing in with a password until the window passes, by spending its count with wrong passwords. Sign-in with Apple or Google and a password reset are not affected by it. Keep the per-day value high enough that a day without a password sign-in is not the price of someone else's script.
+The per-address limit is counted so that someone else's wrong passwords cannot keep the owner out:
+
+- A browser or app that signs in with the right password is remembered for 90 days, and each sign-in from it starts that again. Its attempts at that address count on their own, so nobody else's guesses use them up.
+- Attempts from anywhere else count per client address, so a script guessing from one client address uses up that client address's count and no other.
+- Every browser and app that has not signed in to the address before also shares one count at that address, ten times the per-address limit, so a script spread over many client addresses is still stopped. Once that count is used up, the owner can still sign in from a browser or app they signed in from before, but not from a new one, until the window passes.
+
+An operator can clear every count of one address at once, with `publiractl operator unlock-sign-in` for the Platform Console or `publiractl tenant member unlock-sign-in` for a tenant's site and console, as [Unlocking a sign-in](https://github.com/publira/publira/blob/main/server/cmd/publiractl/README.md#unlocking-a-sign-in) describes. These commands need the Redis the servers count in. On an install without one, each server keeps its own counts until it restarts. Sign-in with Apple or Google and a password reset are not affected by any of these limits.
 
 ### Anonymous reads
 

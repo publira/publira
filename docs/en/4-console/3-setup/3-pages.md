@@ -2,7 +2,7 @@
 title: Pages
 description: Write the site's own pages in a rich text editor, publish and roll back their versions, translate them, delete one no reader can reach, make two of them the terms of service and privacy policy readers agree to, and know what the site stores in a reader's browser.
 published: 2026-10-07
-updated: 2026-11-14
+updated: 2026-11-26
 ---
 
 **Pages**, under **Site**, holds the pages the publisher writes for the site: the terms of service, the privacy policy, a page about the publisher, submission guidelines, and anything else that is not a series. A page is written in a rich text editor, kept in versions, and can be translated into each of the site's languages.
@@ -113,6 +113,7 @@ A privacy policy says what the site keeps in its readers' browsers. These are al
 | Cookie | Set when | Holds | Kept for |
 | --- | --- | --- | --- |
 | `publira_web_storefront_auth` | The reader signs in | The reader's session, encrypted with a key only the site holds | Until the session ends: a day after signing in, or when the reader signs out |
+| `publira_web_storefront_login_device` | The reader enters the right password | A token the site was given for this browser, so that wrong passwords other people try for the same email address do not stop the reader signing in from it | 90 days from the last sign-in with a password. Signing out leaves it in place |
 | `publira_web_storefront_signup_pending_email`, `publira_web_storefront_reset_password_email`, `publira_web_storefront_resend_verification_email` | The reader submits the sign-up form, asks to reset their password, or asks for the confirmation link again | The email address the message was sent to, so the next page can name it without putting it in the page's address | One minute |
 | `publira_web_storefront_sign_in` | The reader chooses **Continue with Apple** or **Continue with Google** | The sign-in in progress, encrypted, which Apple's or Google's answer is checked against | Ten minutes, or until the answer arrives |
 | `publira_web_storefront_sign_up` | A reader signing in with Apple or Google for the first time is shown **Finish signing up** | What Apple or Google returned about the reader, encrypted, until they agree to the terms | Four minutes |

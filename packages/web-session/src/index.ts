@@ -163,3 +163,60 @@ export const sessionCookieOptions = (
   sameSite: "lax",
   secure: process.env.NODE_ENV === "production",
 });
+
+/**
+ * The login device token the API issues on every sign-in whose password was
+ * right. A later password sign-in that presents it counts against an allowance
+ * of this browser's own, so strangers failing against the same address cannot
+ * lock its owner out of a browser they have signed in from before.
+ */
+export interface LoginDevice {
+  expiresAt: Temporal.Instant;
+  token: string;
+}
+
+/**
+ * The device a `Login` response carries, or `null` when there is none to keep:
+ * a server that issues none, an empty token, or an expiry that is not an
+ * instant.
+ */
+export const toLoginDevice = (
+  device: { expiresAt: string; token: string } | undefined
+): LoginDevice | null => {
+  const token = device?.token.trim() ?? "";
+  const expiresAt = device?.expiresAt.trim() ?? "";
+
+  if (!(token && expiresAt)) {
+    return null;
+  }
+
+  try {
+    return { expiresAt: Temporal.Instant.from(expiresAt), token };
+  } catch {
+    return null;
+  }
+};
+
+/** What {@link loginDeviceCookie} hands to `cookies().set()`. */
+interface LoginDeviceCookie extends SessionCookieOptions {
+  name: string;
+  value: string;
+}
+
+/**
+ * The cookie a browser keeps its login device token in, with the session
+ * cookie's attributes and the device's own expiry.
+ *
+ * The token goes in as the API issued it: the API verifies it and treats one
+ * it cannot as absent, so there is nothing to seal. It is a cookie of its own
+ * because it has to outlive the session — signing out, and a session that
+ * expires, leave it in place.
+ */
+export const loginDeviceCookie = (
+  name: string,
+  device: LoginDevice
+): LoginDeviceCookie => ({
+  ...sessionCookieOptions(new Date(device.expiresAt.epochMilliseconds)),
+  name,
+  value: device.token,
+});

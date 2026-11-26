@@ -142,7 +142,7 @@ func NewWithAsyncRecorder(db *sql.DB, queries Querier, logger *slog.Logger, encr
 // it. newAPI leaves it on in-process counters, so no test that signs in reaches
 // the Redis the environment may name.
 func (s *platformServer) shareLoginGuard() {
-	s.login = loginguard.NewShared(platformpolicy.NewResolver(dbmodels.New(s.db), platformpolicy.CacheTTL, s.logger), s.logger)
+	s.login = loginguard.NewShared(platformpolicy.NewResolver(dbmodels.New(s.db), platformpolicy.CacheTTL, s.logger), s.tokens, s.logger)
 }
 
 // Register mounts the publira.platform.v1 services on mux. Whatever mux this
@@ -181,7 +181,7 @@ func newAPI(db *sql.DB, queries Querier, logger *slog.Logger, encryptor emailset
 		tokens:        tokens,
 		logger:        logger,
 		mail:          mail,
-		login:         loginguard.NewDefault(),
+		login:         loginguard.NewDefault(tokens),
 		storageTester: storageTester,
 	}
 	return &API{server: server}

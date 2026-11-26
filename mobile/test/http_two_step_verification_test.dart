@@ -6,6 +6,7 @@ import 'package:publira/auth/two_step_verification.dart';
 import 'package:publira/config.dart';
 
 import 'support/connect_fixture_server.dart';
+import 'support/fake_auth.dart';
 
 void main() {
   late ConnectFixtureServer server;
@@ -26,6 +27,7 @@ void main() {
     await server.start();
     auth = HttpAuthRepository(
       config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+      loginDevices: InMemoryLoginDeviceStore(),
     );
   });
 

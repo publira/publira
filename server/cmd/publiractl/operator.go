@@ -15,6 +15,7 @@ var operatorGroup = commandGroup{
 	summary: "Recover a Platform Console operator's account where no operator can sign in",
 	commands: []command{
 		{name: "reset-mfa", summary: "Remove an operator's two-step verification, for one who lost the authenticator and every recovery code", setup: setupOperatorResetMFA},
+		operatorUnlockSignInCommand,
 	},
 }
 

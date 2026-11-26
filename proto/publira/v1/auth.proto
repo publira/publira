@@ -11,6 +11,10 @@ message LoginRequest {
   publira.types.v1.TenantContext tenant = 1;
   string email = 2;
   string password = 3;
+  // The token of the LoginDevice the previous sign-in from this device to
+  // this address answered, or empty. One that is expired, forged, or issued
+  // for another address is treated as absent rather than refused.
+  string device_token = 4;
 }
 
 message LoginResponse {
@@ -22,6 +26,9 @@ message LoginResponse {
   // the site, in the app, or in the tenant's console: the account has one
   // second factor, and every place it signs in asks for it.
   MfaChallenge mfa_challenge = 3;
+  // Set on every answer to a password that was right, a challenge for the
+  // second factor included, for the device to send as device_token next time.
+  publira.types.v1.LoginDevice device = 4;
 }
 
 // The half-finished session a password, or a provider's sign-in, earns an

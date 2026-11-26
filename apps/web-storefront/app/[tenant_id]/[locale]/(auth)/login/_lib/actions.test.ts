@@ -7,7 +7,9 @@ const {
   mockBeginPasskeyLoginPublic,
   mockFinishPasskeyLoginPublic,
   mockLoginPublic,
+  mockReadLoginDeviceToken,
   mockRedirect,
+  mockWriteLoginDeviceCookie,
   mockWriteMfaChallenge,
   mockWritePublicSessionCookie,
 } = vi.hoisted(() => ({
@@ -15,9 +17,11 @@ const {
   mockBeginPasskeyLoginPublic: vi.fn(),
   mockFinishPasskeyLoginPublic: vi.fn(),
   mockLoginPublic: vi.fn(),
+  mockReadLoginDeviceToken: vi.fn(),
   mockRedirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
+  mockWriteLoginDeviceCookie: vi.fn(),
   mockWriteMfaChallenge: vi.fn(),
   mockWritePublicSessionCookie: vi.fn(),
 }));
@@ -38,6 +42,11 @@ vi.mock("#lib/auth-session", () => ({
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
+vi.mock("#lib/login-device-cookie", () => ({
+  readLoginDeviceToken: mockReadLoginDeviceToken,
+  writeLoginDeviceCookie: mockWriteLoginDeviceCookie,
+}));
+
 vi.mock("#lib/mfa-challenge", () => ({
   MFA_CHALLENGE_PATH: "/login/two-step",
   writeMfaChallenge: mockWriteMfaChallenge,
@@ -48,6 +57,11 @@ vi.mock("#lib/tenant", () => ({
 }));
 
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+const device = {
+  expiresAt: Temporal.Instant.from("2030-03-31T00:00:00Z"),
+  token: "device-new",
+};
 
 const loginFormData = (): FormData => {
   const data = new FormData();
@@ -82,11 +96,12 @@ describe("loginAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    mockReadLoginDeviceToken.mockResolvedValue("device-old");
   });
 
   it("writes the session and returns the reader to where they were", async () => {
     const session = { accessToken: "tok", expiresAt: "2030-01-01" };
-    mockLoginPublic.mockResolvedValueOnce({ ok: true, session });
+    mockLoginPublic.mockResolvedValueOnce({ ok: true, device, session });
 
     const { loginAction } = await import("./actions");
 
@@ -99,8 +114,30 @@ describe("loginAction", () => {
     );
   });
 
+  it("presents the browser's device token and keeps the device the sign-in was issued", async () => {
+    mockLoginPublic.mockResolvedValueOnce({
+      device,
+      ok: true,
+      session: { accessToken: "tok", expiresAt: "2030-01-01" },
+    });
+
+    const { loginAction } = await import("./actions");
+
+    await expect(loginAction(loginFormData())).rejects.toThrow(
+      "NEXT_REDIRECT:/my"
+    );
+    expect(mockLoginPublic).toHaveBeenCalledWith(
+      "reader@example.com",
+      "a-password",
+      tenantId,
+      "device-old"
+    );
+    expect(mockWriteLoginDeviceCookie).toHaveBeenCalledWith(device);
+  });
+
   it("keeps the challenge of an account with an authenticator and asks for its code", async () => {
     mockLoginPublic.mockResolvedValueOnce({
+      device,
       mfaChallenge: { expiresAt: "2030-01-01T00:05:00Z", token: "chl" },
       ok: true,
     });
@@ -118,6 +155,8 @@ describe("loginAction", () => {
       tenantId,
     });
     expect(mockWritePublicSessionCookie).not.toHaveBeenCalled();
+    // The password was right, so the device is kept all the same.
+    expect(mockWriteLoginDeviceCookie).toHaveBeenCalledWith(device);
   });
 
   it("says the email address or password is incorrect when the credentials are refused", async () => {
@@ -131,6 +170,7 @@ describe("loginAction", () => {
       t("storefront.auth.errors.login_failed")
     );
     expect(mockWritePublicSessionCookie).not.toHaveBeenCalled();
+    expect(mockWriteLoginDeviceCookie).not.toHaveBeenCalled();
   });
 
   it("asks the reader to wait, not to check their password, after too many attempts", async () => {

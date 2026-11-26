@@ -165,12 +165,20 @@ go -C server run ./cmd/publiractl operator reset-mfa --email operator@example.co
 | Command | RPC | What it does |
 | --- | --- | --- |
 | `operator reset-mfa` | — | Removes the authenticator, confirmed or only started, and every recovery code of an operator named by `--user` (public ID) or `--email`, so they sign in with their password alone; refused for an operator with none set up. Any operator may be named, a suspended one too |
+| `operator unlock-sign-in` | — | Lifts the [sign-in limit](#unlocking-a-sign-in) of the address `--email` on the Platform Console |
 
 `operator reset-mfa` files `operator_mfa_reset` in `platform_audit_logs` under the `system` actor. A refused value names its flag on stderr and exits `1` with nothing written.
 
 Environment variables:
 
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+- `PUBLIRA_REDIS_URL`: the Redis the servers keep their sign-in counts in, for `operator unlock-sign-in`.
+
+### Unlocking a sign-in
+
+`operator unlock-sign-in` and `tenant member unlock-sign-in` start every sign-in allowance of one address afresh, at every origin and on every device, and leave every other address's alone. They are for an owner the address's shared allowance refuses while they sign in from a device that has not signed in to the address before: one that has keeps an allowance of its own that strangers cannot spend. The address is taken as it is typed to sign in, and nothing looks it up, because the limit counts an address whether or not an account holds it.
+
+The lift reaches the servers through the counters they share, so it needs `PUBLIRA_REDIS_URL` set to the Redis they use. An install without one keeps each server's counts in that server's memory, where no other process reaches them; the command then exits `1` and changes nothing, and restarting `publira server` clears them. Neither command files an audit entry.
 
 ## outbox
 
@@ -258,7 +266,7 @@ go -C server run ./cmd/publiractl policy show
 | `--promotion-code-attempt-per-minute`, `--promotion-code-attempt-per-day` | How many promotion codes one reader may have looked up, by a quote or by a purchase started with one, all counted together | 5, 30 |
 | `--api-key-request-per-minute`, `--api-key-request-per-day` | How many requests one of a tenant's API keys may make to the tenant console's API | 600, 100000 |
 | `--content-view-per-client-per-minute`, `--content-view-per-client-per-day` | How many page views one client address may have recorded, signed in or not | 60, 3000 |
-| `--login-attempts-per-account-per-minute`, `--login-attempts-per-account-per-day` | How many passwords may be tried at sign-in for one address, per tenant or for the Platform Console. A sign-in whose password is right clears the count | 5, 50 |
+| `--login-attempts-per-account-per-minute`, `--login-attempts-per-account-per-day` | How many passwords may be tried at sign-in for one address, per tenant or for the Platform Console, from one origin, or from one device the address signed in from before. Every device it never signed in from shares ten times as many between them. A sign-in whose password is right clears the count of its origin or device | 5, 50 |
 | `--login-attempts-per-source-per-hour`, `--login-attempts-per-source-per-day` | How many sign-ins one origin may fail, across every address, tenant and console | 60, 300 |
 | `--data-export-per-hour`, `--data-export-per-day` | How many archives of what the install keeps about them one reader may ask for | 1, 1 |
 | `--mail-requests-per-address-per-hour`, `--mail-requests-per-address-per-day` | How much mail the forms that take an address may send one address | 5, 20 |
@@ -465,6 +473,7 @@ go -C server run ./cmd/publiractl tenant admin create \
 | `tenant member update-role` | `UpdateTenantMemberRole` | Replaces the `--user`'s console role with `--role` |
 | `tenant member remove` | `RemoveTenantMember` | Takes every console role from the `--user`, who stays a user of the tenant |
 | `tenant member reset-mfa` | — | Removes the authenticator, every console passkey, every recovery code, and the count of refused attempts of a user of the tenant, named by `--user` (public ID) or `--email`, so they sign in with their password alone; refused for a user with neither an authenticator nor a console passkey. The passkeys the user signs in to the storefront with stay |
+| `tenant member unlock-sign-in` | — | Lifts the [sign-in limit](#unlocking-a-sign-in) of the address `--email` on the tenant's site and its console, which share one |
 | `tenant invite create` | `CreateTenantAdminInvitation` | Invites `--email` to administer the tenant; an address whose account is active, confirmed, and holds a password its owner set through a link mailed to the address is given `tenant_admin` at once, and any other is mailed the invitation |
 | `tenant invite list` | `ListTenantAdminInvitations` | Prints every invitation with its ID and status |
 | `tenant invite resend`, `tenant invite cancel` | `ResendTenantAdminInvitation`, `CancelTenantAdminInvitation` | Mails the invitation `--id` again with a new link, or withdraws it |
@@ -487,13 +496,14 @@ go -C server run ./cmd/publiractl tenant admin create \
 
 `tenant admin create` is how an install that sends no mail gets its first administrator, and any later one. Its password comes from a file with `--password-file`, from stdin with `--password-stdin`, from a masked prompt, from an environment variable with `--password-env` where the platform sets secrets only that way, or is generated with `--generate-password`, which prints it once to stdout and nowhere else. The account signs in to the console at once.
 
-Each command prints what it did to stdout, and files its audit entries in `platform_audit_logs` under the `system` actor with no operator. A refused value names its flag on stderr and exits `1` with nothing written.
+Each command prints what it did to stdout, and every one but `tenant member unlock-sign-in` files its audit entries in `platform_audit_logs` under the `system` actor with no operator. A refused value names its flag on stderr and exits `1` with nothing written.
 
 An invitation's mail goes on the outbox, as it does from the console, and the [worker](../publira/README.md#publira-worker) is what sends it. An install running no worker gets the invitation and sends nothing; an invitation's link expires 24 hours after it is created or resent.
 
 Environment variables:
 
 - `PUBLIRA_PLATFORM_DB_URL`: the `publira_platform` connection the Platform Console's API writes with. Falls back to that role's development URL, never to `PUBLIRA_DB_URL`.
+- `PUBLIRA_REDIS_URL`: the Redis the servers keep their sign-in counts in, for `tenant member unlock-sign-in`.
 
 ## webpush
 

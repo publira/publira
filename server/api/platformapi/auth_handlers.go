@@ -210,7 +210,7 @@ func (s *platformServer) Login(
 	}
 	// Charged before the address is looked up, so the refusal is the same
 	// whether or not it holds an account and costs no bcrypt.
-	attempt, err := s.login.Begin(ctx, loginguard.PlatformScope, email)
+	attempt, err := s.login.Begin(ctx, loginguard.PlatformScope, email, req.DeviceToken)
 	if err != nil {
 		auth.AuditEvent(ctx, "platform_login", "failure", "", "", "rate_limited")
 		return nil, err
@@ -233,7 +233,7 @@ func (s *platformServer) Login(
 		auth.AuditEvent(ctx, "platform_login", "failure", "", platformUser.PublicID, "invalid_credentials")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
 	}
-	attempt.Verified(ctx)
+	device := attempt.Verified(ctx)
 	if platformUser.Status != "active" {
 		auth.AuditEvent(ctx, "platform_login", "failure", "", platformUser.PublicID, "user_inactive")
 		return nil, connect.NewError(connect.CodeUnauthenticated, "invalid credentials")
@@ -257,7 +257,7 @@ func (s *platformServer) Login(
 			return nil, err
 		}
 		auth.AuditEvent(ctx, "platform_login", "success", "", platformUser.PublicID, "mfa_challenge_issued")
-		return &publirasplatformv1.PlatformAuthServiceLoginResponse{MfaChallenge: challenge}, nil
+		return &publirasplatformv1.PlatformAuthServiceLoginResponse{MfaChallenge: challenge, Device: device}, nil
 	}
 
 	token, expiresAt, err := s.tokens.Issue(platformUser.PublicID, auth.AudiencePlatform, "", resolvedRole, platformUser.CredentialsVersion, time.Now())
@@ -268,6 +268,7 @@ func (s *platformServer) Login(
 	resp := &publirasplatformv1.PlatformAuthServiceLoginResponse{
 		User:        &publirattypesv1.User{PublicId: platformUser.PublicID, Name: platformUser.Name, Role: resolvedRole},
 		AccessToken: &publirattypesv1.AccessToken{Token: token, ExpiresAt: auth.FormatExpiresAt(expiresAt)},
+		Device:      device,
 	}
 	auth.AuditEvent(ctx, "platform_login", "success", "", platformUser.PublicID, "token_issued")
 	return resp, nil

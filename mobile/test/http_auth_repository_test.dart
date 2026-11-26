@@ -21,6 +21,7 @@ import 'package:publira/auth/sign_up_requirements.dart';
 import 'package:publira/config.dart';
 
 import 'support/connect_fixture_server.dart';
+import 'support/fake_auth.dart';
 import 'support/icon_images.dart';
 
 void main() {
@@ -32,6 +33,7 @@ void main() {
     await server.start();
     auth = HttpAuthRepository(
       config: AppConfig(baseUrl: server.baseUrl, tenantHost: 'localhost'),
+      loginDevices: InMemoryLoginDeviceStore(),
     );
   });
 

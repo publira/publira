@@ -77,9 +77,13 @@ func (MfaChallengeKind) EnumDescriptor() ([]byte, []int) {
 }
 
 type PlatformAuthServiceLoginRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
-	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Email    string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	Password string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	// The token of the LoginDevice the previous sign-in from this device to
+	// this address answered, or empty. One that is expired, forged, or issued
+	// for another address is treated as absent rather than refused.
+	DeviceToken   string `protobuf:"bytes,3,opt,name=device_token,json=deviceToken,proto3" json:"device_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -128,13 +132,23 @@ func (x *PlatformAuthServiceLoginRequest) GetPassword() string {
 	return ""
 }
 
+func (x *PlatformAuthServiceLoginRequest) GetDeviceToken() string {
+	if x != nil {
+		return x.DeviceToken
+	}
+	return ""
+}
+
 type PlatformAuthServiceLoginResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Empty while mfa_challenge is set: the password was right, but the session
 	// is not issued until the second factor is settled.
-	User          *v1.User                         `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	AccessToken   *v1.AccessToken                  `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	MfaChallenge  *PlatformAuthServiceMfaChallenge `protobuf:"bytes,3,opt,name=mfa_challenge,json=mfaChallenge,proto3" json:"mfa_challenge,omitempty"`
+	User         *v1.User                         `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	AccessToken  *v1.AccessToken                  `protobuf:"bytes,2,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	MfaChallenge *PlatformAuthServiceMfaChallenge `protobuf:"bytes,3,opt,name=mfa_challenge,json=mfaChallenge,proto3" json:"mfa_challenge,omitempty"`
+	// Set on every answer to a password that was right, a challenge for the
+	// second factor included, for the device to send as device_token next time.
+	Device        *v1.LoginDevice `protobuf:"bytes,4,opt,name=device,proto3" json:"device,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -186,6 +200,13 @@ func (x *PlatformAuthServiceLoginResponse) GetAccessToken() *v1.AccessToken {
 func (x *PlatformAuthServiceLoginResponse) GetMfaChallenge() *PlatformAuthServiceMfaChallenge {
 	if x != nil {
 		return x.MfaChallenge
+	}
+	return nil
+}
+
+func (x *PlatformAuthServiceLoginResponse) GetDevice() *v1.LoginDevice {
+	if x != nil {
+		return x.Device
 	}
 	return nil
 }
@@ -1597,14 +1618,16 @@ var File_publira_platform_v1_auth_proto protoreflect.FileDescriptor
 
 const file_publira_platform_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x1epublira/platform/v1/auth.proto\x12\x13publira.platform.v1\x1a\x1cpublira/types/v1/types.proto\"S\n" +
+	"\x1epublira/platform/v1/auth.proto\x12\x13publira.platform.v1\x1a\x1cpublira/types/v1/types.proto\"v\n" +
 	"\x1fPlatformAuthServiceLoginRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"\xeb\x01\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\x12!\n" +
+	"\fdevice_token\x18\x03 \x01(\tR\vdeviceToken\"\xa2\x02\n" +
 	" PlatformAuthServiceLoginResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.publira.types.v1.UserR\x04user\x12@\n" +
 	"\faccess_token\x18\x02 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vaccessToken\x12Y\n" +
-	"\rmfa_challenge\x18\x03 \x01(\v24.publira.platform.v1.PlatformAuthServiceMfaChallengeR\fmfaChallenge\"\x91\x01\n" +
+	"\rmfa_challenge\x18\x03 \x01(\v24.publira.platform.v1.PlatformAuthServiceMfaChallengeR\fmfaChallenge\x125\n" +
+	"\x06device\x18\x04 \x01(\v2\x1d.publira.types.v1.LoginDeviceR\x06device\"\x91\x01\n" +
 	"\x1fPlatformAuthServiceMfaChallenge\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1d\n" +
 	"\n" +
@@ -1751,52 +1774,54 @@ var file_publira_platform_v1_auth_proto_goTypes = []any{
 	(*PlatformAuthServiceGetMeResponse)(nil),                      // 31: publira.platform.v1.PlatformAuthServiceGetMeResponse
 	(*v1.User)(nil),                                               // 32: publira.types.v1.User
 	(*v1.AccessToken)(nil),                                        // 33: publira.types.v1.AccessToken
+	(*v1.LoginDevice)(nil),                                        // 34: publira.types.v1.LoginDevice
 }
 var file_publira_platform_v1_auth_proto_depIdxs = []int32{
 	32, // 0: publira.platform.v1.PlatformAuthServiceLoginResponse.user:type_name -> publira.types.v1.User
 	33, // 1: publira.platform.v1.PlatformAuthServiceLoginResponse.access_token:type_name -> publira.types.v1.AccessToken
 	3,  // 2: publira.platform.v1.PlatformAuthServiceLoginResponse.mfa_challenge:type_name -> publira.platform.v1.PlatformAuthServiceMfaChallenge
-	0,  // 3: publira.platform.v1.PlatformAuthServiceMfaChallenge.kind:type_name -> publira.platform.v1.MfaChallengeKind
-	32, // 4: publira.platform.v1.PlatformAuthServiceVerifyMfaResponse.user:type_name -> publira.types.v1.User
-	33, // 5: publira.platform.v1.PlatformAuthServiceVerifyMfaResponse.access_token:type_name -> publira.types.v1.AccessToken
-	32, // 6: publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse.user:type_name -> publira.types.v1.User
-	33, // 7: publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse.access_token:type_name -> publira.types.v1.AccessToken
-	32, // 8: publira.platform.v1.PlatformAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
-	1,  // 9: publira.platform.v1.PlatformAuthService.Login:input_type -> publira.platform.v1.PlatformAuthServiceLoginRequest
-	16, // 10: publira.platform.v1.PlatformAuthService.Logout:input_type -> publira.platform.v1.PlatformAuthServiceLogoutRequest
-	4,  // 11: publira.platform.v1.PlatformAuthService.VerifyMfa:input_type -> publira.platform.v1.PlatformAuthServiceVerifyMfaRequest
-	6,  // 12: publira.platform.v1.PlatformAuthService.GetMfaStatus:input_type -> publira.platform.v1.PlatformAuthServiceGetMfaStatusRequest
-	8,  // 13: publira.platform.v1.PlatformAuthService.StartMfaEnrollment:input_type -> publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentRequest
-	10, // 14: publira.platform.v1.PlatformAuthService.ConfirmMfaEnrollment:input_type -> publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentRequest
-	12, // 15: publira.platform.v1.PlatformAuthService.DisableMfa:input_type -> publira.platform.v1.PlatformAuthServiceDisableMfaRequest
-	14, // 16: publira.platform.v1.PlatformAuthService.RegenerateMfaRecoveryCodes:input_type -> publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest
-	18, // 17: publira.platform.v1.PlatformAuthService.RequestPasswordReset:input_type -> publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest
-	20, // 18: publira.platform.v1.PlatformAuthService.VerifyPasswordResetToken:input_type -> publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest
-	22, // 19: publira.platform.v1.PlatformAuthService.ConfirmPasswordReset:input_type -> publira.platform.v1.PlatformAuthServiceConfirmPasswordResetRequest
-	24, // 20: publira.platform.v1.PlatformAuthService.RequestEmailChange:input_type -> publira.platform.v1.PlatformAuthServiceRequestEmailChangeRequest
-	26, // 21: publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken:input_type -> publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenRequest
-	28, // 22: publira.platform.v1.PlatformAuthService.ConfirmEmailChange:input_type -> publira.platform.v1.PlatformAuthServiceConfirmEmailChangeRequest
-	30, // 23: publira.platform.v1.PlatformAuthService.GetMe:input_type -> publira.platform.v1.PlatformAuthServiceGetMeRequest
-	2,  // 24: publira.platform.v1.PlatformAuthService.Login:output_type -> publira.platform.v1.PlatformAuthServiceLoginResponse
-	17, // 25: publira.platform.v1.PlatformAuthService.Logout:output_type -> publira.platform.v1.PlatformAuthServiceLogoutResponse
-	5,  // 26: publira.platform.v1.PlatformAuthService.VerifyMfa:output_type -> publira.platform.v1.PlatformAuthServiceVerifyMfaResponse
-	7,  // 27: publira.platform.v1.PlatformAuthService.GetMfaStatus:output_type -> publira.platform.v1.PlatformAuthServiceGetMfaStatusResponse
-	9,  // 28: publira.platform.v1.PlatformAuthService.StartMfaEnrollment:output_type -> publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentResponse
-	11, // 29: publira.platform.v1.PlatformAuthService.ConfirmMfaEnrollment:output_type -> publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse
-	13, // 30: publira.platform.v1.PlatformAuthService.DisableMfa:output_type -> publira.platform.v1.PlatformAuthServiceDisableMfaResponse
-	15, // 31: publira.platform.v1.PlatformAuthService.RegenerateMfaRecoveryCodes:output_type -> publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse
-	19, // 32: publira.platform.v1.PlatformAuthService.RequestPasswordReset:output_type -> publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse
-	21, // 33: publira.platform.v1.PlatformAuthService.VerifyPasswordResetToken:output_type -> publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenResponse
-	23, // 34: publira.platform.v1.PlatformAuthService.ConfirmPasswordReset:output_type -> publira.platform.v1.PlatformAuthServiceConfirmPasswordResetResponse
-	25, // 35: publira.platform.v1.PlatformAuthService.RequestEmailChange:output_type -> publira.platform.v1.PlatformAuthServiceRequestEmailChangeResponse
-	27, // 36: publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken:output_type -> publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenResponse
-	29, // 37: publira.platform.v1.PlatformAuthService.ConfirmEmailChange:output_type -> publira.platform.v1.PlatformAuthServiceConfirmEmailChangeResponse
-	31, // 38: publira.platform.v1.PlatformAuthService.GetMe:output_type -> publira.platform.v1.PlatformAuthServiceGetMeResponse
-	24, // [24:39] is the sub-list for method output_type
-	9,  // [9:24] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	34, // 3: publira.platform.v1.PlatformAuthServiceLoginResponse.device:type_name -> publira.types.v1.LoginDevice
+	0,  // 4: publira.platform.v1.PlatformAuthServiceMfaChallenge.kind:type_name -> publira.platform.v1.MfaChallengeKind
+	32, // 5: publira.platform.v1.PlatformAuthServiceVerifyMfaResponse.user:type_name -> publira.types.v1.User
+	33, // 6: publira.platform.v1.PlatformAuthServiceVerifyMfaResponse.access_token:type_name -> publira.types.v1.AccessToken
+	32, // 7: publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse.user:type_name -> publira.types.v1.User
+	33, // 8: publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse.access_token:type_name -> publira.types.v1.AccessToken
+	32, // 9: publira.platform.v1.PlatformAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
+	1,  // 10: publira.platform.v1.PlatformAuthService.Login:input_type -> publira.platform.v1.PlatformAuthServiceLoginRequest
+	16, // 11: publira.platform.v1.PlatformAuthService.Logout:input_type -> publira.platform.v1.PlatformAuthServiceLogoutRequest
+	4,  // 12: publira.platform.v1.PlatformAuthService.VerifyMfa:input_type -> publira.platform.v1.PlatformAuthServiceVerifyMfaRequest
+	6,  // 13: publira.platform.v1.PlatformAuthService.GetMfaStatus:input_type -> publira.platform.v1.PlatformAuthServiceGetMfaStatusRequest
+	8,  // 14: publira.platform.v1.PlatformAuthService.StartMfaEnrollment:input_type -> publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentRequest
+	10, // 15: publira.platform.v1.PlatformAuthService.ConfirmMfaEnrollment:input_type -> publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentRequest
+	12, // 16: publira.platform.v1.PlatformAuthService.DisableMfa:input_type -> publira.platform.v1.PlatformAuthServiceDisableMfaRequest
+	14, // 17: publira.platform.v1.PlatformAuthService.RegenerateMfaRecoveryCodes:input_type -> publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest
+	18, // 18: publira.platform.v1.PlatformAuthService.RequestPasswordReset:input_type -> publira.platform.v1.PlatformAuthServiceRequestPasswordResetRequest
+	20, // 19: publira.platform.v1.PlatformAuthService.VerifyPasswordResetToken:input_type -> publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenRequest
+	22, // 20: publira.platform.v1.PlatformAuthService.ConfirmPasswordReset:input_type -> publira.platform.v1.PlatformAuthServiceConfirmPasswordResetRequest
+	24, // 21: publira.platform.v1.PlatformAuthService.RequestEmailChange:input_type -> publira.platform.v1.PlatformAuthServiceRequestEmailChangeRequest
+	26, // 22: publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken:input_type -> publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenRequest
+	28, // 23: publira.platform.v1.PlatformAuthService.ConfirmEmailChange:input_type -> publira.platform.v1.PlatformAuthServiceConfirmEmailChangeRequest
+	30, // 24: publira.platform.v1.PlatformAuthService.GetMe:input_type -> publira.platform.v1.PlatformAuthServiceGetMeRequest
+	2,  // 25: publira.platform.v1.PlatformAuthService.Login:output_type -> publira.platform.v1.PlatformAuthServiceLoginResponse
+	17, // 26: publira.platform.v1.PlatformAuthService.Logout:output_type -> publira.platform.v1.PlatformAuthServiceLogoutResponse
+	5,  // 27: publira.platform.v1.PlatformAuthService.VerifyMfa:output_type -> publira.platform.v1.PlatformAuthServiceVerifyMfaResponse
+	7,  // 28: publira.platform.v1.PlatformAuthService.GetMfaStatus:output_type -> publira.platform.v1.PlatformAuthServiceGetMfaStatusResponse
+	9,  // 29: publira.platform.v1.PlatformAuthService.StartMfaEnrollment:output_type -> publira.platform.v1.PlatformAuthServiceStartMfaEnrollmentResponse
+	11, // 30: publira.platform.v1.PlatformAuthService.ConfirmMfaEnrollment:output_type -> publira.platform.v1.PlatformAuthServiceConfirmMfaEnrollmentResponse
+	13, // 31: publira.platform.v1.PlatformAuthService.DisableMfa:output_type -> publira.platform.v1.PlatformAuthServiceDisableMfaResponse
+	15, // 32: publira.platform.v1.PlatformAuthService.RegenerateMfaRecoveryCodes:output_type -> publira.platform.v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse
+	19, // 33: publira.platform.v1.PlatformAuthService.RequestPasswordReset:output_type -> publira.platform.v1.PlatformAuthServiceRequestPasswordResetResponse
+	21, // 34: publira.platform.v1.PlatformAuthService.VerifyPasswordResetToken:output_type -> publira.platform.v1.PlatformAuthServiceVerifyPasswordResetTokenResponse
+	23, // 35: publira.platform.v1.PlatformAuthService.ConfirmPasswordReset:output_type -> publira.platform.v1.PlatformAuthServiceConfirmPasswordResetResponse
+	25, // 36: publira.platform.v1.PlatformAuthService.RequestEmailChange:output_type -> publira.platform.v1.PlatformAuthServiceRequestEmailChangeResponse
+	27, // 37: publira.platform.v1.PlatformAuthService.VerifyEmailChangeToken:output_type -> publira.platform.v1.PlatformAuthServiceVerifyEmailChangeTokenResponse
+	29, // 38: publira.platform.v1.PlatformAuthService.ConfirmEmailChange:output_type -> publira.platform.v1.PlatformAuthServiceConfirmEmailChangeResponse
+	31, // 39: publira.platform.v1.PlatformAuthService.GetMe:output_type -> publira.platform.v1.PlatformAuthServiceGetMeResponse
+	25, // [25:40] is the sub-list for method output_type
+	10, // [10:25] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_auth_proto_init() }

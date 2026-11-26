@@ -29,11 +29,13 @@ class LoginRequest extends $pb.GeneratedMessage {
     $0.TenantContext? tenant,
     $core.String? email,
     $core.String? password,
+    $core.String? deviceToken,
   }) {
     final result = LoginRequest._();
     if (tenant != null) result.tenant = tenant;
     if (email != null) result.email = email;
     if (password != null) result.password = password;
+    if (deviceToken != null) result.deviceToken = deviceToken;
     return result;
   }
 
@@ -54,6 +56,7 @@ class LoginRequest extends $pb.GeneratedMessage {
         subBuilder: $0.TenantContext.$_createMessage)
     ..aOS(2, _omitFieldNames ? '' : 'email')
     ..aOS(3, _omitFieldNames ? '' : 'password')
+    ..aOS(4, _omitFieldNames ? '' : 'deviceToken')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -106,6 +109,18 @@ class LoginRequest extends $pb.GeneratedMessage {
   $core.bool hasPassword() => $_has(2);
   @$pb.TagNumber(3)
   void clearPassword() => $_clearField(3);
+
+  /// The token of the LoginDevice the previous sign-in from this device to
+  /// this address answered, or empty. One that is expired, forged, or issued
+  /// for another address is treated as absent rather than refused.
+  @$pb.TagNumber(4)
+  $core.String get deviceToken => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set deviceToken($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDeviceToken() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDeviceToken() => $_clearField(4);
 }
 
 class LoginResponse extends $pb.GeneratedMessage {
@@ -113,11 +128,13 @@ class LoginResponse extends $pb.GeneratedMessage {
     $0.User? user,
     $0.AccessToken? accessToken,
     MfaChallenge? mfaChallenge,
+    $0.LoginDevice? device,
   }) {
     final result = LoginResponse._();
     if (user != null) result.user = user;
     if (accessToken != null) result.accessToken = accessToken;
     if (mfaChallenge != null) result.mfaChallenge = mfaChallenge;
+    if (device != null) result.device = device;
     return result;
   }
 
@@ -140,6 +157,8 @@ class LoginResponse extends $pb.GeneratedMessage {
         subBuilder: $0.AccessToken.$_createMessage)
     ..aOM<MfaChallenge>(3, _omitFieldNames ? '' : 'mfaChallenge',
         subBuilder: MfaChallenge.$_createMessage)
+    ..aOM<$0.LoginDevice>(4, _omitFieldNames ? '' : 'device',
+        subBuilder: $0.LoginDevice.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -201,6 +220,19 @@ class LoginResponse extends $pb.GeneratedMessage {
   void clearMfaChallenge() => $_clearField(3);
   @$pb.TagNumber(3)
   MfaChallenge ensureMfaChallenge() => $_ensure(2);
+
+  /// Set on every answer to a password that was right, a challenge for the
+  /// second factor included, for the device to send as device_token next time.
+  @$pb.TagNumber(4)
+  $0.LoginDevice get device => $_getN(3);
+  @$pb.TagNumber(4)
+  set device($0.LoginDevice value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDevice() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDevice() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $0.LoginDevice ensureDevice() => $_ensure(3);
 }
 
 /// The half-finished session a password, or a provider's sign-in, earns an

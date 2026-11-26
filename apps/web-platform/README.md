@@ -9,6 +9,7 @@ The cross-tenant operations console for platform operators. Its responsibilities
 - `proxy.ts` protects every path that is not in `PUBLIC_PATHS` (`/.well-known/change-password`, `/login`, `/mfa`, `/livez`, `/readyz`, `/confirm-email`, `/confirm-password`, `/reset-password`, `/reset-password/requested`, `/setup`)
 - There is no `/logout` route. Signing out goes through the header's Server Action only
 - Session cookie: `publira_web_platform_auth`
+- Login device cookie: `publira_web_platform_login_device` (`lib/login-device-cookie.ts`), the token a right password earns so the next password sign-in from the same browser is rate-limited on its own. Signing out leaves it in place
 - Roles: `platform_super_admin`, `platform_operator`, `platform_auditor` (`server/internal/auth/roles.go`; their permissions are in `server/cmd/publira/README.md`)
 - Screens are guarded in `app/[locale]/(protected)/layout.tsx`
 

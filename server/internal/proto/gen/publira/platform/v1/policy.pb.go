@@ -284,9 +284,13 @@ type PlatformPolicy struct {
 	WaitFreeTicketUse *MinuteDayLimit `protobuf:"bytes,8,opt,name=wait_free_ticket_use,json=waitFreeTicketUse,proto3" json:"wait_free_ticket_use,omitempty"`
 	// How often a password may be tried at sign-in for one address, counted per
 	// tenant (the storefront and the tenant console together) or for the
-	// platform console, and cleared by a sign-in whose password is right. An
-	// attempt past it is refused with RESOURCE_EXHAUSTED before any password is
-	// checked, whether or not the address belongs to an account.
+	// platform console. It is counted at each client source, and on each device
+	// that signed in to the address before and sends the LoginDevice that
+	// sign-in answered; every attempt from a device that sends none shares ten
+	// times as many between them. A sign-in whose password is right clears the
+	// count of its source or device. An attempt past it is refused with
+	// RESOURCE_EXHAUSTED before any password is checked, whether or not the
+	// address belongs to an account.
 	//
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.

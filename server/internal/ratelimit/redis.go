@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -78,4 +79,12 @@ func (s *redisStore) Decr(ctx context.Context, key string) error {
 
 func (s *redisStore) Forget(ctx context.Context, key string) error {
 	return s.client.Del(ctx, redisKeyPrefix+key).Err()
+}
+
+func (s *redisStore) Get(ctx context.Context, key string) (int64, error) {
+	count, err := s.client.Get(ctx, redisKeyPrefix+key).Int64()
+	if errors.Is(err, redis.Nil) {
+		return 0, nil
+	}
+	return count, err
 }

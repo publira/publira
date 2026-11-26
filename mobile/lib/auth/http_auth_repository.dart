@@ -16,6 +16,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/data_export.dart';
 import 'package:publira/auth/email_change.dart';
 import 'package:publira/auth/identity_provider.dart';
+import 'package:publira/auth/login_device_store.dart';
 import 'package:publira/auth/notification_settings.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
@@ -27,10 +28,14 @@ import 'package:publira/config.dart';
 
 /// [AuthRepository] backed by `publira.v1.AuthService` on the public API.
 class HttpAuthRepository implements AuthRepository {
+  /// [loginDevices] keeps the token a password sign-in hands back, which the
+  /// next password sign-in sends so it counts against this device's own
+  /// allowance.
   factory HttpAuthRepository({
     required AppConfig config,
     ConnectClient? client,
     TenantResolver? tenants,
+    LoginDeviceStore loginDevices = const SecureLoginDeviceStore(),
   }) {
     final resolved = client ?? ConnectClient(baseUrl: config.baseUrl);
     return HttpAuthRepository._(
@@ -39,6 +44,7 @@ class HttpAuthRepository implements AuthRepository {
       tenants:
           tenants ??
           TenantResolver(client: resolved, tenantHost: config.tenantHost),
+      loginDevices: loginDevices,
     );
   }
 
@@ -46,6 +52,7 @@ class HttpAuthRepository implements AuthRepository {
     required this._config,
     required this._client,
     required this._tenants,
+    required this._loginDevices,
   });
 
   /// `GetTenantResponse.age_verification`'s field number.
@@ -57,6 +64,7 @@ class HttpAuthRepository implements AuthRepository {
   final AppConfig _config;
   final ConnectClient _client;
   final TenantResolver _tenants;
+  final LoginDeviceStore _loginDevices;
 
   pb.AuthServiceApi get _auth => pb.AuthServiceApi(_client);
 
@@ -67,14 +75,19 @@ class HttpAuthRepository implements AuthRepository {
   }) async {
     try {
       final tenantId = await _tenants.resolve();
+      final device = await _liveLoginDevice();
       final body = await _auth.login(
         ConnectCallContext(tenantId: tenantId),
         pb.LoginRequest(
           tenant: pb.TenantContext(tenantId: tenantId),
           email: email,
           password: password,
+          deviceToken: device?.token,
         ),
       );
+      // Handed over whenever the password was right, so it is kept before
+      // the challenge that may stand in for the session.
+      await _keepLoginDevice(body);
       if (body.hasMfaChallenge()) {
         throw TwoStepVerificationRequired(_challenge(body.mfaChallenge));
       }
@@ -84,6 +97,40 @@ class HttpAuthRepository implements AuthRepository {
       );
     } on ConnectException catch (error) {
       throw _toFailure(error);
+    }
+  }
+
+  /// The stored [LoginDevice] while the server still honours it. One the
+  /// store cannot hand over is none: the sign-in goes ahead without it.
+  Future<LoginDevice?> _liveLoginDevice() async {
+    LoginDevice? device;
+    try {
+      device = await _loginDevices.read();
+    } on Exception {
+      return null;
+    }
+    return device != null && device.isLiveAt(DateTime.now()) ? device : null;
+  }
+
+  /// Keeps the device [body] hands over in place of the stored one. A server
+  /// that hands none over leaves the stored one alone, and a store that
+  /// refuses it does not fail a sign-in that went through.
+  Future<void> _keepLoginDevice(pb.LoginResponse body) async {
+    if (!body.hasDevice()) {
+      return;
+    }
+    final token = body.device.token.trim();
+    final expiresAt = DateTime.tryParse(body.device.expiresAt.trim())?.toUtc();
+    if (token.isEmpty || expiresAt == null) {
+      return;
+    }
+    try {
+      await _loginDevices.write(
+        LoginDevice(token: token, expiresAt: expiresAt),
+      );
+    } on Exception {
+      // The next sign-in shares the address's allowance, as one would
+      // without a device token at all.
     }
   }
 

@@ -226,7 +226,7 @@ func New(db, replica *sql.DB, queries Querier, storageProvider storage.Provider,
 	}
 	server := newAPIServer(db, queries, encryptor, tokens, reval, logger, guards, mail, search)
 	if login == nil {
-		login = loginguard.NewShared(policy, logger)
+		login = loginguard.NewShared(policy, tokens, logger)
 	}
 	server.login = login
 	if reads == nil {
@@ -286,7 +286,7 @@ func newAPIServer(
 		logger:           logger,
 		guards:           guards,
 		mail:             mail,
-		login:            loginguard.NewDefault(),
+		login:            loginguard.NewDefault(tokens),
 		readGuard:        readguard.NewDefault(),
 		reval:            revalidator,
 		webPushKeys:      webpushsettings.NewPublicKeys(dbmodels.New(db), webpushsettings.CacheTTL, logger),

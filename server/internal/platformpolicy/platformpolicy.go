@@ -191,8 +191,11 @@ type Policy struct {
 	// is how far one client can move those rankings and grow that table.
 	ContentViewPerClient MinuteDay
 	// LoginAttemptsPerAccount bounds the passwords tried at sign-in for one
-	// address within its tenant, or within the platform console. A sign-in
-	// whose password is right clears it.
+	// address within its tenant, or within the platform console, at one client
+	// source or from one device the address signed in from before. The devices
+	// it never signed in from share a multiple of it, which internal/loginguard
+	// sets. A sign-in whose password is right clears the count of its source or
+	// device.
 	LoginAttemptsPerAccount MinuteDay
 	// LoginAttemptsPerSource bounds the sign-ins one client source may fail,
 	// across every address, tenant and console.

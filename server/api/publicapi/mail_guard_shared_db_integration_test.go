@@ -44,7 +44,7 @@ type consoleClients struct {
 func startConsolesWithMailGuard(t *testing.T, env *publicDBEnv, mail *mailguard.Guard) consoleClients {
 	t.Helper()
 
-	return startConsolesWith(t, env, loginguard.NewDefault(), mail)
+	return startConsolesWith(t, env, loginguard.NewDefault(testutil.TokenManager()), mail)
 }
 
 // startConsolesWith is startConsolesWithMailGuard over login as well.
