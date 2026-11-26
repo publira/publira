@@ -435,6 +435,19 @@ REVOKE DELETE ON tenant_sign_up_settings FROM publira_admin;
 GRANT SELECT ON tenant_sign_up_settings TO publira_public;
 GRANT SELECT, INSERT, UPDATE ON tenant_sign_up_settings TO publira_admin;
 
+-- A tenant is created, suspended, renamed, given its domains, marked for
+-- deletion, and deleted from the platform console and by the maintenance
+-- role, and deleting its row deletes everything the tenant holds. The
+-- storefront and the tenant console only read it, except for the tenant
+-- console's time zone and languages, so those are the columns it is granted.
+-- The storefront locks its tenant's row, and a lock needs UPDATE on a column
+-- of the table: it is granted id, which the tenants_own_row policy pins to
+-- the tenant the connection is set to, so the grant takes the lock and can
+-- write nothing.
+REVOKE INSERT, UPDATE, DELETE ON tenants FROM publira_admin, publira_public;
+GRANT UPDATE (timezone, default_locale, supported_locales) ON tenants TO publira_admin;
+GRANT UPDATE (id) ON tenants TO publira_public;
+
 -- The tenant console tells staff when a withdrawn comment is deleted, and the
 -- purge batches delete by the same period, so both resolve a tenant's retention
 -- from the platform defaults. They hold no secret, and neither role may write
