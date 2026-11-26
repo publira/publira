@@ -732,7 +732,9 @@ type UnlinkIdentityRequest struct {
 	// being unlinked included, named by confirmation_provider; or an assertion
 	// made with one of the account's passkeys over a challenge
 	// BeginPasskeyConfirmation issued. It is checked once the refusals above
-	// have passed, and spent only by an unlink that succeeds.
+	// have passed, and spent only by an unlink that succeeds. A request that
+	// sends none is taken on the session alone, as a client of the previous
+	// release sends it.
 	Password              string           `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	ConfirmationProvider  IdentityProvider `protobuf:"varint,4,opt,name=confirmation_provider,json=confirmationProvider,proto3,enum=publira.v1.IdentityProvider" json:"confirmation_provider,omitempty"`
 	IdToken               string           `protobuf:"bytes,5,opt,name=id_token,json=idToken,proto3" json:"id_token,omitempty"`
@@ -1310,6 +1312,8 @@ type BeginPasskeyRegistrationRequest struct {
 	// with one of its passkeys over a challenge BeginPasskeyConfirmation
 	// issued. It is spent here, and the ceremony it begins is what
 	// FinishPasskeyRegistration finishes, so the finish takes none of its own.
+	// A request that sends none is taken on the session alone, as a client of
+	// the previous release sends it.
 	Password              string           `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 	Provider              IdentityProvider `protobuf:"varint,3,opt,name=provider,proto3,enum=publira.v1.IdentityProvider" json:"provider,omitempty"`
 	IdToken               string           `protobuf:"bytes,4,opt,name=id_token,json=idToken,proto3" json:"id_token,omitempty"`
@@ -1755,7 +1759,9 @@ type DeletePasskeyRequest struct {
 	Id string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	// The confirmation DeleteMeRequest takes, exactly one of the three, checked
 	// once the refusals above have passed and spent only by a removal that
-	// succeeds. An assertion may be made with the passkey being removed.
+	// succeeds. An assertion may be made with the passkey being removed. A
+	// request that sends none is taken on the session alone, as a client of the
+	// previous release sends it.
 	Password              string           `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	Provider              IdentityProvider `protobuf:"varint,4,opt,name=provider,proto3,enum=publira.v1.IdentityProvider" json:"provider,omitempty"`
 	IdToken               string           `protobuf:"bytes,5,opt,name=id_token,json=idToken,proto3" json:"id_token,omitempty"`

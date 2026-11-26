@@ -13,8 +13,8 @@ import (
 )
 
 // Adding a passkey, removing one, and unlinking a provider each change how the
-// account is signed in to, so each asks for the account's confirmation on top
-// of the session, and each tells the account's address once it is done.
+// account is signed in to, so each checks and spends the confirmation of the
+// account it is sent, and each tells the account's address once it is done.
 
 // signInMethodNotices counts the notices queued for userID about change.
 func signInMethodNotices(t *testing.T, env *publicDBEnv, userID, change string) int {
@@ -27,7 +27,7 @@ func signInMethodNotices(t *testing.T, env *publicDBEnv, userID, change string) 
 	`, userID, change)
 }
 
-func TestDBBeginPasskeyRegistrationAsksForTheAccountFirst(t *testing.T) {
+func TestDBBeginPasskeyRegistrationChecksTheConfirmationItIsSent(t *testing.T) {
 	env := newPasskeyDBEnv(t)
 	ctx := env.session(t)
 	begin := func(req *publirav1.BeginPasskeyRegistrationRequest) error {
@@ -39,9 +39,9 @@ func TestDBBeginPasskeyRegistrationAsksForTheAccountFirst(t *testing.T) {
 		return env.countRows(t, "SELECT count(*) FROM user_webauthn_ceremonies WHERE user_id = $1 AND ceremony = 'registration'", env.reader.ID)
 	}
 
-	err := begin(&publirav1.BeginPasskeyRegistrationRequest{})
+	err := begin(&publirav1.BeginPasskeyRegistrationRequest{Password: testutil.SeededPassword, IdToken: "token", Nonce: "nonce"})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("a registration on the session alone code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+		t.Fatalf("a registration confirmed two ways at once code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 	err = begin(&publirav1.BeginPasskeyRegistrationRequest{Password: "not-the-password"})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -75,7 +75,7 @@ func TestDBFinishPasskeyRegistrationTellsTheAccountsAddress(t *testing.T) {
 	}
 }
 
-func TestDBDeletePasskeyAsksForTheAccountFirst(t *testing.T) {
+func TestDBDeletePasskeyChecksTheConfirmationItIsSent(t *testing.T) {
 	env := newPasskeyDBEnv(t)
 	ctx := env.session(t)
 	authenticator, passkey := env.register(t, ctx, passkeySiteOrigin, "Phone")
@@ -88,9 +88,9 @@ func TestDBDeletePasskeyAsksForTheAccountFirst(t *testing.T) {
 		return env.countRows(t, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1", env.reader.ID)
 	}
 
-	err := remove(&publirav1.DeletePasskeyRequest{Id: passkey.Id})
+	err := remove(&publirav1.DeletePasskeyRequest{Id: passkey.Id, Password: testutil.SeededPassword, IdToken: "token", Nonce: "nonce"})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("a removal on the session alone code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+		t.Fatalf("a removal confirmed two ways at once code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 	err = remove(&publirav1.DeletePasskeyRequest{Id: passkey.Id, Password: "not-the-password"})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -141,7 +141,7 @@ func TestDBPasskeyConfirmationsShareTheStepUpPasswordLimit(t *testing.T) {
 	}
 }
 
-func TestDBUnlinkIdentityAsksForTheAccountFirst(t *testing.T) {
+func TestDBUnlinkIdentityChecksTheConfirmationItIsSent(t *testing.T) {
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	signedIn := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
@@ -164,9 +164,9 @@ func TestDBUnlinkIdentityAsksForTheAccountFirst(t *testing.T) {
 		return env.countRows(t, "SELECT count(*) FROM user_identities WHERE subject = 'google-subject'")
 	}
 
-	err = unlink(&publirav1.UnlinkIdentityRequest{})
+	err = unlink(&publirav1.UnlinkIdentityRequest{Password: testutil.SeededPassword, IdToken: "token", Nonce: "nonce"})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("an unlink on the session alone code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+		t.Fatalf("an unlink confirmed two ways at once code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
 	}
 	err = unlink(&publirav1.UnlinkIdentityRequest{Password: "not-the-password"})
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {

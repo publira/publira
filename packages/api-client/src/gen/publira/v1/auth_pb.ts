@@ -368,7 +368,9 @@ export type UnlinkIdentityRequest = Message<"publira.v1.UnlinkIdentityRequest"> 
    * being unlinked included, named by confirmation_provider; or an assertion
    * made with one of the account's passkeys over a challenge
    * BeginPasskeyConfirmation issued. It is checked once the refusals above
-   * have passed, and spent only by an unlink that succeeds.
+   * have passed, and spent only by an unlink that succeeds. A request that
+   * sends none is taken on the session alone, as a client of the previous
+   * release sends it.
    *
    * @generated from field: string password = 3;
    */
@@ -664,6 +666,8 @@ export type BeginPasskeyRegistrationRequest = Message<"publira.v1.BeginPasskeyRe
    * with one of its passkeys over a challenge BeginPasskeyConfirmation
    * issued. It is spent here, and the ceremony it begins is what
    * FinishPasskeyRegistration finishes, so the finish takes none of its own.
+   * A request that sends none is taken on the session alone, as a client of
+   * the previous release sends it.
    *
    * @generated from field: string password = 2;
    */
@@ -878,7 +882,9 @@ export type DeletePasskeyRequest = Message<"publira.v1.DeletePasskeyRequest"> & 
   /**
    * The confirmation DeleteMeRequest takes, exactly one of the three, checked
    * once the refusals above have passed and spent only by a removal that
-   * succeeds. An assertion may be made with the passkey being removed.
+   * succeeds. An assertion may be made with the passkey being removed. A
+   * request that sends none is taken on the session alone, as a client of the
+   * previous release sends it.
    *
    * @generated from field: string password = 3;
    */
