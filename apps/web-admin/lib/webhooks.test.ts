@@ -54,6 +54,13 @@ vi.mock("./api", () => ({
   }),
 }));
 
+// The RPCs that ask for a re-authentication carry the session alone here: the
+// step-up token beside it is read from a cookie these tests do not set.
+vi.mock("./step-up", () => ({
+  stepUpCallOptions: (sessionId: string) =>
+    Promise.resolve({ headers: { Authorization: `Bearer ${sessionId}` } }),
+}));
+
 const SESSION_HEADERS = { headers: { Authorization: "Bearer session-token" } };
 const ENDPOINT_ID = "018f2000-0001-7000-8000-000000000001";
 

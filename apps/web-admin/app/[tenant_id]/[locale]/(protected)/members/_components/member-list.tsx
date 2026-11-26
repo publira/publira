@@ -14,6 +14,7 @@ import { Suspense } from "react";
 import { CursorPageEmptyState } from "#components/cursor-page-empty-state";
 import { Message } from "#components/message";
 import * as PaginationFooter from "#components/pagination-controls";
+import * as Reauthentication from "#components/reauthentication";
 import type { CursorPageHrefs } from "#lib/cursor-page";
 import { hasCursorPageLinks } from "#lib/cursor-page";
 import { getMessagesFor } from "#lib/messages";
@@ -78,6 +79,7 @@ const MemberRoleForm = ({
   tenantId: string;
 }) => (
   <ActionForm.Root action={updateTenantMemberRoleAction} className="grid gap-2">
+    <Reauthentication.Request />
     <input name="tenant_id" type="hidden" value={tenantId} />
     <input name="user_id" type="hidden" value={member.userId} />
     <div className="flex flex-wrap items-center gap-2">

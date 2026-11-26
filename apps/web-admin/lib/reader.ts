@@ -29,7 +29,9 @@ import {
 } from "./cursor-page";
 import { getMessagesFor } from "./messages";
 import { toReaderIconImage } from "./reader-icon";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 
 /*
  * Neither read is cached: readers sign up on the storefront, and nothing on
@@ -231,7 +233,12 @@ const callReaderModeration = async (
     }
 
     default: {
-      await apiClient.users.deleteReader(request, headers);
+      // Deleting an account asks for a recent re-authentication; suspending
+      // one does not.
+      await apiClient.users.deleteReader(
+        request,
+        await stepUpCallOptions(sessionId)
+      );
     }
   }
 };
@@ -424,11 +431,12 @@ export const resetReaderMfa = async (
   try {
     await apiClient.users.resetReaderMfa(
       { readerId: input.readerId, tenant: { tenantId: input.tenantId } },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     return { ok: true };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
@@ -466,6 +474,7 @@ export const moderateReader = async (
 
     return { ok: true };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 

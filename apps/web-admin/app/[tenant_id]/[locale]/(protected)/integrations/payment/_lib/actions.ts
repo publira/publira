@@ -29,6 +29,10 @@ import type { UpdateTenantPaymentSettingsInput } from "#lib/payment-settings";
 import { toProviderCredentialUpdates } from "#lib/provider-credential-form";
 import { getTenantCurrency, tenantSiteCacheTag } from "#lib/public-api";
 import {
+  isReauthenticationRequired,
+  withReauthentication,
+} from "#lib/reauthentication";
+import {
   hasSecretKey,
   secretKeyFormInput,
   secretKeySchema,
@@ -158,17 +162,23 @@ const saveProviderSettings = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    save(
-      {
-        currency,
-        enabled: parsed.data.enabled,
-        fields: credentials.fields,
-        provider: declared.provider.id,
-        tenantId: parsed.data.tenantId,
-      },
-      locale
+    withReauthentication(parsed.data.tenantId, locale, () =>
+      save(
+        {
+          currency,
+          enabled: parsed.data.enabled,
+          fields: credentials.fields,
+          provider: declared.provider.id,
+          tenantId: parsed.data.tenantId,
+        },
+        locale
+      )
     )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return {
@@ -598,24 +608,30 @@ export const updateTenantStorePaymentSettingsAction = async (
   ]);
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantStorePaymentSettings(
-      {
-        appPurchaseRoute: parsed.data.appPurchaseRoute,
-        appStore: {
-          enabled: parsed.data.appStoreEnabled,
-          issuerId: parsed.data.issuerId,
-          keyId: parsed.data.keyId,
-          privateKey,
+    withReauthentication(parsed.data.tenantId, locale, () =>
+      updateTenantStorePaymentSettings(
+        {
+          appPurchaseRoute: parsed.data.appPurchaseRoute,
+          appStore: {
+            enabled: parsed.data.appStoreEnabled,
+            issuerId: parsed.data.issuerId,
+            keyId: parsed.data.keyId,
+            privateKey,
+          },
+          googlePlay: {
+            enabled: parsed.data.googlePlayEnabled,
+            serviceAccountKey,
+          },
+          tenantId: parsed.data.tenantId,
         },
-        googlePlay: {
-          enabled: parsed.data.googlePlayEnabled,
-          serviceAccountKey,
-        },
-        tenantId: parsed.data.tenantId,
-      },
-      locale
+        locale
+      )
     )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return {

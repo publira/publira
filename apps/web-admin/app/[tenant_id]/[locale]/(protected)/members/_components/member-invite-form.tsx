@@ -6,6 +6,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import * as Reauthentication from "#components/reauthentication";
 
 import { createTenantAdminInvitationAction } from "../_lib/actions";
 import { memberRoleItems } from "./member-role-items";
@@ -23,6 +24,7 @@ export const MemberInviteForm = ({ tenantId }: { tenantId: string }) => (
     action={createTenantAdminInvitationAction}
     className="grid gap-4"
   >
+    <Reauthentication.Request />
     <input name="tenant_id" type="hidden" value={tenantId} />
     <ActionForm.Fieldset className="grid gap-4 sm:max-w-sm">
       <Field.Root>

@@ -14,6 +14,7 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import * as ProviderChoice from "#components/provider-choice";
 import * as ProviderEnabled from "#components/provider-enabled";
+import * as Reauthentication from "#components/reauthentication";
 import { SettledToast } from "#components/settled-toast";
 import {
   paymentProviderCurrencies,
@@ -375,6 +376,7 @@ const ProviderCard = ({
             action={saveTenantPaymentProviderAction}
             className="grid gap-5"
           >
+            <Reauthentication.Request />
             <input name="tenant_id" type="hidden" value={tenantId} />
             <input name="provider" type="hidden" value={provider.id} />
 
@@ -484,6 +486,7 @@ const AddProviderForm = ({
       className="grid gap-5"
       showSuccess={false}
     >
+      <Reauthentication.Request />
       <input name="tenant_id" type="hidden" value={tenantId} />
       <SettledToast />
 

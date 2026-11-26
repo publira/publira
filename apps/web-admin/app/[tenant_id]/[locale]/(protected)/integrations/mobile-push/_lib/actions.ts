@@ -14,6 +14,10 @@ import {
   tenantFcmSettingsCacheTag,
 } from "#lib/fcm-settings";
 import { getMessagesFor } from "#lib/messages";
+import {
+  isReauthenticationRequired,
+  withReauthentication,
+} from "#lib/reauthentication";
 
 import {
   checkServiceAccountKey,
@@ -71,11 +75,17 @@ export const saveFcmCredentialsAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    saveTenantFcmCredentials(
-      { projectId, serviceAccountJson, tenantId },
-      locale
+    withReauthentication(tenantId, locale, () =>
+      saveTenantFcmCredentials(
+        { projectId, serviceAccountJson, tenantId },
+        locale
+      )
     )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return { message: result.message, ok: false };

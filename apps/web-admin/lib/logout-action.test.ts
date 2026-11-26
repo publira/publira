@@ -55,6 +55,8 @@ describe("logoutAction", () => {
     expect(mockGetAccessToken).toHaveBeenCalledOnce();
     expect(mockLogoutAdmin).toHaveBeenCalledWith("tok_abc", "TENANT001");
     expect(mockDeleteCookie).toHaveBeenCalledWith("publira_web_admin_auth");
+    // The step-up token goes with the session it was earned on.
+    expect(mockDeleteCookie).toHaveBeenCalledWith("publira_web_admin_step_up");
     expect(mockUpdateTag).toHaveBeenCalledWith("admin-session-cookie");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
   });

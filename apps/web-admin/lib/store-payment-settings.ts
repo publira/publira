@@ -22,7 +22,9 @@ import { apiClient, withSessionHeaders } from "./api";
 import type { CachedRead } from "./cached-read";
 import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 import type {
   AppPurchaseRouteValue,
   TenantStorePaymentSettings,
@@ -327,7 +329,7 @@ export const updateTenantStorePaymentSettings = async (
           },
           tenant: { tenantId: normalizedTenantId },
         },
-        withSessionHeaders(sessionId)
+        await stepUpCallOptions(sessionId)
       );
 
     return {
@@ -335,6 +337,7 @@ export const updateTenantStorePaymentSettings = async (
       settings: toTenantStorePaymentSettings(response.settings),
     };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const fieldErrors = refusedFieldErrors(error, t);

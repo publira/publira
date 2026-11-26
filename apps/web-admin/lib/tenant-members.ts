@@ -28,7 +28,9 @@ import {
   emptyCursorPageTokens,
 } from "./cursor-page";
 import { getMessagesFor } from "./messages";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 
 export interface TenantMemberItem {
   userId: string;
@@ -313,7 +315,7 @@ export const updateTenantMemberRole = async (
         tenant: { tenantId: input.tenantId },
         userId: input.userId,
       },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     if (!response.member?.userId?.trim()) {
@@ -322,6 +324,7 @@ export const updateTenantMemberRole = async (
 
     return { member: mapTenantMember(response.member), ok: true };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
@@ -407,7 +410,7 @@ export const createTenantAdminInvitation = async (
         role: input.role,
         tenant: { tenantId: input.tenantId },
       },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     return {
@@ -415,6 +418,7 @@ export const createTenantAdminInvitation = async (
       roleGrantedImmediately: response.roleGrantedImmediately,
     };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 

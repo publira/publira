@@ -29,7 +29,9 @@ import type {
   TenantPaymentProviders,
   TenantPaymentSettings,
 } from "./payment-settings-shared";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 
 export type {
   PaymentCredentialField,
@@ -515,7 +517,7 @@ export const updateTenantPaymentSettings = async (
           provider: input.provider,
           tenant: { tenantId: normalizedTenantId },
         },
-        withSessionHeaders(sessionId)
+        await stepUpCallOptions(sessionId)
       );
 
     return {
@@ -523,6 +525,7 @@ export const updateTenantPaymentSettings = async (
       settings: toTenantPaymentSettings(response.settings),
     };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
@@ -563,11 +566,12 @@ export const upsertTenantPaymentProvider = async (
           provider: input.provider,
           tenant: { tenantId: normalizedTenantId },
         },
-        withSessionHeaders(sessionId)
+        await stepUpCallOptions(sessionId)
       );
 
     return { held: toTenantPaymentProviders(response), ok: true };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 

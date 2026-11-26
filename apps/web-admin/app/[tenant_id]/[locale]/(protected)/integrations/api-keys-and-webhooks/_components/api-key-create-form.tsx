@@ -6,6 +6,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import * as Reauthentication from "#components/reauthentication";
 import { getMessages } from "#lib/get-messages";
 
 import { createApiKeyAction } from "../_lib/actions";
@@ -30,6 +31,7 @@ export const ApiKeyCreateForm = async ({
       action={createApiKeyAction}
       className="grid gap-5 sm:max-w-3xl"
     >
+      <Reauthentication.Request />
       <input name="tenant_id" type="hidden" value={tenantId} />
 
       <h3 className="text-base font-medium text-foreground">

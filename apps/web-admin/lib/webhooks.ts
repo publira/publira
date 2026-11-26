@@ -33,7 +33,9 @@ import {
 } from "./cursor-page";
 import type { AdminMessageAccessor } from "./messages";
 import { getMessagesFor } from "./messages";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 
 /** How many endpoints a tenant keeps at most; the server refuses a sixth. */
 export const MAX_WEBHOOK_ENDPOINTS = 5;
@@ -457,7 +459,7 @@ export const createWebhookEndpoint = async (
         tenant: { tenantId: normalizedTenantId },
         url: input.url,
       },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     if (!response.endpoint || !response.secret) {
@@ -473,6 +475,7 @@ export const createWebhookEndpoint = async (
       secret: response.secret,
     };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
@@ -524,7 +527,7 @@ export const updateWebhookEndpoint = async (
         tenant: { tenantId: normalizedTenantId },
         url: input.url,
       },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     if (!response.endpoint) {
@@ -533,6 +536,7 @@ export const updateWebhookEndpoint = async (
 
     return { endpoint: toWebhookEndpointItem(response.endpoint), ok: true };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
@@ -571,7 +575,7 @@ export const rotateWebhookSecret = async (
   try {
     const response = await apiClient.webhooks.rotateWebhookSecret(
       { endpointId, tenant: { tenantId: normalizedTenantId } },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     if (!response.endpoint || !response.secret) {
@@ -587,6 +591,7 @@ export const rotateWebhookSecret = async (
       secret: response.secret,
     };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 

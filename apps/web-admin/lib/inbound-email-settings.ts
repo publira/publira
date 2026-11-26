@@ -26,7 +26,9 @@ import type {
 } from "./inbound-email-settings-shared";
 import { getMessagesFor } from "./messages";
 import type { ProviderCredentialUpdate } from "./provider-credential-form";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 
 export type {
   InboundEmailCredentialField,
@@ -428,7 +430,7 @@ export const updateTenantInboundEmailSettings = async (
           provider: input.provider,
           tenant: { tenantId: normalizedTenantId },
         },
-        withSessionHeaders(sessionId)
+        await stepUpCallOptions(sessionId)
       );
 
     return {
@@ -436,6 +438,7 @@ export const updateTenantInboundEmailSettings = async (
       settings: toTenantInboundEmailSettings(response.settings),
     };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 

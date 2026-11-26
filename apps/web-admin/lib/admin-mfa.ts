@@ -398,7 +398,7 @@ const sessionPasskeyConfirmationFailureMessage = async (
  * as `invalid_argument`, which is the registration's own refusal and is left
  * to the caller.
  */
-const confirmationRejectionMessage = async (
+export const confirmationRejectionMessage = async (
   cause: unknown,
   locale: Locale
 ): Promise<string | null> => {

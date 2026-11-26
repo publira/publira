@@ -24,6 +24,10 @@ import {
   setReaderBirthDate,
 } from "#lib/reader";
 import type { ReaderModerationAction } from "#lib/reader";
+import {
+  isReauthenticationRequired,
+  withReauthentication,
+} from "#lib/reauthentication";
 import { tenantMembersCacheTag } from "#lib/tenant-members";
 
 /**
@@ -85,8 +89,14 @@ const moderate = async (
   const { readerId, tenantId } = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
-    moderateReader({ action, readerId, tenantId }, locale)
+    withReauthentication(tenantId, locale, () =>
+      moderateReader({ action, readerId, tenantId }, locale)
+    )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return { state: result };
+  }
 
   if (!result.ok) {
     return { state: { message: result.message, ok: false } };
@@ -229,8 +239,14 @@ export const resetReaderMfaAction = async (
   const { publicId, readerId, tenantId } = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
-    resetReaderMfa({ readerId, tenantId }, locale)
+    withReauthentication(tenantId, locale, () =>
+      resetReaderMfa({ readerId, tenantId }, locale)
+    )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return { message: result.message, ok: false };

@@ -16,6 +16,7 @@ import {
   ProviderSecretControls,
   ProviderSecretDescription,
 } from "#components/provider-secret-controls";
+import * as Reauthentication from "#components/reauthentication";
 import {
   inboundEmailSettingsStatus,
   inboundEmailWebhookUrl,
@@ -481,6 +482,7 @@ export const TenantInboundEmailSettingsForm = ({
         action={updateTenantInboundEmailSettingsAction}
         className="grid gap-5 sm:max-w-3xl"
       >
+        <Reauthentication.Request />
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         {loadErrorMessage ? null : (

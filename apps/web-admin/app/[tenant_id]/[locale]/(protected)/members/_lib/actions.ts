@@ -13,6 +13,10 @@ import { assertSameOrigin } from "#lib/csrf";
 import { requiredRecordId, requiredTrimmedString } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
+  isReauthenticationRequired,
+  withReauthentication,
+} from "#lib/reauthentication";
+import {
   cancelTenantAdminInvitation,
   createTenantAdminInvitation,
   removeTenantMember,
@@ -110,8 +114,14 @@ export const updateTenantMemberRoleAction = async (
   const { role, tenantId, userId } = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantMemberRole({ role, tenantId, userId }, locale)
+    withReauthentication(tenantId, locale, () =>
+      updateTenantMemberRole({ role, tenantId, userId }, locale)
+    )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -182,8 +192,14 @@ export const createTenantAdminInvitationAction = async (
   const { email, role, tenantId } = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
-    createTenantAdminInvitation({ email, role, tenantId }, locale)
+    withReauthentication(tenantId, locale, () =>
+      createTenantAdminInvitation({ email, role, tenantId }, locale)
+    )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return { message: result.message, ok: false };

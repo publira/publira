@@ -9,6 +9,7 @@ import { cn, formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import * as Reauthentication from "#components/reauthentication";
 import type { TenantFcmSettings } from "#lib/fcm-settings";
 
 import { saveFcmCredentialsAction } from "../_lib/actions";
@@ -103,6 +104,7 @@ export const FcmCredentialsForm = ({
       action={saveFcmCredentialsAction}
       className="grid gap-5 sm:max-w-3xl"
     >
+      <Reauthentication.Request />
       <input name="tenant_id" type="hidden" value={tenantId} />
 
       <ActionForm.Fieldset className="grid gap-5">

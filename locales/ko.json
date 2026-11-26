@@ -5836,6 +5836,22 @@
         "targets_invalid": "선택한 레이블 또는 시리즈 중 일부가 없어졌습니다. 페이지를 새로고침하고 다시 선택하세요."
       }
     },
+    "reauthentication": {
+      "title": "본인 확인",
+      "description": "계속하려면 비밀번호를 입력하세요. 이런 변경은 로그인한 상태에서도 다시 확인합니다. 다른 사람이 내 세션으로 변경하지 못하게 하기 위해서입니다.",
+      "required": "이 변경에는 본인 확인이 필요합니다.",
+      "password_label": "비밀번호",
+      "code_label": "또는 인증 앱의 확인 코드",
+      "code_description": "비밀번호를 비워 두면 확인 코드로 본인 확인을 합니다. 복구 코드도 사용할 수 있습니다.",
+      "use_passkey": "패스키 사용",
+      "submit": "계속",
+      "submitting": "확인 중…",
+      "errors": {
+        "password_required": "비밀번호를 입력하세요.",
+        "invalid_password": "비밀번호가 올바르지 않습니다.",
+        "failed": "본인 확인을 하지 못했습니다. 다시 시도하세요."
+      }
+    },
     "translations": {
       "tabs_label": "언어",
       "not_added": "(추가되지 않음)"

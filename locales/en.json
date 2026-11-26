@@ -5836,6 +5836,22 @@
         "targets_invalid": "One of the labels or series no longer exists. Reload the page and choose again."
       }
     },
+    "reauthentication": {
+      "title": "Confirm it's you",
+      "description": "Enter your password to continue. A change like this one asks for it again while you are signed in, so that someone else using your session cannot make it.",
+      "required": "Confirm it's you to make this change.",
+      "password_label": "Password",
+      "code_label": "Or a code from your authenticator app",
+      "code_description": "Leave the password empty to confirm with a code instead. A recovery code works too.",
+      "use_passkey": "Use a passkey",
+      "submit": "Continue",
+      "submitting": "Confirming…",
+      "errors": {
+        "password_required": "Enter your password.",
+        "invalid_password": "The password is not correct.",
+        "failed": "It could not be confirmed that it's you. Try again."
+      }
+    },
     "translations": {
       "tabs_label": "Languages",
       "not_added": "(not added)"

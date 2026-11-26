@@ -5836,6 +5836,22 @@
         "targets_invalid": "所選的部分書系或系列已不存在。請重新載入頁面後再選擇。"
       }
     },
+    "reauthentication": {
+      "title": "確認身分",
+      "description": "請輸入密碼以繼續。即使已登入，這類變更也會再次確認，以免他人借用您的工作階段進行變更。",
+      "required": "此變更需要先確認身分。",
+      "password_label": "密碼",
+      "code_label": "或驗證器應用程式中的驗證碼",
+      "code_description": "將密碼留空即可改用驗證碼確認。也可以使用復原碼。",
+      "use_passkey": "使用通行金鑰",
+      "submit": "繼續",
+      "submitting": "正在確認…",
+      "errors": {
+        "password_required": "請輸入密碼。",
+        "invalid_password": "密碼不正確。",
+        "failed": "無法確認身分。請再試一次。"
+      }
+    },
     "translations": {
       "tabs_label": "語言",
       "not_added": "（未新增）"

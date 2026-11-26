@@ -6,6 +6,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import * as Reauthentication from "#components/reauthentication";
 import { getMessages } from "#lib/get-messages";
 import type { WebhookEndpointItem } from "#lib/webhooks";
 import { MAX_WEBHOOK_ENDPOINTS } from "#lib/webhooks";
@@ -44,6 +45,7 @@ const WebhookEndpointCreateForm = async ({
       action={createWebhookEndpointAction}
       className="grid gap-5 border-t border-border pt-5 sm:max-w-3xl"
     >
+      <Reauthentication.Request />
       <input name="tenant_id" type="hidden" value={tenantId} />
 
       <h3 className="text-base font-medium text-foreground">
