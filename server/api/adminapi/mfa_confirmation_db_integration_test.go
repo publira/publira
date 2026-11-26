@@ -3,9 +3,11 @@ package adminapi
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect/v2"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mfa"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -186,5 +188,54 @@ func TestAdminMfaEnrollmentStartedBeforeAPasskeyIsNotConfirmedAfterIt(t *testing
 		Code:           registered.RecoveryCodes[0],
 	}); err != nil {
 		t.Fatalf("VerifyMfa with the passkey's recovery code: %v", err)
+	}
+}
+
+// A start sent for an account with no factor is checked again where the
+// secret is stored: a passkey whose registration committed in between is seen
+// there, and the start is refused rather than left to be confirmed on the
+// session alone.
+func TestAdminMfaEnrollmentStartSeesAPasskeyRegisteredMeanwhile(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	// The registration, under way: it holds the account's factors and has
+	// stored its passkey, not yet committed.
+	registration, err := env.PG.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("BeginTx: %v", err)
+	}
+	defer registration.Rollback() //nolint:errcheck
+	if err := dbmodels.New(registration).LockUserMfaFactors(context.Background(), tenant.User.ID); err != nil {
+		t.Fatalf("LockUserMfaFactors: %v", err)
+	}
+	if _, err := registration.ExecContext(context.Background(), `
+		INSERT INTO user_webauthn_credentials (
+			id, public_id, tenant_id, user_id, relying_party, rp_id, credential_id, public_key, aaguid, backup_eligible, backed_up
+		) VALUES (gen_random_uuid(), 'MEANWHILE001', $1, $2, 'admin_console', $3, '\x02', '\x00', '00000000-0000-0000-0000-000000000000', false, false)
+	`, tenant.Tenant.ID, tenant.User.ID, passkeyConsoleRPID); err != nil {
+		t.Fatalf("insert passkey: %v", err)
+	}
+
+	started := make(chan error, 1)
+	go func() {
+		_, err := env.authClient().StartMfaEnrollment(ctx, &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{Tenant: tenant.tenantContext()})
+		started <- err
+	}()
+	select {
+	case err := <-started:
+		t.Fatalf("StartMfaEnrollment = %v before the registration committed, want it to wait", err)
+	case <-time.After(500 * time.Millisecond):
+	}
+	if err := registration.Commit(); err != nil {
+		t.Fatalf("Commit: %v", err)
+	}
+
+	if err := <-started; connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("StartMfaEnrollment once a passkey was registered meanwhile = %v, want invalid_argument", err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_totp WHERE user_id = $1", tenant.User.ID); got != 0 {
+		t.Fatalf("authenticators = %d, want none stored", got)
 	}
 }

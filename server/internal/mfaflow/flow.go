@@ -41,6 +41,15 @@ func GetStatus(ctx context.Context, acct Account) (Status, error) {
 // StartEnrollment draws a new authenticator secret and keeps it, unconfirmed,
 // in place of whatever unconfirmed one the account held.
 func StartEnrollment(ctx context.Context, acct Account) (mfa.Enrollment, error) {
+	return StartEnrollmentIf(ctx, acct, nil)
+}
+
+// StartEnrollmentIf is StartEnrollment for a principal that decides from the
+// account's other factors whether it may start one. allowed runs in the
+// transaction that stores the secret, after it holds the account's factors,
+// so a factor added before the secret is kept is seen there; its error is
+// returned as it is, and nothing is stored. A nil allowed allows every start.
+func StartEnrollmentIf(ctx context.Context, acct Account, allowed func(q dbmodels.Querier) error) (mfa.Enrollment, error) {
 	encryptor := acct.Encryptor()
 	if encryptor == nil {
 		return mfa.Enrollment{}, secretManagerUnavailableError()
@@ -64,8 +73,19 @@ func StartEnrollment(ctx context.Context, acct Account) (mfa.Enrollment, error) 
 	if err != nil {
 		return mfa.Enrollment{}, acct.InternalError(ctx, "failed to encrypt mfa totp secret", err)
 	}
-	if err := acct.StoreTotpSecret(ctx, q, encrypted); err != nil {
-		return mfa.Enrollment{}, acct.InternalError(ctx, "failed to store mfa totp secret", err)
+	err = acct.InTx(ctx, func(q dbmodels.Querier) error {
+		if allowed != nil {
+			if err := allowed(q); err != nil {
+				return err
+			}
+		}
+		if err := acct.StoreTotpSecret(ctx, q, encrypted); err != nil {
+			return acct.InternalError(ctx, "failed to store mfa totp secret", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return mfa.Enrollment{}, err
 	}
 	// A stalled confirmation that ran into the lock is not held against the
 	// next enrollment.
