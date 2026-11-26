@@ -1,18 +1,27 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAssertSameOrigin,
   mockBeginMyPasskeyRegistration,
+  mockClearPendingPasskeyRegistration,
   mockDeleteMyPasskey,
+  mockReadPendingPasskeyRegistration,
   mockFinishMyPasskeyRegistration,
   mockRedirect,
   mockRefresh,
   mockRenameMyPasskey,
   mockRequirePublicSession,
+  mockSendToProvider,
 } = vi.hoisted(() => ({
   mockAssertSameOrigin: vi.fn(),
   mockBeginMyPasskeyRegistration: vi.fn(),
+  mockClearPendingPasskeyRegistration: vi.fn(),
+  mockReadPendingPasskeyRegistration: vi.fn(),
   mockDeleteMyPasskey: vi.fn(),
   mockFinishMyPasskeyRegistration: vi.fn(),
   mockRedirect: vi.fn((path: string) => {
@@ -21,6 +30,7 @@ const {
   mockRefresh: vi.fn(),
   mockRenameMyPasskey: vi.fn(),
   mockRequirePublicSession: vi.fn(),
+  mockSendToProvider: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ refresh: mockRefresh }));
@@ -45,6 +55,15 @@ vi.mock("#lib/auth-session", () => ({
 
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
+vi.mock("#lib/pending-passkey-registration", () => ({
+  clearPendingPasskeyRegistration: mockClearPendingPasskeyRegistration,
+  readPendingPasskeyRegistration: mockReadPendingPasskeyRegistration,
+}));
+
+vi.mock("#lib/social-sign-in-start", () => ({
+  sendToProvider: mockSendToProvider,
+}));
+
 vi.mock("#lib/tenant", () => ({
   getTenantDefaultLocale: () => "en",
 }));
@@ -52,6 +71,7 @@ vi.mock("#lib/tenant", () => ({
 const tenantId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const accessToken = "session-token";
 const credential = '{"id":"credential","type":"public-key"}';
+const password = "current-pass";
 
 const form = (values: Record<string, string>): FormData => {
   const data = new FormData();
@@ -99,7 +119,9 @@ describe("beginPasskeyRegistrationAction", () => {
     });
     const { beginPasskeyRegistrationAction } = await importActions();
 
-    await expect(beginPasskeyRegistrationAction(form({}))).resolves.toEqual({
+    await expect(
+      beginPasskeyRegistrationAction(form({ password }))
+    ).resolves.toEqual({
       message: "",
       ok: true,
       optionsJson: '{"challenge":"abc"}',
@@ -107,8 +129,59 @@ describe("beginPasskeyRegistrationAction", () => {
     expect(mockAssertSameOrigin).toHaveBeenCalled();
     expect(mockBeginMyPasskeyRegistration).toHaveBeenCalledWith(
       tenantId,
+      { password },
       accessToken
     );
+  });
+
+  it("begins one confirmed by another passkey's assertion", async () => {
+    mockBeginMyPasskeyRegistration.mockResolvedValueOnce({
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+    const { beginPasskeyRegistrationAction } = await importActions();
+
+    await beginPasskeyRegistrationAction(
+      form({ passkeyCredential: credential })
+    );
+
+    expect(mockBeginMyPasskeyRegistration).toHaveBeenCalledWith(
+      tenantId,
+      { passkeyCredential: credential },
+      accessToken
+    );
+  });
+
+  it("refuses one the form did not confirm before asking the API", async () => {
+    const { beginPasskeyRegistrationAction } = await importActions();
+
+    await expect(beginPasskeyRegistrationAction(form({}))).resolves.toEqual({
+      message: "Could not add the passkey. Please try again later.",
+      ok: false,
+    });
+    expect(mockBeginMyPasskeyRegistration).not.toHaveBeenCalled();
+  });
+
+  it("says when the password is wrong", async () => {
+    mockBeginMyPasskeyRegistration.mockResolvedValueOnce({
+      error: new ConnectError(
+        "invalid password",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "password" }] },
+          },
+        ]
+      ),
+      ok: false,
+    });
+    const { beginPasskeyRegistrationAction } = await importActions();
+
+    await expect(
+      beginPasskeyRegistrationAction(form({ password: "not-it" }))
+    ).resolves.toEqual({ message: "The password is incorrect.", ok: false });
   });
 
   it("says when the account holds as many passkeys as it may", async () => {
@@ -118,7 +191,9 @@ describe("beginPasskeyRegistrationAction", () => {
     });
     const { beginPasskeyRegistrationAction } = await importActions();
 
-    await expect(beginPasskeyRegistrationAction(form({}))).resolves.toEqual({
+    await expect(
+      beginPasskeyRegistrationAction(form({ password }))
+    ).resolves.toEqual({
       message:
         "Your account has as many passkeys as it can hold. Remove one before adding another.",
       ok: false,
@@ -129,12 +204,88 @@ describe("beginPasskeyRegistrationAction", () => {
     const { beginPasskeyRegistrationAction } = await importActions();
 
     const state = await beginPasskeyRegistrationAction(
-      form({ tenantId: "not-a-tenant" })
+      form({ password, tenantId: "not-a-tenant" })
     );
 
     expect(state.ok).toBe(false);
     expect(mockRequirePublicSession).not.toHaveBeenCalled();
     expect(mockBeginMyPasskeyRegistration).not.toHaveBeenCalled();
+  });
+});
+
+describe("beginPendingPasskeyRegistrationAction", () => {
+  const pending = {
+    idToken: "header.payload.signature",
+    nonce: "nonce",
+    provider: "google",
+    tenantId,
+  } as const;
+
+  it("begins one with the sign-in the callback left, and spends it", async () => {
+    mockReadPendingPasskeyRegistration.mockResolvedValueOnce(pending);
+    mockBeginMyPasskeyRegistration.mockResolvedValueOnce({
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+    const { beginPendingPasskeyRegistrationAction } = await importActions();
+
+    await expect(
+      beginPendingPasskeyRegistrationAction(form({}))
+    ).resolves.toEqual({
+      message: "",
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+    expect(mockBeginMyPasskeyRegistration).toHaveBeenCalledWith(
+      tenantId,
+      { idToken: pending.idToken, nonce: pending.nonce, provider: "google" },
+      accessToken
+    );
+    expect(mockClearPendingPasskeyRegistration).toHaveBeenCalled();
+  });
+
+  it("goes back to the page when the sign-in is gone", async () => {
+    mockReadPendingPasskeyRegistration.mockResolvedValueOnce(null);
+    const { beginPendingPasskeyRegistrationAction } = await importActions();
+
+    await expect(
+      beginPendingPasskeyRegistrationAction(form({}))
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockBeginMyPasskeyRegistration).not.toHaveBeenCalled();
+    expect(lastFlash()).toEqual({
+      message: "Your sign-in could not be confirmed. Please try again.",
+      status: "error",
+    });
+  });
+
+  it("goes back to the page, with the sign-in spent, when the API refuses it", async () => {
+    mockReadPendingPasskeyRegistration.mockResolvedValueOnce(pending);
+    mockBeginMyPasskeyRegistration.mockResolvedValueOnce({
+      error: new ConnectError("expired", Code.InvalidArgument),
+      ok: false,
+    });
+    const { beginPendingPasskeyRegistrationAction } = await importActions();
+
+    await expect(
+      beginPendingPasskeyRegistrationAction(form({}))
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockClearPendingPasskeyRegistration).toHaveBeenCalled();
+    expect(lastFlash()).toEqual({
+      message: "Your sign-in could not be confirmed. Please try again.",
+      status: "error",
+    });
+  });
+});
+
+describe("discardPendingPasskeyRegistrationAction", () => {
+  it("drops the waiting sign-in and goes back to the page", async () => {
+    const { discardPendingPasskeyRegistrationAction } = await importActions();
+
+    await expect(
+      discardPendingPasskeyRegistrationAction(form({}))
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockClearPendingPasskeyRegistration).toHaveBeenCalled();
+    expect(mockRedirect.mock.calls.at(-1)?.[0]).toBe("/settings/security");
   });
 });
 
@@ -233,17 +384,18 @@ describe("namePasskeyAction", () => {
 });
 
 describe("deletePasskeyAction", () => {
-  it("removes the passkey and says so on the page", async () => {
+  it("removes the passkey with the password the dialog asked for, and says so on the page", async () => {
     mockDeleteMyPasskey.mockResolvedValueOnce({ ok: true });
     const { deletePasskeyAction } = await importActions();
 
     await expect(
-      deletePasskeyAction(form({ passkeyId: "PSKY0001" }))
+      deletePasskeyAction(null, form({ passkeyId: "PSKY0001", password }))
     ).rejects.toThrow(/NEXT_REDIRECT/u);
 
     expect(mockDeleteMyPasskey).toHaveBeenCalledWith(
       tenantId,
       "PSKY0001",
+      { password },
       accessToken
     );
     expect(mockRedirect.mock.calls.at(-1)?.[0]).toMatch(
@@ -255,35 +407,93 @@ describe("deletePasskeyAction", () => {
     });
   });
 
-  it("explains why the last way in stays registered", async () => {
+  it("explains in the dialog why the last way in stays registered", async () => {
     mockDeleteMyPasskey.mockResolvedValueOnce({
       error: new ConnectError("last", Code.FailedPrecondition),
       ok: false,
     });
+    const { deletePasskeyWithPasskeyAction } = await importActions();
+
+    await expect(
+      deletePasskeyWithPasskeyAction(
+        form({ passkeyCredential: credential, passkeyId: "PSKY0001" })
+      )
+    ).resolves.toEqual({
+      message:
+        "Your account has no password or linked account, so its last passkey stays registered.",
+      ok: false,
+    });
+    expect(mockDeleteMyPasskey).toHaveBeenCalledWith(
+      tenantId,
+      "PSKY0001",
+      { passkeyCredential: credential },
+      accessToken
+    );
+  });
+
+  it("refuses a removal without a passkey or a confirmation before asking the API", async () => {
     const { deletePasskeyAction } = await importActions();
 
     await expect(
-      deletePasskeyAction(form({ passkeyId: "PSKY0001" }))
-    ).rejects.toThrow(/NEXT_REDIRECT/u);
-
-    expect(lastFlash()).toEqual({
-      message:
-        "Your account has no password or linked account, so its last passkey stays registered.",
-      status: "error",
+      deletePasskeyAction(null, form({ password }))
+    ).resolves.toEqual({
+      message: "Could not remove the passkey. Please try again later.",
+      ok: false,
     });
+    await expect(
+      deletePasskeyAction(null, form({ passkeyId: "PSKY0001" }))
+    ).resolves.toMatchObject({ ok: false });
+    expect(mockDeleteMyPasskey).not.toHaveBeenCalled();
   });
+});
 
-  it("refuses a row without a passkey before asking the API", async () => {
-    const { deletePasskeyAction } = await importActions();
+describe("confirmPasskeyChangeWithProviderAction", () => {
+  it("sends the reader to the provider with the passkey to remove waiting", async () => {
+    const { confirmPasskeyChangeWithProviderAction } = await importActions();
 
-    await expect(deletePasskeyAction(form({}))).rejects.toThrow(
-      /NEXT_REDIRECT/u
+    await confirmPasskeyChangeWithProviderAction(
+      form({
+        intent: "passkey_remove",
+        passkeyId: "PSKY0001",
+        provider: "google",
+      })
     );
 
-    expect(mockDeleteMyPasskey).not.toHaveBeenCalled();
-    expect(lastFlash()).toEqual({
-      message: "Could not remove the passkey. Please try again later.",
-      status: "error",
-    });
+    expect(mockSendToProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessToken,
+        tenantId,
+        intent: "passkey_remove",
+        provider: "google",
+        target: "PSKY0001",
+      })
+    );
+  });
+
+  it("turns a form that names no tenant away without looking one up", async () => {
+    const { confirmPasskeyChangeWithProviderAction } = await importActions();
+
+    await expect(
+      confirmPasskeyChangeWithProviderAction(
+        form({
+          intent: "passkey_add",
+          provider: "google",
+          tenantId: "not-a-tenant",
+        })
+      )
+    ).resolves.toBeUndefined();
+    expect(mockRedirect).not.toHaveBeenCalled();
+    expect(mockSendToProvider).not.toHaveBeenCalled();
+  });
+
+  it("refuses a removal that names no passkey", async () => {
+    const { confirmPasskeyChangeWithProviderAction } = await importActions();
+
+    await expect(
+      confirmPasskeyChangeWithProviderAction(
+        form({ intent: "passkey_remove", provider: "google" })
+      )
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockSendToProvider).not.toHaveBeenCalled();
   });
 });

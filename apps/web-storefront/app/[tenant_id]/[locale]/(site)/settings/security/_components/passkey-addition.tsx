@@ -3,6 +3,7 @@
 import * as ActionForm from "@publira/ui-components/action-form";
 import {
   browserSupportsWebAuthn,
+  startAuthentication,
   startRegistration,
 } from "@simplewebauthn/browser";
 import { createContext, use, useState, useSyncExternalStore } from "react";
@@ -11,8 +12,10 @@ import type { Dispatch, ReactNode } from "react";
 import { useClientMessages } from "#components/client-message";
 import type { StorefrontClientMessageAccessor } from "#lib/messages";
 
+import { beginPasskeyConfirmationAction } from "../../_lib/passkey-confirmation-actions";
 import {
   beginPasskeyRegistrationAction,
+  beginPendingPasskeyRegistrationAction,
   finishPasskeyRegistrationAction,
   namePasskeyAction,
 } from "../_lib/passkey-actions";
@@ -94,34 +97,104 @@ const ceremonyFailureMessage = (
 };
 
 /**
- * Begins a registration on the server, asks the authenticator for a passkey,
- * and stores the one it created. A refusal and a closed prompt both stay on
- * the form as its message.
+ * Asks the authenticator for a passkey over `optionsJson` and stores the one
+ * it created.
  */
-const PasskeyAdditionAddForm = ({ children }: { children: ReactNode }) => {
+const createAndFinish = async (
+  optionsJson: string,
+  formData: FormData,
+  t: StorefrontClientMessageAccessor
+): Promise<PasskeyRegistrationState> => {
+  try {
+    const credential = await startRegistration({
+      optionsJSON: JSON.parse(optionsJson),
+    });
+
+    formData.set("credential", JSON.stringify(credential));
+  } catch (error) {
+    return { message: ceremonyFailureMessage(error, t), ok: false };
+  }
+
+  return finishPasskeyRegistrationAction(formData);
+};
+
+/**
+ * Asks one of the reader's passkeys for the assertion the registration is
+ * confirmed with, and adds it to the form as `passkeyCredential`. `null` once
+ * it is there, or why it is not.
+ */
+const confirmWithPasskey = async (
+  formData: FormData,
+  t: StorefrontClientMessageAccessor
+): Promise<PasskeyRegistrationState> => {
+  const started = await beginPasskeyConfirmationAction(formData);
+
+  if (!started.ok) {
+    return started;
+  }
+
+  try {
+    const credential = await startAuthentication({
+      optionsJSON: JSON.parse(started.optionsJson),
+    });
+
+    formData.set("passkeyCredential", JSON.stringify(credential));
+  } catch (error) {
+    // Browsers answer a closed prompt and one that timed out with the same
+    // `NotAllowedError`, so the two share a message.
+    const name = error instanceof Error ? error.name : "";
+
+    return {
+      message:
+        name === "NotAllowedError" || name === "AbortError"
+          ? t("storefront.settings.passkey_confirm_cancelled")
+          : t("storefront.settings.passkey_confirm_failed"),
+      ok: false,
+    };
+  }
+
+  return null;
+};
+
+/**
+ * Begins a registration on the server, asks the authenticator for a passkey,
+ * and stores the one it created. The registration is confirmed with the
+ * password the form asked for; with `confirmWith="passkey"`, with an
+ * assertion one of the reader's other passkeys makes first; and with
+ * `confirmWith="pending"`, with the fresh sign-in to a provider the callback
+ * left waiting, which goes back to the page when the API refuses it. A
+ * refusal and a closed prompt both stay on the form as its message.
+ */
+const PasskeyAdditionAddForm = ({
+  children,
+  confirmWith = "password",
+}: {
+  children: ReactNode;
+  confirmWith?: "passkey" | "password" | "pending";
+}) => {
   const t = useClientMessages();
 
   const add = async (
     _previousState: PasskeyRegistrationState,
     formData: FormData
   ): Promise<PasskeyRegistrationState> => {
-    const started = await beginPasskeyRegistrationAction(formData);
+    if (confirmWith === "passkey") {
+      const refused = await confirmWithPasskey(formData, t);
+
+      if (refused) {
+        return refused;
+      }
+    }
+
+    const started = await (confirmWith === "pending"
+      ? beginPendingPasskeyRegistrationAction(formData)
+      : beginPasskeyRegistrationAction(formData));
 
     if (!started.ok) {
       return started;
     }
 
-    try {
-      const credential = await startRegistration({
-        optionsJSON: JSON.parse(started.optionsJson),
-      });
-
-      formData.set("credential", JSON.stringify(credential));
-    } catch (error) {
-      return { message: ceremonyFailureMessage(error, t), ok: false };
-    }
-
-    return finishPasskeyRegistrationAction(formData);
+    return createAndFinish(started.optionsJson, formData, t);
   };
 
   return (

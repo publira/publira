@@ -7,7 +7,9 @@ import { MFA_CHALLENGE_COOKIE_NAME } from "#lib/mfa-challenge";
 
 const {
   cookieJar,
+  mockBeginMyPasskeyRegistration,
   mockDeleteMe,
+  mockDeleteMyPasskey,
   mockDisableMyMfa,
   mockGetTenantSignInClients,
   mockLinkMyIdentity,
@@ -15,9 +17,12 @@ const {
   mockRequestPublicEmailChange,
   mockRequirePublicSession,
   mockSealPublicSessionCookie,
+  mockUnlinkMyIdentity,
 } = vi.hoisted(() => ({
   cookieJar: new Map<string, string>(),
+  mockBeginMyPasskeyRegistration: vi.fn(),
   mockDeleteMe: vi.fn(),
+  mockDeleteMyPasskey: vi.fn(),
   mockDisableMyMfa: vi.fn(),
   mockGetTenantSignInClients: vi.fn(),
   mockLinkMyIdentity: vi.fn(),
@@ -25,6 +30,7 @@ const {
   mockRequestPublicEmailChange: vi.fn(),
   mockRequirePublicSession: vi.fn(),
   mockSealPublicSessionCookie: vi.fn(),
+  mockUnlinkMyIdentity: vi.fn(),
 }));
 
 const REDIRECT_PREFIX = "NEXT_REDIRECT:";
@@ -58,10 +64,13 @@ vi.mock("next/navigation", () => ({
 vi.mock("#lib/csrf", () => ({ assertSameOrigin: vi.fn() }));
 
 vi.mock("#lib/auth", () => ({
+  beginMyPasskeyRegistration: mockBeginMyPasskeyRegistration,
   deleteMe: mockDeleteMe,
+  deleteMyPasskey: mockDeleteMyPasskey,
   linkMyIdentity: mockLinkMyIdentity,
   loginWithIdToken: mockLoginWithIdToken,
   requestPublicEmailChange: mockRequestPublicEmailChange,
+  unlinkMyIdentity: mockUnlinkMyIdentity,
 }));
 
 vi.mock("#lib/mfa", () => ({ disableMyMfa: mockDisableMyMfa }));
@@ -182,6 +191,44 @@ const startMfaDisable = async (code = "abcde-12345") => {
   }
 
   return redirectedTo(disableMfaWithProviderAction(data));
+};
+
+/** Ask to add or remove a passkey from the security settings, confirmed at Google. */
+const startPasskeyChange = async (fields: Record<string, string>) => {
+  const { confirmPasskeyChangeWithProviderAction } =
+    await import("../../../../../[locale]/(site)/settings/security/_lib/passkey-actions");
+
+  const data = new FormData();
+
+  for (const [name, value] of Object.entries({
+    locale: "en",
+    provider: "google",
+    tenantId,
+    ...fields,
+  })) {
+    data.set(name, value);
+  }
+
+  return redirectedTo(confirmPasskeyChangeWithProviderAction(data));
+};
+
+/** Ask to unlink Apple from the security settings, confirmed at Google. */
+const startUnlink = async () => {
+  const { unlinkIdentityWithProviderAction } =
+    await import("../../../../../[locale]/(site)/settings/security/_lib/actions");
+
+  const data = new FormData();
+
+  for (const [name, value] of Object.entries({
+    confirmationProvider: "google",
+    locale: "en",
+    provider: "apple",
+    tenantId,
+  })) {
+    data.set(name, value);
+  }
+
+  return redirectedTo(unlinkIdentityWithProviderAction(data));
 };
 
 const postAnswer = async (
@@ -486,6 +533,99 @@ describe("Apple and Google sign-in round trip", () => {
     expect(location.searchParams.get("message")).toBe(
       t("storefront.settings.mfa_disabled")
     );
+  });
+
+  it("removes the passkey that waited while the reader confirmed at Google", async () => {
+    const authorization = await startPasskeyChange({
+      intent: "passkey_remove",
+      passkeyId: "PSKY0001",
+    });
+
+    mockDeleteMyPasskey.mockResolvedValueOnce({ ok: true });
+    const t = await getMessagesFor("en");
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    expect(mockDeleteMyPasskey).toHaveBeenCalledWith(
+      tenantId,
+      "PSKY0001",
+      {
+        idToken: "header.payload.signature",
+        nonce: authorization.searchParams.get("nonce"),
+        provider: "google",
+      },
+      "access-token"
+    );
+
+    const location = new URL(
+      response.headers.get("Location") ?? "",
+      "https://reader.example"
+    );
+
+    expect(location.pathname).toBe("/en/settings/security");
+    expect(location.searchParams.get("message")).toBe(
+      t("storefront.settings.passkey_removed")
+    );
+  });
+
+  it("unlinks the provider that waited, confirmed by a sign-in to another", async () => {
+    const authorization = await startUnlink();
+    mockUnlinkMyIdentity.mockResolvedValueOnce({ ok: true });
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    expect(mockUnlinkMyIdentity).toHaveBeenCalledWith(
+      tenantId,
+      "apple",
+      {
+        idToken: "header.payload.signature",
+        nonce: authorization.searchParams.get("nonce"),
+        provider: "google",
+      },
+      "access-token"
+    );
+    expect(
+      new URL(
+        response.headers.get("Location") ?? "",
+        "https://reader.example"
+      ).searchParams.get("status")
+    ).toBe("success");
+  });
+
+  it("leaves the sign-in that confirmed adding a passkey for the page", async () => {
+    const authorization = await startPasskeyChange({ intent: "passkey_add" });
+
+    const response = await postAnswer("google", {
+      id_token: "header.payload.signature",
+      state: authorization.searchParams.get("state") ?? "",
+    });
+
+    // Only the page can ask the browser for a passkey, so nothing is begun
+    // here.
+    expect(mockBeginMyPasskeyRegistration).not.toHaveBeenCalled();
+    expect(
+      new URL(response.headers.get("Location") ?? "", "https://reader.example")
+        .pathname
+    ).toBe("/en/settings/security");
+
+    const { readPendingPasskeyRegistration } =
+      await import("#lib/pending-passkey-registration");
+
+    await expect(readPendingPasskeyRegistration(tenantId)).resolves.toEqual({
+      idToken: "header.payload.signature",
+      nonce: authorization.searchParams.get("nonce"),
+      provider: "google",
+      tenantId,
+    });
+    await expect(
+      readPendingPasskeyRegistration("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+    ).resolves.toBeNull();
   });
 
   it("returns a refused code to the security settings", async () => {

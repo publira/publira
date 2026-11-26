@@ -119,6 +119,7 @@ Publira沒有用於法律文字的特殊頁面類型。服務條款與隱私權�
 | `publira_web_storefront_sign_in` | 讀者選擇**透過Apple繼續**或**透過Google繼續**時 | 進行中的登入，經過加密，用來核對Apple或Google的回應 | 十分鐘，或直到收到回應為止 |
 | `publira_web_storefront_sign_up` | 首次透過Apple或Google登入的讀者看到**完成註冊**時 | Apple或Google傳回的讀者相關資訊，經過加密，保留到讀者同意條款為止 | 四分鐘 |
 | `publira_web_storefront_mfa` | 開啟了兩步驟驗證的讀者輸入密碼，或透過Apple或Google登入後，被要求輸入驗證碼時 | 等待驗證碼的登入，經過加密 | 五分鐘，或直到驗證碼被接受為止 |
+| `publira_web_storefront_passkey_registration` | 沒有密碼的讀者為了在**設定** › **安全性**中新增通行金鑰而選擇**使用Apple確認**或**使用Google確認**時 | 確認新增的Apple或Google登入，經過加密，保留到讀者選擇**建立通行金鑰**或**取消**為止 | 五分鐘，或直到讀者選擇其中之一為止 |
 | `publira_web_storefront_dismissed_announcement` | 讀者選擇**關閉該公告**時 | 讀者所關閉公告的識別碼 | 一年 |
 | `publira_resolved_locale` | 造訪時，只要該Cookie尚未包含網站的預設語言 | 網站的預設語言代碼，例如`en`，不含任何讀者相關資訊 | 一年 |
 | `publira_web_storefront_view_actor` | 未登入的讀者開啟系列或章節時；如果網站會先詢問，則在讀者於同意橫幅上同意之後 | 只用來計算瀏覽次數的隨機識別碼。它不與任何帳戶關聯，網站上的任何內容也不會依據它進行個人化 | 180天 |

@@ -5,9 +5,11 @@ import { z } from "zod";
 
 import {
   deleteMe,
+  deleteMyPasskey,
   linkMyIdentity,
   loginWithIdToken,
   requestPublicEmailChange,
+  unlinkMyIdentity,
 } from "#lib/auth";
 import type { IdTokenSignIn } from "#lib/auth";
 import { sealPublicSessionCookie } from "#lib/auth-session";
@@ -17,6 +19,7 @@ import { getMessagesFor } from "#lib/messages";
 import { disableMyMfa } from "#lib/mfa";
 import { MFA_CHALLENGE_PATH, writeMfaChallenge } from "#lib/mfa-challenge";
 import { mfaDisableRefusalMessage } from "#lib/mfa-refusal-message";
+import { writePendingPasskeyRegistration } from "#lib/pending-passkey-registration";
 import {
   SIGN_IN_PROVIDER_NAMES,
   SIGN_IN_PROVIDERS,
@@ -433,6 +436,151 @@ const finishLink = async (
   }
 };
 
+/** Back on the security settings screen, with what the step did. */
+const securitySettingsOutcome = async (
+  { locale, tenantId }: SignInRequest,
+  message: string
+): Promise<Response> => {
+  const path = await tenantLocalePath(
+    tenantId,
+    locale,
+    CONFIRMING_SCREENS.passkey_add
+  );
+
+  const params = new URLSearchParams({ message, status: "success" });
+
+  return seeOther(`${path}?${params.toString()}`);
+};
+
+/**
+ * Keep the sign-in that confirmed adding a passkey for the security settings
+ * screen, which is the only place the browser can be asked for a passkey, and
+ * only once the reader presses a button there. **Create the passkey** begins
+ * the registration with it.
+ */
+const finishPasskeyAdd = async (
+  request: SignInRequest,
+  { idToken, nonce, provider }: IdTokenSignIn
+): Promise<Response> => {
+  const { locale, tenantId } = request;
+
+  await writePendingPasskeyRegistration({ idToken, nonce, provider, tenantId });
+
+  return seeOther(
+    await tenantLocalePath(tenantId, locale, CONFIRMING_SCREENS.passkey_add)
+  );
+};
+
+/** Remove the passkey the sign-in was asked to confirm the removal of. */
+const finishPasskeyRemove = async (
+  request: SignInRequest,
+  { idToken, nonce, provider }: IdTokenSignIn
+): Promise<Response> => {
+  const { accessToken, locale, target, tenantId } = request;
+  const t = await getMessagesFor(locale);
+
+  if (!target) {
+    return failure(request, t("storefront.settings.passkey_remove_failed"));
+  }
+
+  const removed = await withConfirmingSession(
+    request,
+    CONFIRMING_SCREENS.passkey_remove,
+    () =>
+      deleteMyPasskey(
+        tenantId,
+        target,
+        { idToken, nonce, provider },
+        accessToken
+      )
+  );
+
+  if (removed instanceof Response) {
+    return removed;
+  }
+
+  if (!removed.ok) {
+    return failure(
+      request,
+      rpcErrorMessage(
+        removed.error,
+        t("storefront.settings.passkey_remove_failed"),
+        {
+          locale,
+          overrides: {
+            "invalid-argument": t("storefront.settings.confirm_unconfirmed"),
+            "not-found": t("storefront.settings.passkey_not_found"),
+            precondition: t("storefront.settings.passkey_last"),
+          },
+        }
+      )
+    );
+  }
+
+  return securitySettingsOutcome(
+    request,
+    t("storefront.settings.passkey_removed")
+  );
+};
+
+/**
+ * Unlink the provider the sign-in was asked to confirm the unlink of, which
+ * may be another provider than the one signed in to.
+ */
+const finishIdentityUnlink = async (
+  request: SignInRequest,
+  { idToken, nonce, provider }: IdTokenSignIn
+): Promise<Response> => {
+  const { accessToken, locale, target, tenantId } = request;
+  const t = await getMessagesFor(locale);
+  const unlinked = SIGN_IN_PROVIDERS.find((value) => value === target);
+
+  if (!unlinked) {
+    return failure(
+      request,
+      t("storefront.settings.linked_account_unlink_failed")
+    );
+  }
+
+  const result = await withConfirmingSession(
+    request,
+    CONFIRMING_SCREENS.identity_unlink,
+    () =>
+      unlinkMyIdentity(
+        tenantId,
+        unlinked,
+        { idToken, nonce, provider },
+        accessToken
+      )
+  );
+
+  if (result instanceof Response) {
+    return result;
+  }
+
+  if (!result.ok) {
+    return failure(
+      request,
+      rpcErrorMessage(
+        result.error,
+        t("storefront.settings.linked_account_unlink_failed"),
+        {
+          locale,
+          overrides: {
+            "invalid-argument": t("storefront.settings.confirm_unconfirmed"),
+            precondition: t("storefront.settings.linked_account_last"),
+          },
+        }
+      )
+    );
+  }
+
+  return securitySettingsOutcome(
+    request,
+    t("storefront.settings.linked_account_unlinked")
+  );
+};
+
 /**
  * Where Apple and Google post a reader back to, from their own site. The state
  * it echoes and the nonce in its token tie it to the request this browser made.
@@ -499,6 +647,18 @@ export const POST = async (
 
     case "mfa_disable": {
       return finishMfaDisable(signInRequest, signIn);
+    }
+
+    case "passkey_add": {
+      return finishPasskeyAdd(signInRequest, signIn);
+    }
+
+    case "passkey_remove": {
+      return finishPasskeyRemove(signInRequest, signIn);
+    }
+
+    case "identity_unlink": {
+      return finishIdentityUnlink(signInRequest, signIn);
     }
 
     default: {

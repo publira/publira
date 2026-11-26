@@ -1,6 +1,5 @@
 "use server";
 
-import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import type { Locale } from "@publira/i18n";
 import type * as ActionForm from "@publira/ui-components/action-form";
 import {
@@ -16,11 +15,13 @@ import {
   requestPublicEmailChange,
   unlinkMyIdentity,
 } from "#lib/auth";
+import type { AccountConfirmation } from "#lib/auth";
 import {
   emailFormSchema,
   passkeyCredentialFormSchema,
   passwordFormSchema,
   tenantIdFormSchema,
+  tenantIdSchema,
 } from "#lib/auth-input";
 import {
   requirePublicSession,
@@ -34,6 +35,7 @@ import { getMessagesFor } from "#lib/messages";
 import { SIGN_IN_PROVIDERS } from "#lib/sign-in-provider";
 import { sendToProvider } from "#lib/social-sign-in-start";
 
+import { confirmationRefusalMessage } from "./confirmation-refusal";
 import {
   buildSecuritySettingsPath,
   SECURITY_SETTINGS_RETURN_TO,
@@ -493,37 +495,61 @@ export const linkIdentityAction = async (formData: FormData): Promise<void> => {
   });
 };
 
-export const unlinkIdentityAction = async (
-  formData: FormData
-): Promise<void> => {
-  await assertSameOrigin();
+const unlinkFormSchema = async (locale: Locale) => {
+  const [base, password] = await Promise.all([
+    linkedAccountFormSchema(locale),
+    passwordFormSchema(locale),
+  ]);
+
+  return z.union([
+    base.extend({ password }),
+    base.extend({ passkeyCredential: passkeyCredentialFormSchema }),
+  ]);
+};
+
+/**
+ * Unlink a provider from the reader's account, confirmed with the password or
+ * an assertion, and go back to the page with the outcome. A refusal stays in
+ * the dialog the unlink was confirmed in, worded for the confirmation or, for
+ * the last way into an account, in the words the row's hint uses.
+ */
+const unlinkIdentity = async (
+  formData: FormData,
+  expected: "passkey" | "password"
+): Promise<ActionForm.State> => {
   const submittedLocale = requireFormLocale(formData.get("locale"));
 
   const [t, schema] = await Promise.all([
     getMessagesFor(submittedLocale),
-    linkedAccountFormSchema(submittedLocale),
+    unlinkFormSchema(submittedLocale),
   ]);
 
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       locale: "value",
+      passkeyCredential: "value",
+      password: "value",
       provider: "value",
       tenantId: "value",
     })
   );
 
-  if (!parsed.success) {
-    const errorPath = await buildSecuritySettingsPath(
-      submittedLocale,
-      String(formData.get("tenantId") ?? ""),
-      "error",
-      t("storefront.settings.linked_account_unlink_failed")
-    );
-
-    redirect(errorPath);
+  if (
+    !parsed.success ||
+    ("password" in parsed.data ? "password" : "passkey") !== expected
+  ) {
+    return {
+      message: t("storefront.settings.linked_account_unlink_failed"),
+      ok: false,
+    };
   }
 
   const { locale, provider, tenantId } = parsed.data;
+
+  const confirmation: AccountConfirmation =
+    "password" in parsed.data
+      ? { password: parsed.data.password }
+      : { passkeyCredential: parsed.data.passkeyCredential };
 
   const accessToken = await requirePublicSession(
     locale,
@@ -534,36 +560,124 @@ export const unlinkIdentityAction = async (
   const result = await withPublicSessionReauth(
     locale,
     SECURITY_SETTINGS_RETURN_TO,
-    () => unlinkMyIdentity(tenantId, provider, accessToken),
+    () => unlinkMyIdentity(tenantId, provider, confirmation, accessToken),
     tenantId
   );
 
   if (!result.ok) {
-    const errorPath = await buildSecuritySettingsPath(
-      locale,
-      tenantId,
-      "error",
-      rpcErrorMessage(
-        result.error,
+    return {
+      message: confirmationRefusalMessage(
+        t,
+        locale,
+        result,
+        confirmation,
         t("storefront.settings.linked_account_unlink_failed"),
-        {
-          locale,
-          overrides: {
-            precondition: t("storefront.settings.linked_account_last"),
-          },
-        }
-      )
-    );
-
-    redirect(errorPath);
+        { precondition: t("storefront.settings.linked_account_last") }
+      ),
+      ok: false,
+    };
   }
 
-  const successPath = await buildSecuritySettingsPath(
-    locale,
-    tenantId,
-    "success",
-    t("storefront.settings.linked_account_unlinked")
+  redirect(
+    await buildSecuritySettingsPath(
+      locale,
+      tenantId,
+      "success",
+      t("storefront.settings.linked_account_unlinked")
+    )
+  );
+};
+
+/** Unlink a provider with the password the unlink dialog asked for. */
+export const unlinkIdentityAction = async (
+  _previousState: ActionForm.State,
+  formData: FormData
+): Promise<ActionForm.State> => {
+  await assertSameOrigin();
+
+  return unlinkIdentity(formData, "password");
+};
+
+/**
+ * Unlink a provider from an account without a password, with the assertion
+ * `PasskeyConfirmation` added to the dialog's form.
+ */
+export const unlinkIdentityWithPasskeyAction = async (
+  formData: FormData
+): Promise<ActionForm.State> => {
+  await assertSameOrigin();
+
+  return unlinkIdentity(formData, "passkey");
+};
+
+const unlinkWithProviderFormSchema = async (locale: Locale) => {
+  const base = await linkedAccountFormSchema(locale);
+
+  return base.extend({ confirmationProvider: z.enum(SIGN_IN_PROVIDERS) });
+};
+
+/**
+ * Unlink a provider from an account without a password, which signs in again
+ * with the provider whose button the reader pressed, the one being unlinked
+ * or another. The provider to unlink waits with the sign-in, and the callback
+ * asks for the unlink with it.
+ */
+export const unlinkIdentityWithProviderAction = async (
+  formData: FormData
+): Promise<void> => {
+  await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+
+  const [t, schema] = await Promise.all([
+    getMessagesFor(submittedLocale),
+    unlinkWithProviderFormSchema(submittedLocale),
+  ]);
+
+  // A form that names no tenant did not come from the page, and nothing can be
+  // built for it to go back to without one: it is turned away as it is.
+  const tenant = tenantIdSchema.safeParse(
+    toFormDataInput(formData, { tenantId: "value" }).tenantId
   );
 
-  redirect(successPath);
+  if (!tenant.success) {
+    return;
+  }
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      confirmationProvider: "value",
+      locale: "value",
+      provider: "value",
+      tenantId: "value",
+    })
+  );
+
+  if (!parsed.success) {
+    redirect(
+      await buildSecuritySettingsPath(
+        submittedLocale,
+        tenant.data,
+        "error",
+        t("storefront.settings.linked_account_unlink_failed")
+      )
+    );
+  }
+
+  const { confirmationProvider, locale, provider, tenantId } = parsed.data;
+
+  const accessToken = await requirePublicSession(
+    locale,
+    SECURITY_SETTINGS_RETURN_TO,
+    tenantId
+  );
+
+  await sendToProvider({
+    accessToken,
+    locale,
+    tenantId,
+    intent: "identity_unlink",
+    provider: confirmationProvider,
+    returnTo: SECURITY_SETTINGS_RETURN_TO,
+    target: provider,
+  });
 };

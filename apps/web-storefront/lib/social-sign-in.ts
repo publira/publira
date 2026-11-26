@@ -25,9 +25,9 @@ import { isTenantIdFormat } from "./tenant-id-format";
 
 /**
  * What the fresh sign-in is for: signing in, confirming that an account
- * without a password is to be deleted, to move to another address, or to turn
- * two-step verification off, or linking the provider account to the signed-in
- * reader's.
+ * without a password is to be deleted, to move to another address, to turn
+ * two-step verification off, to add or remove a passkey, or to unlink a
+ * provider, or linking the provider account to the signed-in reader's.
  */
 export const SIGN_IN_INTENTS = [
   "login",
@@ -35,6 +35,9 @@ export const SIGN_IN_INTENTS = [
   "email_change",
   "link",
   "mfa_disable",
+  "passkey_add",
+  "passkey_remove",
+  "identity_unlink",
 ] as const;
 
 export type SignInIntent = (typeof SIGN_IN_INTENTS)[number];
@@ -105,6 +108,7 @@ const signInRequestSchema = z.object({
   redirectUri: z.url(),
   returnTo: returnToFormSchema,
   state: z.string().min(1),
+  target: z.string().min(1).max(64).optional(),
   tenantId: z.string().refine(isTenantIdFormat),
 });
 
@@ -133,6 +137,12 @@ export interface SignInRequest {
   redirectUri: string;
   returnTo: string;
   state: string;
+  /**
+   * What a removal or an unlink confirmed by this sign-in acts on: the
+   * passkey's id, or the provider to unlink, which is not always the one
+   * signed in to.
+   */
+  target?: string;
   tenantId: string;
 }
 

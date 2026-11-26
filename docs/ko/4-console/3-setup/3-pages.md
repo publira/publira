@@ -119,6 +119,7 @@ Publira에는 법적 문서를 위한 특별한 종류의 페이지가 없습니
 | `publira_web_storefront_sign_in` | 독자가 **Apple로 계속하기** 또는 **Google로 계속하기**를 선택할 때 | 진행 중인 로그인을 암호화한 것으로, Apple이나 Google의 응답을 이것과 대조합니다 | 10분 또는 응답이 도착할 때까지 |
 | `publira_web_storefront_sign_up` | Apple이나 Google로 처음 로그인하는 독자에게 **회원가입 완료**가 표시될 때 | 독자가 약관에 동의할 때까지, Apple이나 Google이 독자에 대해 돌려준 내용을 암호화한 것 | 4분 |
 | `publira_web_storefront_mfa` | 2단계 인증을 켠 독자가 비밀번호를 입력하거나 Apple이나 Google로 로그인한 뒤 코드를 요청받을 때 | 코드 입력을 기다리는 로그인을 암호화한 것 | 5분, 또는 코드가 받아들여질 때까지 |
+| `publira_web_storefront_passkey_registration` | 비밀번호가 없는 독자가 **설정** › **보안**에서 패스키를 추가하려고 **Apple로 확인** 또는 **Google로 확인**을 선택할 때 | 추가를 확인한 Apple 또는 Google 로그인을 암호화한 것으로, 독자가 **패스키 만들기**나 **취소**를 선택할 때까지 보관합니다 | 5분, 또는 독자가 둘 중 하나를 선택할 때까지 |
 | `publira_web_storefront_dismissed_announcement` | 독자가 **이 공지사항 닫기**를 선택할 때 | 독자가 닫은 공지사항의 식별자 | 1년 |
 | `publira_resolved_locale` | 방문할 때, 쿠키에 사이트의 기본 언어가 아직 담겨 있지 않을 때마다 | `en` 같은 사이트의 기본 언어 코드이며, 독자에 관한 정보는 없습니다 | 1년 |
 | `publira_web_storefront_view_actor` | 로그인하지 않은 독자가 시리즈나 에피소드를 열 때. 사이트가 먼저 묻는 경우에는 동의 배너에서 동의한 뒤 | 조회 수를 세는 데만 쓰는 무작위 식별자. 계정과 연결되지 않으며, 사이트의 어떤 것도 이 식별자로 개인화되지 않습니다 | 180일 |

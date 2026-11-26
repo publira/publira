@@ -5,6 +5,7 @@ import * as PasswordInput from "@publira/ui-components/password-input";
 import { Skeleton, SkeletonLine } from "@publira/ui-components/skeleton";
 import { formatDate } from "@publira/utils";
 import { cache, Suspense } from "react";
+import type { ReactNode } from "react";
 
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
@@ -14,6 +15,7 @@ import { listMyIdentities, listMyPasskeys } from "#lib/auth";
 import { withPublicSessionReauth } from "#lib/auth-session";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { readPendingPasskeyRegistration } from "#lib/pending-passkey-registration";
 import {
   SIGN_IN_PROVIDER_NAMES,
   SIGN_IN_PROVIDERS,
@@ -26,14 +28,32 @@ import { beginPasskeyConfirmationAction } from "../_lib/passkey-confirmation-act
 import { MfaSection } from "./_components/mfa-section";
 import * as PasskeyAddition from "./_components/passkey-addition";
 import {
+  CancelButton,
+  ConfirmationDialog,
+  confirmationsFor,
+  confirmButtonClassName,
+  CurrentPasswordField,
+  PasswordlessDescription,
+  ProviderConfirmButton,
+  StepConfirmation,
+} from "./_components/sign-in-method-confirmation";
+import type { Confirmations } from "./_components/sign-in-method-confirmation";
+import {
   changePasswordAction,
   confirmEmailChangeWithProviderAction,
   linkIdentityAction,
   requestEmailChangeAction,
   requestEmailChangeWithPasskeyAction,
   unlinkIdentityAction,
+  unlinkIdentityWithPasskeyAction,
+  unlinkIdentityWithProviderAction,
 } from "./_lib/actions";
-import { deletePasskeyAction } from "./_lib/passkey-actions";
+import {
+  confirmPasskeyChangeWithProviderAction,
+  deletePasskeyAction,
+  deletePasskeyWithPasskeyAction,
+  discardPendingPasskeyRegistrationAction,
+} from "./_lib/passkey-actions";
 import { SECURITY_SETTINGS_RETURN_TO } from "./_lib/security-path";
 
 const fieldClassName =
@@ -476,6 +496,8 @@ const LinkedAccountsSection = async () => {
   const keepsLast =
     !(mine.hasPassword || mine.hasPasskey) && mine.identities.length === 1;
 
+  const confirmations = await confirmationsFor(mine, tenantId);
+
   return (
     <section
       aria-labelledby={LINKED_ACCOUNTS_HEADING_ID}
@@ -523,25 +545,55 @@ const LinkedAccountsSection = async () => {
                   </p>
                 )}
               </div>
-              <form
-                action={identity ? unlinkIdentityAction : linkIdentityAction}
-              >
-                <LocaleField />
-                <input name="tenantId" type="hidden" value={tenantId} />
-                <input name="provider" type="hidden" value={provider} />
-                {identity ? (
-                  <button
-                    aria-label={t(
-                      "storefront.settings.linked_account_unlink_aria",
-                      { provider: name }
-                    )}
-                    className={linkedAccountButtonClassName}
-                    disabled={keepsLast}
-                    type="submit"
-                  >
-                    {t("storefront.settings.linked_account_unlink")}
-                  </button>
-                ) : (
+              {identity ? (
+                <ConfirmationDialog
+                  description={
+                    confirmations.hasPassword ? (
+                      t(
+                        "storefront.settings.linked_account_unlink_confirm_description",
+                        { provider: name }
+                      )
+                    ) : (
+                      <PasswordlessDescription confirmations={confirmations} />
+                    )
+                  }
+                  title={t(
+                    "storefront.settings.linked_account_unlink_confirm_title",
+                    { provider: name }
+                  )}
+                  trigger={
+                    <button
+                      aria-label={t(
+                        "storefront.settings.linked_account_unlink_aria",
+                        { provider: name }
+                      )}
+                      className={linkedAccountButtonClassName}
+                      disabled={keepsLast}
+                      type="button"
+                    >
+                      {t("storefront.settings.linked_account_unlink")}
+                    </button>
+                  }
+                >
+                  <StepConfirmation
+                    confirmations={confirmations}
+                    fields={
+                      <>
+                        <input name="tenantId" type="hidden" value={tenantId} />
+                        <input name="provider" type="hidden" value={provider} />
+                      </>
+                    }
+                    passkeyAction={unlinkIdentityWithPasskeyAction}
+                    passwordAction={unlinkIdentityAction}
+                    providerAction={unlinkIdentityWithProviderAction}
+                    submit={t("storefront.settings.linked_account_unlink")}
+                  />
+                </ConfirmationDialog>
+              ) : (
+                <form action={linkIdentityAction}>
+                  <LocaleField />
+                  <input name="tenantId" type="hidden" value={tenantId} />
+                  <input name="provider" type="hidden" value={provider} />
                   <button
                     aria-label={t(
                       "storefront.settings.linked_account_link_aria",
@@ -552,8 +604,8 @@ const LinkedAccountsSection = async () => {
                   >
                     {t("storefront.settings.linked_account_link")}
                   </button>
-                )}
-              </form>
+                </form>
+              )}
             </li>
           );
         })}
@@ -567,26 +619,161 @@ const LinkedAccountsSection = async () => {
   );
 };
 
-const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
-  <PasskeyAddition.AddForm>
-    <LocaleField />
-    <input name="tenantId" type="hidden" value={tenantId} />
-    <PasskeyAddition.Added />
-    <div className="flex justify-end">
-      <ActionForm.Submit variant="outline">
-        <ActionForm.Idle>
+const PasskeyAddSubmit = ({
+  children,
+  className,
+  variant,
+}: {
+  children: ReactNode;
+  className?: string;
+  variant?: "default" | "outline";
+}) => (
+  <ActionForm.Submit className={className} variant={variant}>
+    <ActionForm.Idle>{children}</ActionForm.Idle>
+    <ActionForm.Pending>
+      <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+        <Message message="storefront.settings.passkey_waiting" />
+      </Suspense>
+    </ActionForm.Pending>
+  </ActionForm.Submit>
+);
+
+/**
+ * **Add a passkey**, and the dialog that confirms the account first: with its
+ * password, with one of its passkeys, which the browser asks for before the
+ * new one, or with a fresh sign-in to a linked provider, which comes back to
+ * {@link PasskeyResumeStep}.
+ */
+const PasskeyAddStep = ({
+  confirmations,
+  tenantId,
+}: {
+  confirmations: Confirmations;
+  tenantId: string;
+}) => (
+  <div className="flex justify-end">
+    <ConfirmationDialog
+      description={
+        confirmations.hasPassword ? (
+          <Suspense fallback={<SkeletonLine className="h-4 w-full" />}>
+            <Message message="storefront.settings.passkey_add_confirm_description" />
+          </Suspense>
+        ) : (
+          <PasswordlessDescription confirmations={confirmations} />
+        )
+      }
+      title={
+        <Suspense fallback={<SkeletonLine className="h-5 w-32" />}>
+          <Message message="storefront.settings.passkey_add" />
+        </Suspense>
+      }
+      trigger={
+        <button className={linkedAccountButtonClassName} type="button">
           <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
             <Message message="storefront.settings.passkey_add" />
           </Suspense>
-        </ActionForm.Idle>
-        <ActionForm.Pending>
-          <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
-            <Message message="storefront.settings.passkey_waiting" />
+        </button>
+      }
+    >
+      {confirmations.hasPassword ? (
+        <PasskeyAddition.AddForm>
+          <LocaleField />
+          <input name="tenantId" type="hidden" value={tenantId} />
+          <PasskeyAddition.Added />
+          <ActionForm.Fieldset>
+            <CurrentPasswordField />
+          </ActionForm.Fieldset>
+          <div className="flex flex-wrap justify-end gap-2">
+            <CancelButton />
+            <PasskeyAddSubmit>
+              <Suspense fallback={<SkeletonLine className="h-4 w-28" />}>
+                <Message message="storefront.settings.passkey_add" />
+              </Suspense>
+            </PasskeyAddSubmit>
+          </div>
+        </PasskeyAddition.AddForm>
+      ) : (
+        <div className="grid gap-3">
+          {confirmations.passkey ? (
+            <PasskeyAddition.AddForm confirmWith="passkey">
+              <LocaleField />
+              <input name="tenantId" type="hidden" value={tenantId} />
+              <input
+                name="returnTo"
+                type="hidden"
+                value={SECURITY_SETTINGS_RETURN_TO}
+              />
+              <PasskeyAddition.Added />
+              <PasskeyAddSubmit
+                className={confirmButtonClassName}
+                variant="outline"
+              >
+                <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+                  <Message message="storefront.settings.confirm_with_passkey" />
+                </Suspense>
+              </PasskeyAddSubmit>
+            </PasskeyAddition.AddForm>
+          ) : null}
+          {confirmations.providers.length > 0 ? (
+            <form
+              action={confirmPasskeyChangeWithProviderAction}
+              className="grid gap-3"
+            >
+              <LocaleField />
+              <input name="tenantId" type="hidden" value={tenantId} />
+              <input name="intent" type="hidden" value="passkey_add" />
+              {confirmations.providers.map((provider) => (
+                <ProviderConfirmButton
+                  key={provider}
+                  name="provider"
+                  provider={provider}
+                />
+              ))}
+            </form>
+          ) : null}
+          <div className="flex justify-end">
+            <CancelButton />
+          </div>
+        </div>
+      )}
+    </ConfirmationDialog>
+  </div>
+);
+
+/**
+ * The fresh sign-in to a provider that confirmed adding a passkey, waiting for
+ * the reader to press the button the browser asks for a passkey from, and a
+ * way to drop it and start again.
+ */
+const PasskeyResumeStep = ({ tenantId }: { tenantId: string }) => (
+  <div className="grid gap-3">
+    <p className="text-sm text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+        <Message message="storefront.settings.passkey_add_resume_description" />
+      </Suspense>
+    </p>
+    <div className="flex flex-wrap justify-end gap-2">
+      <form action={discardPendingPasskeyRegistrationAction}>
+        <LocaleField />
+        <input name="tenantId" type="hidden" value={tenantId} />
+        <button className={linkedAccountButtonClassName} type="submit">
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="storefront.settings.cancel" />
           </Suspense>
-        </ActionForm.Pending>
-      </ActionForm.Submit>
+        </button>
+      </form>
+      <PasskeyAddition.AddForm confirmWith="pending">
+        <LocaleField />
+        <input name="tenantId" type="hidden" value={tenantId} />
+        <PasskeyAddition.Added />
+        <PasskeyAddSubmit>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="storefront.settings.passkey_add_resume" />
+          </Suspense>
+        </PasskeyAddSubmit>
+      </PasskeyAddition.AddForm>
     </div>
-  </PasskeyAddition.AddForm>
+  </div>
 );
 
 /**
@@ -654,7 +841,7 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
 const PasskeysSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const [mine, passkeys, t, timeZone] = await Promise.all([
+  const [mine, passkeys, t, timeZone, pending] = await Promise.all([
     readMyIdentities(tenantId, locale),
     withPublicSessionReauth(
       locale,
@@ -664,11 +851,14 @@ const PasskeysSection = async () => {
     ),
     getMessagesFor(locale),
     getTenantDisplayTimeZone(tenantId),
+    readPendingPasskeyRegistration(tenantId),
   ]);
 
   if (!passkeys) {
     return null;
   }
+
+  const confirmations = await confirmationsFor(mine, tenantId);
 
   const keepsLast =
     mine !== null &&
@@ -714,21 +904,59 @@ const PasskeysSection = async () => {
                       : t("storefront.settings.passkey_never_used")}
                   </p>
                 </div>
-                <form action={deletePasskeyAction}>
-                  <LocaleField />
-                  <input name="tenantId" type="hidden" value={tenantId} />
-                  <input name="passkeyId" type="hidden" value={passkey.id} />
-                  <button
-                    aria-label={t("storefront.settings.passkey_remove_aria", {
-                      name,
-                    })}
-                    className={linkedAccountButtonClassName}
-                    disabled={keepsLast}
-                    type="submit"
-                  >
-                    {t("storefront.settings.passkey_remove")}
-                  </button>
-                </form>
+                <ConfirmationDialog
+                  description={
+                    confirmations.hasPassword ? (
+                      t(
+                        "storefront.settings.passkey_remove_confirm_description",
+                        {
+                          name,
+                        }
+                      )
+                    ) : (
+                      <PasswordlessDescription confirmations={confirmations} />
+                    )
+                  }
+                  title={t("storefront.settings.passkey_remove_confirm_title", {
+                    name,
+                  })}
+                  trigger={
+                    <button
+                      aria-label={t("storefront.settings.passkey_remove_aria", {
+                        name,
+                      })}
+                      className={linkedAccountButtonClassName}
+                      disabled={keepsLast}
+                      type="button"
+                    >
+                      {t("storefront.settings.passkey_remove")}
+                    </button>
+                  }
+                >
+                  <StepConfirmation
+                    confirmations={confirmations}
+                    fields={
+                      <>
+                        <input name="tenantId" type="hidden" value={tenantId} />
+                        <input
+                          name="passkeyId"
+                          type="hidden"
+                          value={passkey.id}
+                        />
+                        <input
+                          name="intent"
+                          type="hidden"
+                          value="passkey_remove"
+                        />
+                      </>
+                    }
+                    passkeyAction={deletePasskeyWithPasskeyAction}
+                    passwordAction={deletePasskeyAction}
+                    providerAction={confirmPasskeyChangeWithProviderAction}
+                    providerField="provider"
+                    submit={t("storefront.settings.passkey_remove")}
+                  />
+                </ConfirmationDialog>
               </li>
             );
           })}
@@ -745,7 +973,16 @@ const PasskeysSection = async () => {
       ) : null}
       <div className="mt-4">
         <PasskeyAddition.Root
-          add={<PasskeyAddStep tenantId={tenantId} />}
+          add={
+            pending ? (
+              <PasskeyResumeStep tenantId={tenantId} />
+            ) : (
+              <PasskeyAddStep
+                confirmations={confirmations}
+                tenantId={tenantId}
+              />
+            )
+          }
           name={<PasskeyNameStep tenantId={tenantId} />}
         />
       </div>

@@ -32,6 +32,7 @@ const {
   mockRequestEmailChange,
   mockResolveAccessToken,
   mockSelectMyIcon,
+  mockUnlinkIdentity,
   mockUpdateMe,
   mockUpdateNotificationSettings,
   mockUploadMyIcon,
@@ -62,6 +63,7 @@ const {
   mockRequestEmailChange: vi.fn(),
   mockResolveAccessToken: vi.fn(),
   mockSelectMyIcon: vi.fn(),
+  mockUnlinkIdentity: vi.fn(),
   mockUpdateMe: vi.fn(),
   mockUpdateNotificationSettings: vi.fn(),
   mockUploadMyIcon: vi.fn(),
@@ -100,6 +102,7 @@ vi.mock("./api-client", () => ({
       renamePasskey: mockRenamePasskey,
       requestEmailChange: mockRequestEmailChange,
       selectMyIcon: mockSelectMyIcon,
+      unlinkIdentity: mockUnlinkIdentity,
       updateMe: mockUpdateMe,
       updateNotificationSettings: mockUpdateNotificationSettings,
       uploadMyIcon: mockUploadMyIcon,
@@ -755,10 +758,39 @@ describe("web-storefront auth", () => {
       creationOptionsJson: '{"challenge":"abc"}',
     });
 
-    await expect(beginMyPasskeyRegistration("TENANT001")).resolves.toEqual({
+    await expect(
+      beginMyPasskeyRegistration("TENANT001", { password: "current-pass" })
+    ).resolves.toEqual({
       ok: true,
       optionsJson: '{"challenge":"abc"}',
     });
+    expect(mockBeginPasskeyRegistration).toHaveBeenCalledWith(
+      { password: "current-pass", tenant: { tenantId: "TENANT001" } },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("beginMyPasskeyRegistration: sends a fresh sign-in as the confirmation", async () => {
+    const { beginMyPasskeyRegistration } = await importAuth();
+    mockBeginPasskeyRegistration.mockResolvedValueOnce({
+      creationOptionsJson: '{"challenge":"abc"}',
+    });
+
+    await beginMyPasskeyRegistration("TENANT001", {
+      idToken: "id-token",
+      nonce: "nonce",
+      provider: "google",
+    });
+
+    expect(mockBeginPasskeyRegistration).toHaveBeenCalledWith(
+      {
+        idToken: "id-token",
+        nonce: "nonce",
+        provider: IdentityProvider.GOOGLE,
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
   });
 
   it("beginMyPasskeyRegistration: hands a refusal back for the caller to word", async () => {
@@ -766,7 +798,9 @@ describe("web-storefront auth", () => {
     const error = new ConnectError("limit", Code.FailedPrecondition);
     mockBeginPasskeyRegistration.mockRejectedValueOnce(error);
 
-    await expect(beginMyPasskeyRegistration("TENANT001")).resolves.toEqual({
+    await expect(
+      beginMyPasskeyRegistration("TENANT001", { password: "current-pass" })
+    ).resolves.toEqual({
       error,
       ok: false,
     });
@@ -778,9 +812,9 @@ describe("web-storefront auth", () => {
       new ConnectError("session ended", Code.Unauthenticated)
     );
 
-    await expect(beginMyPasskeyRegistration("TENANT001")).rejects.toThrow(
-      "session ended"
-    );
+    await expect(
+      beginMyPasskeyRegistration("TENANT001", { password: "current-pass" })
+    ).rejects.toThrow("session ended");
   });
 
   it("finishMyPasskeyRegistration: stores the passkey unnamed", async () => {
@@ -844,12 +878,43 @@ describe("web-storefront auth", () => {
     const error = new ConnectError("last", Code.FailedPrecondition);
     mockDeletePasskey.mockRejectedValueOnce(error);
 
-    await expect(deleteMyPasskey("TENANT001", "PSKY0001")).resolves.toEqual({
+    await expect(
+      deleteMyPasskey("TENANT001", "PSKY0001", {
+        passkeyCredential: '{"id":"credential"}',
+      })
+    ).resolves.toEqual({
       error,
       ok: false,
     });
     expect(mockDeletePasskey).toHaveBeenCalledWith(
-      { id: "PSKY0001", tenant: { tenantId: "TENANT001" } },
+      {
+        id: "PSKY0001",
+        passkeyCredentialJson: '{"id":"credential"}',
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer sid_001" } }
+    );
+  });
+
+  it("unlinkMyIdentity: sends the provider a fresh sign-in confirms with apart from the one it unlinks", async () => {
+    const { unlinkMyIdentity } = await importAuth();
+    mockUnlinkIdentity.mockResolvedValueOnce({});
+
+    await expect(
+      unlinkMyIdentity("TENANT001", "google", {
+        idToken: "id-token",
+        nonce: "nonce",
+        provider: "apple",
+      })
+    ).resolves.toEqual({ ok: true });
+    expect(mockUnlinkIdentity).toHaveBeenCalledWith(
+      {
+        confirmationProvider: IdentityProvider.APPLE,
+        idToken: "id-token",
+        nonce: "nonce",
+        provider: IdentityProvider.GOOGLE,
+        tenant: { tenantId: "TENANT001" },
+      },
       { headers: { Authorization: "Bearer sid_001" } }
     );
   });

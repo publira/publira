@@ -18,8 +18,11 @@ export const CONFIRMING_SCREENS: Record<
 > = {
   delete: "/settings",
   email_change: "/settings/security",
+  identity_unlink: "/settings/security",
   link: "/settings/security",
   mfa_disable: "/settings/security",
+  passkey_add: "/settings/security",
+  passkey_remove: "/settings/security",
 };
 
 /**

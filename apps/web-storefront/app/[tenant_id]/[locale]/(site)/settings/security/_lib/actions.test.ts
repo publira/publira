@@ -1,4 +1,8 @@
-import { Code, ConnectError } from "@publira/api-client/errors";
+import {
+  BadRequestSchema,
+  Code,
+  ConnectError,
+} from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -257,23 +261,35 @@ describe("linkIdentityAction", () => {
   });
 });
 
+/** A row's unlink form, with the confirmation its dialog adds. */
+const unlinkForm = (fields: Record<string, string>): FormData => {
+  const data = providerForm();
+
+  for (const [name, value] of Object.entries(fields)) {
+    data.set(name, value);
+  }
+
+  return data;
+};
+
 describe("unlinkIdentityAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequirePublicSession.mockResolvedValue(accessToken);
   });
 
-  it("unlinks the provider and says so", async () => {
+  it("unlinks the provider with the password the dialog asked for, and says so", async () => {
     mockUnlinkMyIdentity.mockResolvedValueOnce({ ok: true });
     const { unlinkIdentityAction } = await import("./actions");
 
-    await expect(unlinkIdentityAction(providerForm())).rejects.toThrow(
-      "NEXT_REDIRECT"
-    );
+    await expect(
+      unlinkIdentityAction(null, unlinkForm({ password: currentPassword }))
+    ).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mockUnlinkMyIdentity).toHaveBeenCalledWith(
       tenantId,
       "google",
+      { password: currentPassword },
       accessToken
     );
     expect(lastFlash()).toEqual({
@@ -282,33 +298,114 @@ describe("unlinkIdentityAction", () => {
     });
   });
 
+  it("keeps the dialog open on a wrong password", async () => {
+    mockUnlinkMyIdentity.mockResolvedValueOnce({
+      error: new ConnectError(
+        "invalid password",
+        Code.InvalidArgument,
+        undefined,
+        [
+          {
+            desc: BadRequestSchema,
+            value: { fieldViolations: [{ field: "password" }] },
+          },
+        ]
+      ),
+      ok: false,
+    });
+    const { unlinkIdentityAction } = await import("./actions");
+
+    await expect(
+      unlinkIdentityAction(null, unlinkForm({ password: "not-it" }))
+    ).resolves.toEqual({ message: "The password is incorrect.", ok: false });
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
   it("explains why the last way in stays linked", async () => {
     mockUnlinkMyIdentity.mockResolvedValueOnce({
       error: new ConnectError("last", Code.FailedPrecondition),
       ok: false,
     });
-    const { unlinkIdentityAction } = await import("./actions");
+    const { unlinkIdentityWithPasskeyAction } = await import("./actions");
 
-    await expect(unlinkIdentityAction(providerForm())).rejects.toThrow(
-      "NEXT_REDIRECT"
-    );
-
-    expect(lastFlash()).toEqual({
+    await expect(
+      unlinkIdentityWithPasskeyAction(
+        unlinkForm({ passkeyCredential: '{"id":"credential"}' })
+      )
+    ).resolves.toEqual({
       message:
         "Your account has no password or passkey, so the last linked account stays linked.",
-      status: "error",
+      ok: false,
     });
+    expect(mockUnlinkMyIdentity).toHaveBeenCalledWith(
+      tenantId,
+      "google",
+      { passkeyCredential: '{"id":"credential"}' },
+      accessToken
+    );
+  });
+
+  it("refuses an unlink the form did not confirm", async () => {
+    const { unlinkIdentityAction } = await import("./actions");
+
+    await expect(
+      unlinkIdentityAction(null, providerForm())
+    ).resolves.toMatchObject({ ok: false });
+    expect(mockUnlinkMyIdentity).not.toHaveBeenCalled();
   });
 
   it("refuses a provider the site does not know", async () => {
     const { unlinkIdentityAction } = await import("./actions");
 
-    await expect(unlinkIdentityAction(providerForm("github"))).rejects.toThrow(
-      "NEXT_REDIRECT"
-    );
+    await expect(
+      unlinkIdentityAction(
+        null,
+        (() => {
+          const data = providerForm("github");
+          data.set("password", currentPassword);
 
+          return data;
+        })()
+      )
+    ).resolves.toMatchObject({ ok: false });
     expect(mockUnlinkMyIdentity).not.toHaveBeenCalled();
-    expect(lastFlash().status).toBe("error");
+  });
+});
+
+describe("unlinkIdentityWithProviderAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequirePublicSession.mockResolvedValue(accessToken);
+  });
+
+  it("turns a form that names no tenant away without looking one up", async () => {
+    const { unlinkIdentityWithProviderAction } = await import("./actions");
+    const data = providerForm("google");
+    data.set("tenantId", "not-a-tenant");
+
+    await expect(
+      unlinkIdentityWithProviderAction(data)
+    ).resolves.toBeUndefined();
+    expect(mockRedirect).not.toHaveBeenCalled();
+    expect(mockSendToProvider).not.toHaveBeenCalled();
+  });
+
+  it("sends the reader to the provider they confirm with, with the one to unlink waiting", async () => {
+    const { unlinkIdentityWithProviderAction } = await import("./actions");
+    const data = providerForm("google");
+    data.set("confirmationProvider", "apple");
+
+    await unlinkIdentityWithProviderAction(data);
+
+    expect(mockSendToProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessToken,
+        tenantId,
+        intent: "identity_unlink",
+        provider: "apple",
+        target: "google",
+      })
+    );
   });
 });
 

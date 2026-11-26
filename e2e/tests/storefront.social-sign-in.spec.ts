@@ -190,6 +190,11 @@ test.describe("Sign in with Apple and Google on the public site", () => {
     await expect(linked).toContainText(SOCIAL_SIGN_IN_MEMBER.email);
 
     await linked.getByRole("button", { name: "Unlink Google" }).click();
+    const dialog = page.getByRole("dialog", { name: "Unlink Google?" });
+    await dialog
+      .getByLabel("Current password")
+      .fill(SOCIAL_SIGN_IN_MEMBER.password);
+    await dialog.getByRole("button", { name: "Unlink" }).click();
     await expect(page.getByText("The account was unlinked.")).toBeVisible();
     await expect(
       page
