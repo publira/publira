@@ -4513,6 +4513,18 @@ type Querier interface {
 	// public series but shown on no surface is not announced later when it is
 	// shown, so it owes nothing.
 	OweEpisodeAnnouncementWhileSeriesHidden(ctx context.Context, arg OweEpisodeAnnouncementWhileSeriesHiddenParams) error
+	// Whether a checkout of the tenant's through the provider can still be paid
+	// and keeps no payment yet, the one a notification of a payment the server
+	// has not kept could complete.
+	PaymentCheckoutAwaitsPayment(ctx context.Context, arg PaymentCheckoutAwaitsPaymentParams) (bool, error)
+	// Whether a checkout of the tenant's through the provider keeps the payment
+	// as its completion, which a notification naming the payment is held to
+	// before a provider that signs none is asked about it.
+	PaymentCheckoutKeepsPayment(ctx context.Context, arg PaymentCheckoutKeepsPaymentParams) (bool, error)
+	// Whether the tenant started the checkout through the provider, which a
+	// notification naming it is held to before a provider that signs none is
+	// asked about its payment.
+	PaymentCheckoutStarted(ctx context.Context, arg PaymentCheckoutStartedParams) (bool, error)
 	// Whether a tenant that sells in the platform's default currency, having saved
 	// no payment settings of its own, has a purchase, test ones included. Its
 	// prices and the amounts it recorded are amounts in that currency, so the
@@ -4601,6 +4613,10 @@ type Querier interface {
 	// publication on; without it the version keeps whatever request an earlier
 	// publication of it made, which is already older than this one.
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
+	// Whether a purchase of the tenant's through the provider was paid by the
+	// payment, which a notification naming the payment is held to before a
+	// provider that signs none is asked about it.
+	PurchaseRecordsProviderPayment(ctx context.Context, arg PurchaseRecordsProviderPaymentParams) (bool, error)
 	// The end of the retention window for a comment its author deleted. The inner
 	// select bounds one chunk, so a tenant with a long backlog is drained over
 	// several statements instead of one long-running delete.

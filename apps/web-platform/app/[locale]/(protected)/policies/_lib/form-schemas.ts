@@ -231,6 +231,14 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "password_verification_per_minute",
   },
+  paymentWebhookPerClientPerDay: {
+    kind: "value",
+    name: "payment_webhook_per_client_per_day",
+  },
+  paymentWebhookPerClientPerMinute: {
+    kind: "value",
+    name: "payment_webhook_per_client_per_minute",
+  },
   promotionCodeAttemptPerDay: {
     kind: "value",
     name: "promotion_code_attempt_per_day",
@@ -349,6 +357,10 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
     "platform.policy.security.content_view_per_client_title"
   );
 
+  const paymentWebhookPerClient = t(
+    "platform.policy.security.payment_webhook_per_client_title"
+  );
+
   const apiKeyRequest = t("platform.policy.security.api_key_request_title");
 
   const listUrlInvalid = t(
@@ -412,6 +424,8 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
       passkeyPerMinute: limitSchema(t, passkey),
       passwordVerificationPerDay: limitSchema(t, password),
       passwordVerificationPerMinute: limitSchema(t, password),
+      paymentWebhookPerClientPerDay: limitSchema(t, paymentWebhookPerClient),
+      paymentWebhookPerClientPerMinute: limitSchema(t, paymentWebhookPerClient),
       promotionCodeAttemptPerDay: limitSchema(t, promotionCodeAttempt),
       promotionCodeAttemptPerMinute: limitSchema(t, promotionCodeAttempt),
       purchaseCheckoutPerDay: limitSchema(t, purchaseCheckout),
@@ -557,6 +571,13 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
             setting: contentViewPerClient,
           }),
           short: "contentViewPerClientPerMinute",
+        },
+        {
+          day: "paymentWebhookPerClientPerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: paymentWebhookPerClient,
+          }),
+          short: "paymentWebhookPerClientPerMinute",
         },
         {
           day: "apiKeyRequestPerDay",

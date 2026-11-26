@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/google/uuid"
 
+	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/paymentprovider"
@@ -33,13 +34,21 @@ type storedCheckoutEnv struct {
 	tenant      testutil.Tenant
 	reader      testutil.TenantUser
 	episode     testutil.Episode
-	fixture     *readbacktest.Fixture
+	fixture     readbackFixture
 	registry    *paymentprovider.Registry
 	encryptor   paymentsettings.SecretManager
 	purchases   publirav1connect.PurchaseServiceClient
 	coins       publirav1connect.CoinServiceClient
 	token       string
 	credentials paymentprovider.Credentials
+}
+
+// readbackFixture is a contract fixture of the fake a storedCheckoutEnv sells
+// through, of whichever shape.
+type readbackFixture interface {
+	API() *readbacktest.API
+	Provider() paymentprovider.Provider
+	Credentials() paymentprovider.Credentials
 }
 
 func newStoredCheckoutEnv(t *testing.T) storedCheckoutEnv {
@@ -50,6 +59,14 @@ func newStoredCheckoutEnv(t *testing.T) storedCheckoutEnv {
 // newStoredCheckoutEnvOf answers the tenant of newStoredCheckoutEnv selling
 // through the fake newFixture answers.
 func newStoredCheckoutEnvOf(t *testing.T, newFixture func(testing.TB) *readbacktest.Fixture) storedCheckoutEnv {
+	t.Helper()
+	return newStoredCheckoutEnvWith(t, newFixture(t), func(*platformpolicy.Policy) {})
+}
+
+// newStoredCheckoutEnvWith answers the tenant of newStoredCheckoutEnv selling
+// through fixture under the policy adjust leaves, behind an edge that names
+// each request's client in X-Forwarded-For.
+func newStoredCheckoutEnvWith(t *testing.T, fixture readbackFixture, adjust func(*platformpolicy.Policy)) storedCheckoutEnv {
 	t.Helper()
 	pg := testutil.StartIsolatedPostgres(t)
 	encryptor := newPublicTestEncryptor(t)
@@ -62,24 +79,32 @@ func newStoredCheckoutEnvOf(t *testing.T, newFixture func(testing.TB) *readbackt
 		PublishedAt: time.Now().Add(-time.Hour),
 	})
 
-	fixture := newFixture(t)
 	registry := paymentprovider.NewRegistry(fixture.Provider())
 	credentials := fixture.Credentials()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	var fields []paymentsettings.FieldUpdate
+	for _, field := range fixture.Provider().Declaration().Fields {
+		if value, ok := credentials[field.Name]; ok {
+			fields = append(fields, paymentsettings.FieldUpdate{Name: field.Name, Mode: secretupdate.Replace, Value: value})
+		}
+	}
 	if _, err := paymentsettings.New(dbmodels.New(pg.DB), encryptor, registry, nil, slog.Default()).Upsert(ctx, tenant.ID, paymentsettings.UpdateInput{
 		Provider: fixture.Provider().Declaration().ID,
 		Enabled:  true,
-		Fields:   []paymentsettings.FieldUpdate{{Name: readbacktest.FieldAPIKey, Mode: secretupdate.Replace, Value: credentials[readbacktest.FieldAPIKey]}},
+		Fields:   fields,
 	}, paymentsettings.AuditMeta{}); err != nil {
 		t.Fatalf("upsert payment settings: %v", err)
 	}
 
 	db := pg.OpenPublicDB(t)
-	guards := guardsWith(func(policy *platformpolicy.Policy) { policy.TenantCoinsAllowed = true })
+	guards := guardsWith(func(policy *platformpolicy.Policy) {
+		policy.TenantCoinsAllowed = true
+		adjust(policy)
+	})
 	server := newAPIServer(db, dbmodels.New(db), encryptor, testutil.TokenManager(), nil, slog.Default(), guards, openMailGuard(), nil)
 	server.paymentProviders = registry
-	ts := httptest.NewServer(handlerFromServer(server))
+	ts := httptest.NewServer(clientip.New(clientip.Config{TrustedProxies: clientip.DefaultTrustedProxies}).Middleware(handlerFromServer(server)))
 	t.Cleanup(ts.Close)
 	transport := connecthttp.NewTransport(ts.Client(), ts.URL)
 	return storedCheckoutEnv{
@@ -371,7 +396,7 @@ func TestDBAStoredCheckoutTheProviderAnswersAsExpiredIsStartedAfresh(t *testing.
 			if again := start(); !slices.Equal(again, ranOut) || len(ranOut) != 1 {
 				t.Fatalf("a retry was started as %q, want %q once", again, ranOut)
 			}
-			env.fixture.CheckoutRanOut(t, env.credentials, paymentprovidertest.Checkout{CheckoutID: ranOut[0], Purchase: paymentprovider.Purchase{Currency: "JPY"}})
+			env.fixture.(*readbacktest.Fixture).CheckoutRanOut(t, env.credentials, paymentprovidertest.Checkout{CheckoutID: ranOut[0], Purchase: paymentprovider.Purchase{Currency: "JPY"}})
 			restarted := start()
 			if len(restarted) != 2 || restarted[0] != ranOut[0] || restarted[1] == ranOut[0] {
 				t.Fatalf("the request after the checkout ran out started %q, want %q and then a new one", restarted, ranOut[0])
@@ -392,9 +417,9 @@ func TestDBAStoredCheckoutAnsweredAsExpiredTwiceInARequestMovesOnNextTime(t *tes
 
 	env := newStoredCheckoutEnv(t)
 	ranOut := paymentprovidertest.Checkout{CheckoutID: env.start(t), Purchase: paymentprovider.Purchase{Currency: "JPY"}}
-	env.fixture.CheckoutRanOut(t, env.credentials, ranOut)
+	env.fixture.(*readbacktest.Fixture).CheckoutRanOut(t, env.credentials, ranOut)
 	next := paymentprovidertest.Checkout{CheckoutID: env.start(t), Purchase: paymentprovider.Purchase{Currency: "JPY"}}
-	env.fixture.CheckoutRanOut(t, env.credentials, next)
+	env.fixture.(*readbacktest.Fixture).CheckoutRanOut(t, env.credentials, next)
 	// The first's expiry is forgotten, so the next request is handed it
 	// again as a checkout the server never heard had run out.
 	if _, err := env.pg.DB.ExecContext(t.Context(), `DELETE FROM expired_checkouts WHERE tenant_id = $1`, env.tenant.ID); err != nil {

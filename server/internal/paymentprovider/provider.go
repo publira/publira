@@ -86,7 +86,9 @@ type Declaration struct {
 	// its objects the notification is about, reads that object from its API
 	// under the tenant's credentials, and answers [ErrInvalidSignature] for one
 	// the API does not hold under them, so a notification anyone could have
-	// sent says nothing the provider's API does not.
+	// sent says nothing the provider's API does not. Such a provider is an
+	// [UnsignedNotifier], so that a notification is held to the tenant's
+	// checkouts before that read is made.
 	SignatureHeader string
 	// StoredCheckouts is set by a provider that cannot carry a checkout's
 	// [Purchase] to the notification that confirms it, as one whose payments
@@ -797,6 +799,36 @@ type CheckoutFollower interface {
 	// under the credentials, as one the provider never made does not, is
 	// [ErrInvalidSignature], as it is for every notification.
 	CheckoutNotification(checkoutID string) []byte
+}
+
+// NotificationSubject is what a notification of an [UnsignedNotifier] names,
+// read from the notification alone: the checkout or the payment that
+// [Provider.ParseNotification] would read from the provider's API.
+type NotificationSubject struct {
+	// CheckoutID is the [CheckoutRequest.CheckoutID] the notification names,
+	// which a provider that declares [Declaration.PaymentsByCheckout] names
+	// every payment by. Empty when it names a payment instead.
+	CheckoutID string
+	// PaymentID is the provider's own id of the payment the notification
+	// names, as [PurchaseCompleted.PaymentID] names it, when it names no
+	// checkout.
+	PaymentID string
+}
+
+// UnsignedNotifier is implemented, beside [Provider], by every provider whose
+// [Declaration.SignatureHeader] is empty, which declares
+// [Declaration.StoredCheckouts] too. Such a provider reads what every
+// notification names from its API under the tenant's credentials, so a
+// notification anyone could have sent is a request on the tenant's quota with
+// the provider. The server reads the subject of a notification first, and
+// hands the provider only one that names a checkout the tenant started, or a
+// payment it recorded, kept beside a checkout, or could still be paid by a
+// checkout the tenant started.
+type UnsignedNotifier interface {
+	// NotificationSubject answers what payload names, without calling the
+	// provider's API, and false for a notification ParseNotification answers
+	// without calling it either: one it ignores, and one it cannot read.
+	NotificationSubject(payload []byte) (NotificationSubject, bool)
 }
 
 // TestModeByCredentials is implemented, beside [Provider], by a provider whose

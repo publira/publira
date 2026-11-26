@@ -34,6 +34,15 @@ func (declaredProvider) ListTransactions(context.Context, Credentials, time.Time
 	return nil, nil
 }
 
+func (declaredProvider) NotificationSubject([]byte) (NotificationSubject, bool) {
+	return NotificationSubject{}, false
+}
+
+// silentProvider is a provider that does not say what its notifications name.
+type silentProvider struct {
+	Provider
+}
+
 // followingProvider is a declaredProvider that follows its own refunds.
 type followingProvider struct {
 	declaredProvider
@@ -76,8 +85,8 @@ func (followingBrowserProvider) CheckoutNotification(string) []byte { return nil
 
 func TestRegistryLooksUpProvidersByID(t *testing.T) {
 	registry := NewRegistry(
-		declaredProvider{Declaration{ID: "zeta", Currencies: []string{"JPY"}}},
-		declaredProvider{Declaration{ID: "alpha", Currencies: []string{"JPY"}}},
+		declaredProvider{Declaration{ID: "zeta", Currencies: []string{"JPY"}, SignatureHeader: "X-Signature"}},
+		declaredProvider{Declaration{ID: "alpha", Currencies: []string{"JPY"}, SignatureHeader: "X-Signature"}},
 	)
 	if _, ok := registry.Lookup("alpha"); !ok {
 		t.Fatal("Lookup(alpha) found nothing")
@@ -191,7 +200,7 @@ func TestRegistryRefusesARefundFollowerThatDeclaresASignatureHeader(t *testing.T
 		}()
 		NewRegistry(followingProvider{declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}, SignatureHeader: "X-Signature"}}})
 	}()
-	NewRegistry(followingProvider{declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}}}})
+	NewRegistry(followingProvider{declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}, StoredCheckouts: true, CheckoutLifetime: time.Hour}}})
 }
 
 func TestRegistryRefusesACheckoutFollowerWithoutStoredCheckoutsOrWithASignatureHeader(t *testing.T) {
@@ -230,6 +239,25 @@ func TestRegistryRefusesABrowserCheckoutThatTheServerCannotStoreOrHoldsNoPayment
 		})
 	}
 	NewRegistry(browserProvider{declaredProvider{stored}})
+}
+
+func TestRegistryRefusesAnUnsignedProviderItCannotHoldANotificationTo(t *testing.T) {
+	stored := Declaration{ID: "paypay", Currencies: []string{"JPY"}, StoredCheckouts: true, CheckoutLifetime: time.Hour}
+	for name, provider := range map[string]Provider{
+		"without saying what a notification names": silentProvider{declaredProvider{stored}},
+		"without stored checkouts":                 declaredProvider{Declaration{ID: "paypay", Currencies: []string{"JPY"}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatal("NewRegistry accepted the unsigned provider")
+				}
+			}()
+			NewRegistry(provider)
+		})
+	}
+	NewRegistry(declaredProvider{stored})
+	NewRegistry(silentProvider{declaredProvider{Declaration{ID: "stripe", Currencies: []string{"JPY"}, SignatureHeader: "Stripe-Signature"}}})
 }
 
 func TestDeclarationPublicCredentialsAnswersOnlyPublicFields(t *testing.T) {

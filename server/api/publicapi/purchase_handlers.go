@@ -735,12 +735,22 @@ func (s *apiServer) ProcessPaymentWebhook(
 	req *publirav1.ProcessPaymentWebhookRequest,
 ) (*publirav1.ProcessPaymentWebhookResponse, error) {
 	providerID := strings.TrimSpace(req.Provider)
-	if _, ok := s.paymentProviders.Lookup(providerID); !ok {
+	registered, ok := s.paymentProviders.Lookup(providerID)
+	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, "payment provider not found")
 	}
 	tenant, err := s.tenantByContext(ctx, req.Tenant)
 	if err != nil {
 		return nil, err
+	}
+	// A notification nothing signs is one anybody could have sent, and the
+	// provider reads it back from its API on the tenant's credentials, so
+	// the client that sends it spends an allowance first.
+	unsigned := registered.Declaration().SignatureHeader == ""
+	if unsigned {
+		if err := s.chargeTenantClientAction(ctx, actionPaymentWebhookFromClient, tenant.ID); err != nil {
+			return nil, err
+		}
 	}
 	// A provider the tenant retired still reports on what it already took.
 	provider, credentials, err := s.loadPaymentProvider(ctx, tenant.ID, providerID)
@@ -749,6 +759,11 @@ func (s *apiServer) ProcessPaymentWebhook(
 	}
 	if len(req.Payload) == 0 || len(req.Payload) > maxPaymentWebhookPayload {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "invalid payment webhook payload")
+	}
+	if unsigned {
+		if err := s.holdUnsignedNotification(ctx, tenant.ID, provider, req.Payload); err != nil {
+			return nil, err
+		}
 	}
 	headers := make(http.Header, len(req.Headers))
 	for name, value := range req.Headers {
@@ -809,6 +824,71 @@ func (s *apiServer) ProcessPaymentWebhook(
 		}
 	}
 	return &publirav1.ProcessPaymentWebhookResponse{}, nil
+}
+
+// holdUnsignedNotification answers the error the webhook answers for a
+// notification of a provider that signs none, before the provider reads
+// anything of it from its API, when it names nothing of the tenant's through
+// the provider: neither a checkout the tenant started, nor a payment a
+// purchase recorded or a checkout kept as its completion, nor, while some
+// checkout of the tenant's can still be paid and keeps no payment, any
+// payment at all. Such a notification is answered as one whose signature does
+// not verify, as the provider answers a payment its API does not hold under
+// the tenant's credentials, so the answer says nothing of which of the
+// tenant's checkouts exist. A notification the provider reads nothing for,
+// one it ignores or cannot read, is left to it.
+func (s *apiServer) holdUnsignedNotification(ctx context.Context, tenantID uuid.UUID, provider paymentprovider.Provider, payload []byte) error {
+	// NewRegistry admits no provider that signs nothing and is not one.
+	subject, reads := provider.(paymentprovider.UnsignedNotifier).NotificationSubject(payload)
+	if !reads {
+		return nil
+	}
+	declaration := provider.Declaration()
+	queries := s.queriesFor(ctx)
+	keyvals := []any{"tenant_id", tenantID.String(), "provider", declaration.ID, "checkout_id", subject.CheckoutID, "payment_id", subject.PaymentID}
+	var (
+		known bool
+		err   error
+	)
+	switch {
+	case subject.CheckoutID != "":
+		known, err = queries.PaymentCheckoutStarted(ctx, dbmodels.PaymentCheckoutStartedParams{
+			TenantID:   tenantID,
+			Provider:   declaration.ID,
+			CheckoutID: subject.CheckoutID,
+		})
+	case subject.PaymentID != "":
+		known, err = queries.PurchaseRecordsProviderPayment(ctx, dbmodels.PurchaseRecordsProviderPaymentParams{
+			TenantID:          tenantID,
+			Provider:          declaration.ID,
+			ProviderPaymentID: subject.PaymentID,
+		})
+		if err == nil && !known {
+			known, err = queries.PaymentCheckoutKeepsPayment(ctx, dbmodels.PaymentCheckoutKeepsPaymentParams{
+				TenantID:  tenantID,
+				Provider:  declaration.ID,
+				PaymentID: sql.NullString{String: subject.PaymentID, Valid: true},
+			})
+		}
+		// A payment the server has neither recorded nor kept may still be one
+		// of a checkout that can be paid, which nothing ties it to before the
+		// provider is asked: one a reader is paying right now.
+		if err == nil && !known {
+			known, err = queries.PaymentCheckoutAwaitsPayment(ctx, dbmodels.PaymentCheckoutAwaitsPaymentParams{
+				TenantID:        tenantID,
+				Provider:        declaration.ID,
+				LifetimeSeconds: declaration.CheckoutLifetime.Seconds(),
+			})
+		}
+	}
+	if err != nil {
+		return s.internalDBError(ctx, "failed to read the checkout an unsigned payment notification names", err, keyvals...)
+	}
+	if !known {
+		s.logger.WarnContext(ctx, "an unsigned payment notification names nothing the tenant known", keyvals...)
+		return connect.NewError(connect.CodeInvalidArgument, "invalid payment webhook signature")
+	}
+	return nil
 }
 
 // recordCheckoutExpiry records the checkout event reports closed unpaid, or

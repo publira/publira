@@ -2,16 +2,21 @@ import { Code, ConnectError } from "@publira/api-client/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockBuildClientAddressHeaders,
   mockProcessAppStoreNotification,
   mockProcessGooglePlayNotification,
   mockProcessPaymentWebhook,
 } = vi.hoisted(() => ({
+  mockBuildClientAddressHeaders: vi.fn(),
   mockProcessAppStoreNotification: vi.fn(),
   mockProcessGooglePlayNotification: vi.fn(),
   mockProcessPaymentWebhook: vi.fn(),
 }));
 
+const CLIENT_ADDRESS = { headers: { "X-Forwarded-For": "203.0.113.7" } };
+
 vi.mock("#lib/api-client", () => ({
+  buildClientAddressHeaders: mockBuildClientAddressHeaders,
   apiClient: {
     purchase: {
       processAppStoreNotification: mockProcessAppStoreNotification,
@@ -43,24 +48,29 @@ describe("forwardPaymentWebhook", () => {
   beforeEach(() => {
     mockProcessPaymentWebhook.mockReset();
     mockProcessPaymentWebhook.mockResolvedValue({});
+    mockBuildClientAddressHeaders.mockReset();
+    mockBuildClientAddressHeaders.mockResolvedValue(CLIENT_ADDRESS);
   });
 
-  it("forwards the raw body and every header with the provider id", async () => {
+  it("forwards the raw body and every header with the provider id, from the sender's address", async () => {
     const response = await forwardPaymentWebhook(notification(), {
       provider: "stripe",
       tenantId: TENANT_ID,
     });
 
     expect(response.status).toBe(200);
-    expect(mockProcessPaymentWebhook).toHaveBeenCalledWith({
-      headers: {
-        "content-type": "application/json",
-        "stripe-signature": "t=1,v1=abc",
+    expect(mockProcessPaymentWebhook).toHaveBeenCalledWith(
+      {
+        headers: {
+          "content-type": "application/json",
+          "stripe-signature": "t=1,v1=abc",
+        },
+        payload: new TextEncoder().encode('{"id":"evt_001"}'),
+        provider: "stripe",
+        tenant: { tenantId: TENANT_ID },
       },
-      payload: new TextEncoder().encode('{"id":"evt_001"}'),
-      provider: "stripe",
-      tenant: { tenantId: TENANT_ID },
-    });
+      CLIENT_ADDRESS
+    );
   });
 
   it("forwards a provider id the BFF does not know by name", async () => {
@@ -71,7 +81,8 @@ describe("forwardPaymentWebhook", () => {
 
     expect(response.status).toBe(200);
     expect(mockProcessPaymentWebhook).toHaveBeenCalledWith(
-      expect.objectContaining({ provider: "pay_jp" })
+      expect.objectContaining({ provider: "pay_jp" }),
+      CLIENT_ADDRESS
     );
   });
 
@@ -113,6 +124,24 @@ describe("forwardPaymentWebhook", () => {
     });
 
     expect(response.status).toBe(status);
+  });
+
+  it("answers 429 with the wait the API server named for a sender past its allowance", async () => {
+    mockProcessPaymentWebhook.mockRejectedValue(
+      new ConnectError(
+        "",
+        Code.ResourceExhausted,
+        new Headers({ "Retry-After": "42" })
+      )
+    );
+
+    const response = await forwardPaymentWebhook(notification(), {
+      provider: "paypay",
+      tenantId: TENANT_ID,
+    });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("42");
   });
 
   it("rethrows a failure the API server did not classify", async () => {

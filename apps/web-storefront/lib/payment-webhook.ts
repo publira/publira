@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { apiClient } from "#lib/api-client";
+import { apiClient, buildClientAddressHeaders } from "#lib/api-client";
 import { tenantIdSchema } from "#lib/auth-input";
 import {
   answerWebhook,
@@ -14,7 +14,9 @@ import {
  * server picks the signature header the provider declares and verifies it.
  *
  * The same-origin check does not apply. A provider sends no browser session
- * cookie; the signature is what authenticates the request.
+ * cookie; the signature is what authenticates the request. A provider that
+ * signs nothing is read back on the tenant's credentials instead, so the call
+ * carries the sender's address for the API server to hold it to an allowance.
  */
 export const forwardPaymentWebhook = async (
   request: Request,
@@ -27,14 +29,18 @@ export const forwardPaymentWebhook = async (
   }
 
   const payload = new Uint8Array(await request.arrayBuffer());
+  const callOptions = await buildClientAddressHeaders();
 
   return answerWebhook("payment", () =>
-    apiClient.purchase.processPaymentWebhook({
-      payload,
-      headers: Object.fromEntries(request.headers),
-      provider: path.provider,
-      tenant: { tenantId: path.tenantId },
-    })
+    apiClient.purchase.processPaymentWebhook(
+      {
+        payload,
+        headers: Object.fromEntries(request.headers),
+        provider: path.provider,
+        tenant: { tenantId: path.tenantId },
+      },
+      callOptions
+    )
   );
 };
 

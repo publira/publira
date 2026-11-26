@@ -135,3 +135,40 @@ LEFT JOIN LATERAL (
 ) AS latest ON true
 WHERE u.tenant_id = sqlc.arg('tenant_id')
     AND u.id = sqlc.arg('user_id');
+
+-- name: PaymentCheckoutStarted :one
+-- Whether the tenant started the checkout through the provider, which a
+-- notification naming it is held to before a provider that signs none is
+-- asked about its payment.
+SELECT EXISTS (
+    SELECT 1
+    FROM payment_checkouts
+    WHERE tenant_id = sqlc.arg('tenant_id')
+        AND provider = sqlc.arg('provider')
+        AND checkout_id = sqlc.arg('checkout_id')
+)::boolean AS started;
+
+-- name: PaymentCheckoutKeepsPayment :one
+-- Whether a checkout of the tenant's through the provider keeps the payment
+-- as its completion, which a notification naming the payment is held to
+-- before a provider that signs none is asked about it.
+SELECT EXISTS (
+    SELECT 1
+    FROM payment_checkouts
+    WHERE tenant_id = sqlc.arg('tenant_id')
+        AND provider = sqlc.arg('provider')
+        AND payment_id = sqlc.arg('payment_id')
+)::boolean AS kept;
+
+-- name: PaymentCheckoutAwaitsPayment :one
+-- Whether a checkout of the tenant's through the provider can still be paid
+-- and keeps no payment yet, the one a notification of a payment the server
+-- has not kept could complete.
+SELECT EXISTS (
+    SELECT 1
+    FROM payment_checkouts
+    WHERE tenant_id = sqlc.arg('tenant_id')
+        AND provider = sqlc.arg('provider')
+        AND payment_id IS NULL
+        AND NOT payment_checkout_closed(last_started_at, sqlc.arg('lifetime_seconds')::double precision)
+)::boolean AS awaiting;

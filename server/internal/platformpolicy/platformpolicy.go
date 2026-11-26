@@ -196,6 +196,14 @@ type Policy struct {
 	// for that reader to, and one past the account's cap replaces the oldest,
 	// so what this bounds is how fast one account can churn those rows.
 	PushDevice MinuteDay
+	// PaymentWebhookPerClient bounds the notifications one client may hand
+	// the webhook of one tenant through a payment provider that signs none.
+	// The server reads each one back from the provider's API on the tenant's
+	// credentials, so what this bounds is how much of the tenant's quota with
+	// the provider one client can spend. It is counted per tenant as well as
+	// per client, because the provider's own servers send every tenant's
+	// notifications from the same few addresses.
+	PaymentWebhookPerClient MinuteDay
 	// LoginAttemptsPerAccount bounds the passwords tried at sign-in for one
 	// address within its tenant, or within the platform console, at one client
 	// source or from one device the address signed in from before. The devices
@@ -282,6 +290,7 @@ func Defaults() Policy {
 		APIKeyRequest:             MinuteDay{PerMinute: 600, PerDay: 100000},
 		ContentViewPerClient:      MinuteDay{PerMinute: 60, PerDay: 3000},
 		PushDevice:                MinuteDay{PerMinute: 10, PerDay: 50},
+		PaymentWebhookPerClient:   MinuteDay{PerMinute: 120, PerDay: 10000},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
 		DataExport:                HourDay{PerHour: 1, PerDay: 1},
@@ -329,6 +338,7 @@ func (p Policy) Validate() error {
 		{"api_key_request", "per_minute", p.APIKeyRequest.PerMinute, p.APIKeyRequest.PerDay},
 		{"content_view_per_client", "per_minute", p.ContentViewPerClient.PerMinute, p.ContentViewPerClient.PerDay},
 		{"push_device", "per_minute", p.PushDevice.PerMinute, p.PushDevice.PerDay},
+		{"payment_webhook_per_client", "per_minute", p.PaymentWebhookPerClient.PerMinute, p.PaymentWebhookPerClient.PerDay},
 		{"login_attempts_per_account", "per_minute", p.LoginAttemptsPerAccount.PerMinute, p.LoginAttemptsPerAccount.PerDay},
 		{"login_attempts_per_source", "per_hour", p.LoginAttemptsPerSource.PerHour, p.LoginAttemptsPerSource.PerDay},
 		{"data_export", "per_hour", p.DataExport.PerHour, p.DataExport.PerDay},
@@ -427,6 +437,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		APIKeyRequest:             MinuteDay{PerMinute: int(config.ApiKeyRequestLimitPerMinute), PerDay: int(config.ApiKeyRequestLimitPerDay)},
 		ContentViewPerClient:      MinuteDay{PerMinute: int(config.ContentViewLimitPerClientPerMinute), PerDay: int(config.ContentViewLimitPerClientPerDay)},
 		PushDevice:                MinuteDay{PerMinute: int(config.PushDeviceLimitPerMinute), PerDay: int(config.PushDeviceLimitPerDay)},
+		PaymentWebhookPerClient:   MinuteDay{PerMinute: int(config.PaymentWebhookLimitPerClientPerMinute), PerDay: int(config.PaymentWebhookLimitPerClientPerDay)},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
 		DataExport:                HourDay{PerHour: int(config.DataExportLimitPerHour), PerDay: int(config.DataExportLimitPerDay)},
@@ -497,6 +508,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		ContentViewLimitPerClientPerDay:         int32(policy.ContentViewPerClient.PerDay),
 		PushDeviceLimitPerMinute:                int32(policy.PushDevice.PerMinute),
 		PushDeviceLimitPerDay:                   int32(policy.PushDevice.PerDay),
+		PaymentWebhookLimitPerClientPerMinute:   int32(policy.PaymentWebhookPerClient.PerMinute),
+		PaymentWebhookLimitPerClientPerDay:      int32(policy.PaymentWebhookPerClient.PerDay),
 		AnonymousReadPublicApiLimitPer10Seconds: int32(policy.AnonymousReads.PublicAPI),
 		AnonymousReadSearchLimitPer10Seconds:    int32(policy.AnonymousReads.Search),
 		AnonymousReadImagesLimitPer10Seconds:    int32(policy.AnonymousReads.Images),

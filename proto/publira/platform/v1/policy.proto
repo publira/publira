@@ -215,6 +215,17 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit push_device = 26;
+  // How many notifications one client may hand PurchaseService
+  // .ProcessPaymentWebhook for one tenant through a payment provider that
+  // signs none, counted per client address and tenant. The server reads each
+  // such notification back from the provider's API on the tenant's
+  // credentials, so this bounds what one client can spend of the tenant's
+  // quota with the provider. A call past it is refused with
+  // RESOURCE_EXHAUSTED before the provider is asked anything.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit payment_webhook_per_client = 27;
 }
 
 // The reads one client may make of a storefront in 10 seconds, counted per

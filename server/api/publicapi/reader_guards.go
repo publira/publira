@@ -126,6 +126,12 @@ const (
 	// and this bounds how fast an account can replace them. A removal shares
 	// it, so alternating the two is no way around it.
 	actionPushDevice readerAction = "push_device"
+	// A notification handed to ProcessPaymentWebhook for a payment provider
+	// that signs none. The server reads each one back from the provider's API
+	// on the tenant's credentials, so the client that sends it holds the
+	// allowance, and nobody is signed in to hold another. It is the platform's
+	// limit alone: a tenant has no setting of its own for it.
+	actionPaymentWebhookFromClient readerAction = "payment_webhook.client"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -173,6 +179,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionRequestDataExport:              hourDayRules(policy.DataExport),
 		actionRecordContentViewFromClient:    minuteDayRules(policy.ContentViewPerClient),
 		actionPushDevice:                     minuteDayRules(policy.PushDevice),
+		actionPaymentWebhookFromClient:       minuteDayRules(policy.PaymentWebhookPerClient),
 	}
 }
 
@@ -315,6 +322,26 @@ func (s *apiServer) chargePlatformClientAction(ctx context.Context, action reade
 		return err
 	}
 	return s.chargeAction(ctx, policy, action, clientActionSubject(action, clientip.FromContext(ctx)))
+}
+
+// tenantClientActionSubject names the allowance one caller holds at one
+// tenant, for an action whose legitimate traffic arrives from a few addresses
+// for every tenant on the platform, as a payment provider's notifications do.
+// A key without the tenant would let one tenant's volume spend every other
+// tenant's allowance at those addresses, and what such an action bounds is
+// already the tenant's own: its quota with the provider.
+func tenantClientActionSubject(action readerAction, tenantID uuid.UUID, client string) string {
+	return string(action) + ":" + tenantID.String() + ":client:" + client
+}
+
+// chargeTenantClientAction spends one of the calling client's allowances for
+// action at the tenant, against the platform's limit alone.
+func (s *apiServer) chargeTenantClientAction(ctx context.Context, action readerAction, tenantID uuid.UUID) error {
+	policy, err := s.readerPolicy(ctx)
+	if err != nil {
+		return err
+	}
+	return s.chargeAction(ctx, policy, action, tenantClientActionSubject(action, tenantID, clientip.FromContext(ctx)), "tenant_id", tenantID.String())
 }
 
 func (s *apiServer) chargeTenantAction(ctx context.Context, action readerAction, tenantID uuid.UUID, subject string, logAttrs ...any) error {

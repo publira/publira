@@ -64,6 +64,11 @@ export interface PlatformSecurityPolicy {
   mfaRequiredForTenantAdmin: boolean;
   passkey: MinuteDay;
   passwordVerification: MinuteDay;
+  /**
+   * Notifications one client may send one tenant's webhook for a payment
+   * provider that signs none, each of which is read back from the provider.
+   */
+  paymentWebhookPerClient: MinuteDay;
   promotionCodeAttempt: MinuteDay;
   purchaseCheckout: MinuteDay;
   /** Push devices one reader may register or remove, counted together. */
@@ -160,6 +165,7 @@ type RawPlatformPolicy = Pick<
   | "mfaRequiredForTenantAdmin"
   | "passkey"
   | "passwordVerification"
+  | "paymentWebhookPerClient"
   | "promotionCodeAttempt"
   | "purchaseCheckout"
   | "pushDevice"
@@ -221,15 +227,21 @@ const toReaderLimits = (policy: RawPlatformPolicy | undefined) => ({
   subscriptionCheckout: toMinuteDay(policy?.subscriptionCheckout),
 });
 
+/** The limits held by a client address rather than by an account. */
+const toClientLimits = (policy: RawPlatformPolicy | undefined) => ({
+  contentViewPerClient: toMinuteDay(policy?.contentViewPerClient),
+  paymentWebhookPerClient: toMinuteDay(policy?.paymentWebhookPerClient),
+});
+
 export const toPlatformPolicy = (
   policy: RawPlatformPolicy | undefined
 ): PlatformPolicy => ({
   community: toCommunityLimits(policy?.communityLimitDefaults),
   security: {
     ...toReaderLimits(policy),
+    ...toClientLimits(policy),
     anonymousReadLimits: toReadLimits(policy?.anonymousReadLimits),
     apiKeyRequest: toMinuteDay(policy?.apiKeyRequest),
-    contentViewPerClient: toMinuteDay(policy?.contentViewPerClient),
     disposableEmailDomainsUrl: policy?.disposableEmailDomainsUrl ?? "",
     loginAttemptsPerAccount: toMinuteDay(policy?.loginAttemptsPerAccount),
     loginAttemptsPerSource: toHourDay(policy?.loginAttemptsPerSource),

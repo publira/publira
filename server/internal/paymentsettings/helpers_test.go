@@ -377,7 +377,8 @@ func testRegistry() *paymentprovider.Registry {
 				{Name: cardPublishableKey, Public: true, Required: true},
 				{Name: cardShopID},
 			},
-			Currencies: []string{"JPY"},
+			Currencies:      []string{"JPY"},
+			SignatureHeader: "X-Card-Signature",
 		}},
 	)
 }

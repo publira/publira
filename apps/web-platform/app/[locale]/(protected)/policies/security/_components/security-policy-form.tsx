@@ -354,6 +354,24 @@ export const SecurityPolicyForm = ({
             </Suspense>
           </PolicyLimitField>
           <PolicyLimitField
+            defaultValue={values.paymentWebhookPerClient.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="payment_webhook_per_client_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.payment_webhook_per_client_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.paymentWebhookPerClient.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="payment_webhook_per_client_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.payment_webhook_per_client_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
             defaultValue={values.apiKeyRequest.perMinute}
             disabled={Boolean(loadErrorMessage)}
             name="api_key_request_per_minute"

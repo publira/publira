@@ -339,6 +339,85 @@ func (q *Queries) LockPaymentCheckout(ctx context.Context, arg LockPaymentChecko
 	return i, err
 }
 
+const PaymentCheckoutAwaitsPayment = `-- name: PaymentCheckoutAwaitsPayment :one
+SELECT EXISTS (
+    SELECT 1
+    FROM payment_checkouts
+    WHERE tenant_id = $1
+        AND provider = $2
+        AND payment_id IS NULL
+        AND NOT payment_checkout_closed(last_started_at, $3::double precision)
+)::boolean AS awaiting
+`
+
+type PaymentCheckoutAwaitsPaymentParams struct {
+	TenantID        uuid.UUID `json:"tenant_id"`
+	Provider        string    `json:"provider"`
+	LifetimeSeconds float64   `json:"lifetime_seconds"`
+}
+
+// Whether a checkout of the tenant's through the provider can still be paid
+// and keeps no payment yet, the one a notification of a payment the server
+// has not kept could complete.
+func (q *Queries) PaymentCheckoutAwaitsPayment(ctx context.Context, arg PaymentCheckoutAwaitsPaymentParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, PaymentCheckoutAwaitsPayment, arg.TenantID, arg.Provider, arg.LifetimeSeconds)
+	var awaiting bool
+	err := row.Scan(&awaiting)
+	return awaiting, err
+}
+
+const PaymentCheckoutKeepsPayment = `-- name: PaymentCheckoutKeepsPayment :one
+SELECT EXISTS (
+    SELECT 1
+    FROM payment_checkouts
+    WHERE tenant_id = $1
+        AND provider = $2
+        AND payment_id = $3
+)::boolean AS kept
+`
+
+type PaymentCheckoutKeepsPaymentParams struct {
+	TenantID  uuid.UUID      `json:"tenant_id"`
+	Provider  string         `json:"provider"`
+	PaymentID sql.NullString `json:"payment_id"`
+}
+
+// Whether a checkout of the tenant's through the provider keeps the payment
+// as its completion, which a notification naming the payment is held to
+// before a provider that signs none is asked about it.
+func (q *Queries) PaymentCheckoutKeepsPayment(ctx context.Context, arg PaymentCheckoutKeepsPaymentParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, PaymentCheckoutKeepsPayment, arg.TenantID, arg.Provider, arg.PaymentID)
+	var kept bool
+	err := row.Scan(&kept)
+	return kept, err
+}
+
+const PaymentCheckoutStarted = `-- name: PaymentCheckoutStarted :one
+SELECT EXISTS (
+    SELECT 1
+    FROM payment_checkouts
+    WHERE tenant_id = $1
+        AND provider = $2
+        AND checkout_id = $3
+)::boolean AS started
+`
+
+type PaymentCheckoutStartedParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	Provider   string    `json:"provider"`
+	CheckoutID string    `json:"checkout_id"`
+}
+
+// Whether the tenant started the checkout through the provider, which a
+// notification naming it is held to before a provider that signs none is
+// asked about its payment.
+func (q *Queries) PaymentCheckoutStarted(ctx context.Context, arg PaymentCheckoutStartedParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, PaymentCheckoutStarted, arg.TenantID, arg.Provider, arg.CheckoutID)
+	var started bool
+	err := row.Scan(&started)
+	return started, err
+}
+
 const RecordPaymentCheckout = `-- name: RecordPaymentCheckout :exec
 INSERT INTO payment_checkouts (
     tenant_id,

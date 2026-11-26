@@ -40,6 +40,8 @@ const securityValues = {
   passkey_per_minute: "10",
   password_verification_per_day: "50",
   password_verification_per_minute: "5",
+  payment_webhook_per_client_per_day: "10000",
+  payment_webhook_per_client_per_minute: "120",
   promotion_code_attempt_per_day: "30",
   promotion_code_attempt_per_minute: "5",
   purchase_checkout_per_day: "100",
@@ -211,6 +213,12 @@ describe("securityPolicyFormSchema", () => {
       field: "contentViewPerClient",
       name: "content_view_per_client",
       setting: "Page views recorded",
+      window: "Minute",
+    },
+    {
+      field: "paymentWebhookPerClient",
+      name: "payment_webhook_per_client",
+      setting: "Unsigned payment notifications",
       window: "Minute",
     },
   ])("the $setting limit", ({ field, name, setting, window }) => {

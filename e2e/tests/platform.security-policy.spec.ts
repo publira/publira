@@ -145,6 +145,12 @@ const SAVED_LIMITS = [
     window: "minute",
   },
   {
+    column: "payment_webhook_limit_per_client",
+    label: "Unsigned payment notifications per client",
+    shorter: 90,
+    window: "minute",
+  },
+  {
     column: "api_key_request_limit",
     label: "API key requests per key",
     shorter: 1001,

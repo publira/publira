@@ -952,6 +952,43 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 		}
 	})
 
+	if notifier, ok := provider.(paymentprovider.UnsignedNotifier); ok && provider.Declaration().SignatureHeader == "" {
+		// A payment is named by its checkout by a provider that names every
+		// payment that way, and by its own id otherwise.
+		paymentSubject := paymentprovider.NotificationSubject{PaymentID: checkout.PaymentID}
+		if provider.Declaration().PaymentsByCheckout {
+			paymentSubject = paymentprovider.NotificationSubject{CheckoutID: checkout.CheckoutID}
+		}
+
+		t.Run("an unsigned notification of a payment names its checkout or the payment before anything is read", func(t *testing.T) {
+			paid := paying("subject")
+			payload, _ := fixture.CheckoutCompleted(t, credentials, paid)
+			// A payment made in the browser is named by the payment alone,
+			// since its checkout is nothing of the provider's.
+			want := paymentprovider.NotificationSubject{CheckoutID: paid.CheckoutID}
+			if _, browser := provider.(paymentprovider.BrowserCheckout); browser {
+				want = paymentprovider.NotificationSubject{PaymentID: paid.PaymentID}
+			}
+			if subject, ok := notifier.NotificationSubject(payload); !ok || subject != want {
+				t.Fatalf("NotificationSubject = %+v, %v, want %+v", subject, ok, want)
+			}
+		})
+
+		t.Run("an unsigned notification of a refund names the payment before anything is read", func(t *testing.T) {
+			payload, _ := fixture.Refunded(t, credentials, Refund{PaymentID: checkout.PaymentID, Currency: currency, AmountRefunded: 300})
+			if subject, ok := notifier.NotificationSubject(payload); !ok || subject != paymentSubject {
+				t.Fatalf("NotificationSubject = %+v, %v, want %+v", subject, ok, paymentSubject)
+			}
+		})
+
+		t.Run("an unsigned notification that is ignored names nothing", func(t *testing.T) {
+			payload, _ := fixture.Unrelated(t, credentials)
+			if subject, ok := notifier.NotificationSubject(payload); ok {
+				t.Fatalf("NotificationSubject = %+v, want nothing", subject)
+			}
+		})
+	}
+
 	if subscriptions, ok := fixture.(SubscriptionFixture); ok {
 		runParseSubscriptionPayments(t, subscriptions, currency)
 	}
@@ -1527,6 +1564,15 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 		}
 		return fixture.CheckoutCompleted(t, credentials, checkout)
 	}
+	// started writes the checkout checkoutID down for a provider that
+	// declares stored checkouts, as the server does before the reader can pay
+	// it, and so before anything of its payment can be refunded.
+	started := func(t *testing.T, tenant Tenant, checkoutID string) {
+		t.Helper()
+		if provider.Declaration().StoredCheckouts {
+			tenant.RecordCheckout(t, checkoutID, tenant.Purchase())
+		}
+	}
 
 	t.Run("a completed checkout creates one purchase however often it is delivered", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
@@ -1720,6 +1766,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 
 	t.Run("a refund before its purchase is held and applied later", func(t *testing.T) {
 		tenant := newTenant(t, credentials)
+		started(t, tenant, checkoutNamed("early"))
 		refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentNamed("early"), Currency: currency, AmountRefunded: 500})
 		if err := tenant.Deliver(t, refund, refundHeaders); err != nil {
 			t.Fatalf("refund: %v", err)
@@ -1767,6 +1814,7 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 	if failing, ok := fixture.(FailingRefundFixture); ok {
 		t.Run("a refund that fails before its purchase corrects the held refund", func(t *testing.T) {
 			tenant := newTenant(t, credentials)
+			started(t, tenant, checkoutNamed("held_refund_failed"))
 			paymentID := paymentNamed("held_refund_failed")
 			for _, total := range []int64{200, 500} {
 				refund, refundHeaders := fixture.Refunded(t, credentials, Refund{PaymentID: paymentID, Currency: currency, AmountRefunded: total})

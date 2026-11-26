@@ -1174,3 +1174,15 @@ WHERE tenant_id = sqlc.arg('tenant_id')
     AND staff_refund_attempt = sqlc.arg('attempt')::integer
     AND staff_refund_requested_amount IS NOT NULL
 RETURNING id;
+
+-- name: PurchaseRecordsProviderPayment :one
+-- Whether a purchase of the tenant's through the provider was paid by the
+-- payment, which a notification naming the payment is held to before a
+-- provider that signs none is asked about it.
+SELECT EXISTS (
+    SELECT 1
+    FROM purchases
+    WHERE tenant_id = sqlc.arg('tenant_id')
+        AND provider = sqlc.arg('provider')::text
+        AND provider_payment_id = sqlc.arg('provider_payment_id')::text
+)::boolean AS recorded;

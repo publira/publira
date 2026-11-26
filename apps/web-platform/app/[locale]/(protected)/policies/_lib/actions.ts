@@ -109,6 +109,10 @@ export const updatePlatformSecurityPolicyAction = async (
           perDay: data.passwordVerificationPerDay,
           perMinute: data.passwordVerificationPerMinute,
         },
+        paymentWebhookPerClient: {
+          perDay: data.paymentWebhookPerClientPerDay,
+          perMinute: data.paymentWebhookPerClientPerMinute,
+        },
         promotionCodeAttempt: {
           perDay: data.promotionCodeAttemptPerDay,
           perMinute: data.promotionCodeAttemptPerMinute,

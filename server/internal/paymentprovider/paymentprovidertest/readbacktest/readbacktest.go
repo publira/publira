@@ -205,6 +205,28 @@ type notification struct {
 	PaymentID  string `json:"payment_id,omitempty"`
 }
 
+// NotificationSubject answers what a notification names: the checkout of a
+// payment, or, for the fake whose checkouts run in the reader's browser, the
+// payment itself; and the payment a notification of refunds
+// names, by its checkout for the fake that names its payments that way.
+func (p *provider) NotificationSubject(payload []byte) (paymentprovider.NotificationSubject, bool) {
+	var n notification
+	if err := json.Unmarshal(payload, &n); err != nil {
+		return paymentprovider.NotificationSubject{}, false
+	}
+	switch {
+	case n.Type == notificationPayment && p.api.inBrowser:
+		return paymentprovider.NotificationSubject{PaymentID: n.PaymentID}, true
+	case n.Type == notificationPayment:
+		return paymentprovider.NotificationSubject{CheckoutID: n.CheckoutID}, true
+	case n.Type == notificationRefunds && p.api.byCheckout:
+		return paymentprovider.NotificationSubject{CheckoutID: n.PaymentID}, true
+	case n.Type == notificationRefunds:
+		return paymentprovider.NotificationSubject{PaymentID: n.PaymentID}, true
+	}
+	return paymentprovider.NotificationSubject{}, false
+}
+
 func (p *provider) ParseNotification(_ context.Context, payload []byte, _ http.Header, credentials paymentprovider.Credentials) (paymentprovider.Event, error) {
 	var n notification
 	if err := json.Unmarshal(payload, &n); err != nil {
@@ -212,6 +234,9 @@ func (p *provider) ParseNotification(_ context.Context, payload []byte, _ http.H
 	}
 	p.api.mu.Lock()
 	defer p.api.mu.Unlock()
+	if n.Type == notificationPayment || n.Type == notificationRefunds {
+		p.api.reads++
+	}
 	account := p.api.lookup(credentials)
 	switch n.Type {
 	case notificationPayment:
@@ -486,6 +511,9 @@ type API struct {
 	accounts map[string]*account
 	started  []paymentprovider.CheckoutRequest
 	events   int
+	// reads counts the payments the provider read from the API to answer a
+	// notification.
+	reads int
 	// byCheckout makes it an API that reads a payment by the id of its
 	// checkout alone.
 	byCheckout bool
@@ -497,6 +525,15 @@ type API struct {
 	// authorized and then captured, and whose notifications name a payment by
 	// its own id.
 	inBrowser bool
+}
+
+// NotificationReads answers how many notifications the provider has read the
+// payment of from the API, which a notification of a provider that signs
+// nothing costs the account it is read under.
+func (a *API) NotificationReads() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.reads
 }
 
 // NewAPI answers an empty fake API.

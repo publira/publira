@@ -84,7 +84,10 @@ type Provider struct {
 	now        func() time.Time
 }
 
-var _ paymentprovider.BrowserCheckout = (*Provider)(nil)
+var (
+	_ paymentprovider.BrowserCheckout  = (*Provider)(nil)
+	_ paymentprovider.UnsignedNotifier = (*Provider)(nil)
+)
 
 // Option configures a [Provider].
 type Option func(*Provider)
@@ -372,6 +375,28 @@ type notification struct {
 	Timestamp string `json:"timestamp"`
 }
 
+// reads reports a notification ParseNotification does not ignore, which it
+// reads the payment of from the API when it names one: an authorization, a
+// capture, or a refund of a payment. A notification of a token, which only a
+// subscription has, is ignored.
+func (n notification) reads() bool {
+	switch {
+	case n.EventType != "" && n.EventType != "payment", n.PaymentID == "" && n.TokenID != "":
+		return false
+	}
+	return n.Status == NotificationAuthorized || n.Status == NotificationCaptured || n.Status == NotificationRefunded
+}
+
+// NotificationSubject answers the payment a notification names, since Paidy
+// names no checkout in one.
+func (*Provider) NotificationSubject(payload []byte) (paymentprovider.NotificationSubject, bool) {
+	var n notification
+	if err := json.Unmarshal(payload, &n); err != nil || !n.reads() || !paymentIDPattern.MatchString(n.PaymentID) {
+		return paymentprovider.NotificationSubject{}, false
+	}
+	return paymentprovider.NotificationSubject{PaymentID: n.PaymentID}, true
+}
+
 // ParseNotification reads the payment a notification names from the API,
 // since Paidy signs nothing: the authorization or the capture of a payment
 // Paidy Checkout made for one of the tenant's checkouts as
@@ -388,10 +413,7 @@ func (p *Provider) ParseNotification(ctx context.Context, payload []byte, _ http
 	switch {
 	case n.Status == "":
 		return nil, fmt.Errorf("%w: the notification names no status", paymentprovider.ErrMalformedNotification)
-	case n.EventType != "" && n.EventType != "payment", n.PaymentID == "" && n.TokenID != "":
-		// A notification of a token, which only a subscription has.
-		return paymentprovider.Ignored{ID: id, Type: n.Status}, nil
-	case n.Status != NotificationAuthorized && n.Status != NotificationCaptured && n.Status != NotificationRefunded:
+	case !n.reads():
 		return paymentprovider.Ignored{ID: id, Type: n.Status}, nil
 	}
 	if !paymentIDPattern.MatchString(n.PaymentID) {

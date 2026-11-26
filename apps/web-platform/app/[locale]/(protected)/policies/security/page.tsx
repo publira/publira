@@ -36,6 +36,7 @@ const emptyValues: PlatformSecurityPolicy = {
   mfaRequiredForTenantAdmin: false,
   passkey: { perDay: 1, perMinute: 1 },
   passwordVerification: { perDay: 1, perMinute: 1 },
+  paymentWebhookPerClient: { perDay: 1, perMinute: 1 },
   promotionCodeAttempt: { perDay: 1, perMinute: 1 },
   purchaseCheckout: { perDay: 1, perMinute: 1 },
   pushDevice: { perDay: 1, perMinute: 1 },

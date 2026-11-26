@@ -918,6 +918,8 @@ type PlatformPolicyConfig struct {
 	ContentViewLimitPerClientPerDay         int32     `json:"content_view_limit_per_client_per_day"`
 	PushDeviceLimitPerMinute                int32     `json:"push_device_limit_per_minute"`
 	PushDeviceLimitPerDay                   int32     `json:"push_device_limit_per_day"`
+	PaymentWebhookLimitPerClientPerMinute   int32     `json:"payment_webhook_limit_per_client_per_minute"`
+	PaymentWebhookLimitPerClientPerDay      int32     `json:"payment_webhook_limit_per_client_per_day"`
 }
 
 type PlatformRetentionConfig struct {

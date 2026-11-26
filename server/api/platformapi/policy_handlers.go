@@ -46,6 +46,7 @@ func platformPolicyToProto(policy platformpolicy.Policy) *publirasplatformv1.Pla
 		ApiKeyRequest:                  minuteDayToProto(policy.APIKeyRequest),
 		ContentViewPerClient:           minuteDayToProto(policy.ContentViewPerClient),
 		PushDevice:                     minuteDayToProto(policy.PushDevice),
+		PaymentWebhookPerClient:        minuteDayToProto(policy.PaymentWebhookPerClient),
 		LoginAttemptsPerAccount:        minuteDayToProto(policy.LoginAttemptsPerAccount),
 		LoginAttemptsPerSource:         hourDayToProto(policy.LoginAttemptsPerSource),
 		DataExport:                     hourDayToProto(policy.DataExport),
@@ -101,6 +102,7 @@ func platformPolicyFromProto(policy *publirasplatformv1.PlatformPolicy) platform
 		APIKeyRequest:                  minuteDayFromProto(policy.GetApiKeyRequest()),
 		ContentViewPerClient:           minuteDayFromProto(policy.GetContentViewPerClient()),
 		PushDevice:                     minuteDayFromProto(policy.GetPushDevice()),
+		PaymentWebhookPerClient:        minuteDayFromProto(policy.GetPaymentWebhookPerClient()),
 		LoginAttemptsPerAccount:        minuteDayFromProto(policy.GetLoginAttemptsPerAccount()),
 		LoginAttemptsPerSource:         hourDayFromProto(policy.GetLoginAttemptsPerSource()),
 		DataExport:                     hourDayFromProto(policy.GetDataExport()),
@@ -161,7 +163,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	}
 	// wait_free_ticket_use, legal_page_agreement, identity_link, icon_change,
 	// passkey, series_remainder_checkout, subscription_checkout, coin_payment, purchase_checkout, the login limits, the notification
-	// settings limit, the anonymous read limits, the data export limit, the content view limit, the push device limit, the operator MFA requirement and the tenant coin allowance reached the policy after the console screens
+	// settings limit, the anonymous read limits, the data export limit, the content view limit, the push device limit, the payment webhook limit, the operator MFA requirement and the tenant coin allowance reached the policy after the console screens
 	// that save it, and those are deployed apart from this server, so a
 	// request that leaves one out keeps what is stored rather than being
 	// refused or switching the requirement off. The stored value is read here and the save is held to
@@ -178,7 +180,7 @@ func (s *platformServer) UpdatePlatformPolicy(
 	// be saved while it is being switched off.
 	requested := req.GetPolicy()
 	enablesOperatorMfaWithoutSecrets := requested.GetMfaRequiredForPlatformOperator() && s.encryptor == nil
-	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetPasskey() == nil || requested.GetSeriesRemainderCheckout() == nil || requested.GetSubscriptionCheckout() == nil || requested.GetCoinPayment() == nil || requested.GetPurchaseCheckout() == nil || requested.GetPromotionCodeAttempt() == nil || requested.GetApiKeyRequest() == nil || requested.GetContentViewPerClient() == nil || requested.GetPushDevice() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil || requested.GetAnonymousReadLimits() == nil || requested.GetDataExport() == nil || requested.MfaRequiredForPlatformOperator == nil || requested.TenantCoinsAllowed == nil || enablesOperatorMfaWithoutSecrets {
+	if requested.GetWaitFreeTicketUse() == nil || requested.GetLegalPageAgreement() == nil || requested.GetIdentityLink() == nil || requested.GetIconChange() == nil || requested.GetPasskey() == nil || requested.GetSeriesRemainderCheckout() == nil || requested.GetSubscriptionCheckout() == nil || requested.GetCoinPayment() == nil || requested.GetPurchaseCheckout() == nil || requested.GetPromotionCodeAttempt() == nil || requested.GetApiKeyRequest() == nil || requested.GetContentViewPerClient() == nil || requested.GetPushDevice() == nil || requested.GetPaymentWebhookPerClient() == nil || requested.GetLoginAttemptsPerAccount() == nil || requested.GetLoginAttemptsPerSource() == nil || requested.GetCommunityLimitDefaults().GetNotificationSettings() == nil || requested.GetAnonymousReadLimits() == nil || requested.GetDataExport() == nil || requested.MfaRequiredForPlatformOperator == nil || requested.TenantCoinsAllowed == nil || enablesOperatorMfaWithoutSecrets {
 		stored, _, err := platformpolicy.Read(ctx, s.queriesFor(ctx))
 		if err != nil {
 			return nil, s.internalDBError(ctx, "failed to read platform policy", err)
@@ -228,6 +230,9 @@ func (s *platformServer) UpdatePlatformPolicy(
 		}
 		if requested.GetPushDevice() == nil {
 			params.Policy.PushDevice = stored.PushDevice
+		}
+		if requested.GetPaymentWebhookPerClient() == nil {
+			params.Policy.PaymentWebhookPerClient = stored.PaymentWebhookPerClient
 		}
 		if requested.GetLoginAttemptsPerAccount() == nil {
 			params.Policy.LoginAttemptsPerAccount = stored.LoginAttemptsPerAccount

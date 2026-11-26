@@ -1,5 +1,6 @@
 import {
   Code,
+  ConnectError,
   isRpcError,
   rethrowUnclassifiedRpcError,
 } from "@publira/api-client/errors";
@@ -80,6 +81,21 @@ export const answerWebhook = async <TResponse>(
       return NextResponse.json(
         { error: "invalid webhook credentials" },
         { status: 401 }
+      );
+    }
+
+    if (isRpcError(error, Code.ResourceExhausted)) {
+      const retryAfter =
+        error instanceof ConnectError
+          ? error.metadata.get("retry-after")
+          : null;
+
+      return NextResponse.json(
+        { error: "too many webhook requests" },
+        {
+          headers: retryAfter ? { "Retry-After": retryAfter } : undefined,
+          status: 429,
+        }
       );
     }
 

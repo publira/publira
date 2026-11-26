@@ -102,6 +102,7 @@ var (
 	_ paymentprovider.RefundFollower        = (*Provider)(nil)
 	_ paymentprovider.CheckoutFollower      = (*Provider)(nil)
 	_ paymentprovider.TestModeByCredentials = (*Provider)(nil)
+	_ paymentprovider.UnsignedNotifier      = (*Provider)(nil)
 )
 
 // Option configures a [Provider].
@@ -324,6 +325,22 @@ func (n notification) id() string {
 	return strings.Join(parts, ":")
 }
 
+// reads reports a notification ParseNotification does not ignore, which it
+// reads the payment of from the API when it names one.
+func (n notification) reads() bool {
+	return n.Type == NotificationTransaction || n.Type == notificationRefunds
+}
+
+// NotificationSubject answers the checkout a notification names by its
+// merchant_order_id, the id of the checkout its payment was made for.
+func (*Provider) NotificationSubject(payload []byte) (paymentprovider.NotificationSubject, bool) {
+	var n notification
+	if err := json.Unmarshal(payload, &n); err != nil || !n.reads() || strings.TrimSpace(n.MerchantOrderID) == "" {
+		return paymentprovider.NotificationSubject{}, false
+	}
+	return paymentprovider.NotificationSubject{CheckoutID: n.MerchantOrderID}, true
+}
+
 // ParseNotification reads the payment a notification names from the API
 // under the tenant's credentials, since PayPay signs nothing: a payment the
 // API does not hold under them is [paymentprovider.ErrInvalidSignature].
@@ -332,7 +349,7 @@ func (p *Provider) ParseNotification(ctx context.Context, payload []byte, _ http
 	if err := json.Unmarshal(payload, &n); err != nil {
 		return nil, fmt.Errorf("%w: %v", paymentprovider.ErrMalformedNotification, err)
 	}
-	if n.Type != NotificationTransaction && n.Type != notificationRefunds {
+	if !n.reads() {
 		return paymentprovider.Ignored{ID: n.id(), Type: n.Type}, nil
 	}
 	if strings.TrimSpace(n.MerchantOrderID) == "" {
