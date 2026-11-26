@@ -1,5 +1,6 @@
 // Package readguard bounds how fast one client may read what publira server
-// answers anyone: the public API, its catalog search, and a tenant's images.
+// answers anyone: the public API, its catalog search, and a tenant's images,
+// on its site and image hosts and on its console host.
 //
 // The edge in front of an install limits the same reads first, and refuses
 // them before they cost anything. This is the limit behind it, so that an edge
@@ -34,6 +35,13 @@ const (
 	Search Allowance = "search"
 	// Images is platformpolicy.ReadLimits.Images.
 	Images Allowance = "images"
+	// ConsoleImages is the image routes of a tenant's console host. It is
+	// platformpolicy.ReadLimits.Images too, counted apart from Images: an
+	// editing screen loads every page of an episode at once, as a reader
+	// opening one does, and lists them again with fresh URLs after each change
+	// to them, so staff need at least what a reader is given, and a member of
+	// staff checking the site spends nothing of their console's allowance.
+	ConsoleImages Allowance = "console_images"
 )
 
 // Limit is how many reads of allowance limits gives one client in a
@@ -42,7 +50,7 @@ func Limit(limits platformpolicy.ReadLimits, allowance Allowance) int {
 	switch allowance {
 	case Search:
 		return limits.Search
-	case Images:
+	case Images, ConsoleImages:
 		return limits.Images
 	default:
 		return limits.PublicAPI

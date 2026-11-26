@@ -479,7 +479,8 @@ export type AnonymousReadLimits = Message<"publira.platform.v1.AnonymousReadLimi
   search: number;
 
   /**
-   * Images of a tenant's site and image hosts. At least 1200.
+   * Images of a tenant's site and image hosts, and the same count again,
+   * kept apart, of its console host. At least 1200.
    *
    * @generated from field: int32 images = 3;
    */

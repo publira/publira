@@ -646,7 +646,8 @@ type AnonymousReadLimits struct {
 	// Calls of CatalogService's SearchPublished… procedures, which have an
 	// allowance of their own. At least 40.
 	Search int32 `protobuf:"varint,2,opt,name=search,proto3" json:"search,omitempty"`
-	// Images of a tenant's site and image hosts. At least 1200.
+	// Images of a tenant's site and image hosts, and the same count again,
+	// kept apart, of its console host. At least 1200.
 	Images        int32 `protobuf:"varint,3,opt,name=images,proto3" json:"images,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

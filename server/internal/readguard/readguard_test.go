@@ -56,7 +56,7 @@ func allow(t *testing.T, guard *Guard, ctx context.Context, allowance Allowance)
 }
 
 func TestGuardRefusesAClientPastItsAllowanceAndServesAnother(t *testing.T) {
-	for _, allowance := range []Allowance{PublicAPI, Search, Images} {
+	for _, allowance := range []Allowance{PublicAPI, Search, Images, ConsoleImages} {
 		t.Run(string(allowance), func(t *testing.T) {
 			guard := guardOver(ratelimit.NewMemoryStoreWithClock(fixedClock))
 			reader := requestFrom(t, "203.0.113.10")
@@ -131,7 +131,7 @@ func TestGuardChargesThePolicysLimits(t *testing.T) {
 	policy.AnonymousReads = limits
 	guard := New(ratelimit.NewWithClock(ratelimit.NewMemoryStoreWithClock(fixedClock), fixedClock), platformpolicy.Fixed(policy))
 	reader := requestFrom(t, "203.0.113.10")
-	for _, allowance := range []Allowance{PublicAPI, Search, Images} {
+	for _, allowance := range []Allowance{PublicAPI, Search, Images, ConsoleImages} {
 		limit := Limit(limits, allowance)
 		for i := range limit {
 			if !allow(t, guard, reader, allowance).Allowed {

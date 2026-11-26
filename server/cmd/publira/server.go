@@ -223,17 +223,19 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 	policy := platformpolicy.NewResolver(dbmodels.New(pools.leastPrivileged()), platformpolicy.CacheTTL, logger)
 	login := loginguard.NewShared(policy, tokens, logger)
 	mail := mailguard.NewShared(policy, logger)
-	// The read limit of a storefront's API and images, held once so the two
-	// share one client for Redis and one read of the policy. A console's hosts
-	// are not limited by it, so a process that serves no storefront dials
-	// nothing for it.
+	// The read limit of a storefront's API and of every host's images, held
+	// once so they share one client for Redis and one read of the policy. The
+	// console's images are charged to it as well, so a process that serves
+	// either site holds it, and one that serves neither dials nothing for it.
 	var reads *readguard.Guard
+	if pools.public != nil || pools.admin != nil {
+		reads = readguard.NewFromEnv(policy, logger)
+	}
 
 	var served servedAPIs
 	var drain []func(context.Context) error
 
 	if pools.public != nil {
-		reads = readguard.NewFromEnv(policy, logger)
 		// The search engine is read from the platform's settings on the
 		// public pool, the one the search RPCs are answered on, so the public
 		// API holds no other login to search. The row's password is sealed

@@ -63,7 +63,7 @@ func readLimitFlags() []fieldFlag[policySettings] {
 	return []fieldFlag[policySettings]{
 		flag("public_api", "public-api", "public API calls but the search from one client", func(l *platformpolicy.ReadLimits, v int) { l.PublicAPI = v }),
 		flag("search", "search", "catalog searches from one client", func(l *platformpolicy.ReadLimits, v int) { l.Search = v }),
-		flag("images", "images", "storefront images from one client", func(l *platformpolicy.ReadLimits, v int) { l.Images = v }),
+		flag("images", "images", "images from one client, on a tenant's site and image hosts and, counted apart, on its console host", func(l *platformpolicy.ReadLimits, v int) { l.Images = v }),
 	}
 }
 
