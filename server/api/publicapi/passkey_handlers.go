@@ -419,9 +419,9 @@ func (s *apiServer) FinishPasskeyLogin(
 	return &publirav1.FinishPasskeyLoginResponse{User: user, AccessToken: accessToken}, nil
 }
 
-// BeginPasskeyRegistration begins the ceremony that adds a passkey, checking
-// and spending the confirmation of the account the request sends. The
-// confirmation is taken here rather than at the finish: the ceremony is bound
+// BeginPasskeyRegistration begins the ceremony that adds a passkey, once the
+// request has confirmed the account. The confirmation is asked for here rather
+// than at the finish: the ceremony is bound
 // to the caller and spent by one finish, so the begin is what decides whether
 // a passkey may be added at all.
 func (s *apiServer) BeginPasskeyRegistration(
@@ -445,7 +445,7 @@ func (s *apiServer) BeginPasskeyRegistration(
 		nonce:       req.Nonce,
 		passkeyJSON: req.PasskeyCredentialJson,
 	}
-	if confirmation.sent() && !confirmation.single() {
+	if !confirmation.single() {
 		return fail("invalid_input", accountConfirmationRequiredError())
 	}
 	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
@@ -465,10 +465,8 @@ func (s *apiServer) BeginPasskeyRegistration(
 	if len(holder.Credentials) >= maxPasskeysPerAccount {
 		return fail("passkey_limit", passkeyLimitError())
 	}
-	if confirmation.sent() {
-		if reason, err := s.confirmAccount(ctx, q, tenant, user, confirmation); err != nil {
-			return fail(reason, err)
-		}
+	if reason, err := s.confirmAccount(ctx, q, tenant, user, confirmation); err != nil {
+		return fail(reason, err)
 	}
 	options, ceremony, err := rp.BeginRegistration(holder)
 	if err != nil {
@@ -696,9 +694,9 @@ func (s *apiServer) RenamePasskey(
 	return &publirav1.RenamePasskeyResponse{Passkey: passkeyProto(renamed)}, nil
 }
 
-// DeletePasskey removes one of the reader's passkeys, checking the
-// confirmation of the account the request sends, unless it is the last way an
-// account without a password signs in. That is the rule UnlinkIdentity
+// DeletePasskey removes one of the reader's passkeys, once the request has
+// confirmed the account, unless it is the last way an account without a
+// password signs in. That is the rule UnlinkIdentity
 // applies to a linked provider, extended to passkeys, and both take the
 // account row's lock, so an unlink and a removal racing over the account's
 // last two ways in cannot each find the other still there.
@@ -723,7 +721,7 @@ func (s *apiServer) DeletePasskey(
 		nonce:       req.Nonce,
 		passkeyJSON: req.PasskeyCredentialJson,
 	}
-	if confirmation.sent() && !confirmation.single() {
+	if !confirmation.single() {
 		return fail("invalid_input", accountConfirmationRequiredError())
 	}
 	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
@@ -762,10 +760,8 @@ func (s *apiServer) DeletePasskey(
 	}
 	// Checked against the locked row and spent on the transaction, after every
 	// refusal above, so a removal that does not happen spends nothing.
-	if confirmation.sent() {
-		if reason, err := s.confirmAccount(ctx, txq, tenant, locked, confirmation); err != nil {
-			return fail(reason, err)
-		}
+	if reason, err := s.confirmAccount(ctx, txq, tenant, locked, confirmation); err != nil {
+		return fail(reason, err)
 	}
 	if _, err := txq.DeleteUserWebauthnCredential(ctx, row.ID); err != nil {
 		return fail("delete_failed", s.internalDBError(ctx, "failed to delete passkey", err, "user_id", user.ID.String()))

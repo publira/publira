@@ -203,3 +203,33 @@ func TestDBUnlinkIdentityChecksTheConfirmationItIsSent(t *testing.T) {
 		t.Fatalf("provider unlinked notices = %d, want 1", notices)
 	}
 }
+
+// None of the three steps is taken on the session alone, which may be one left
+// signed in on a device somebody else now holds.
+func TestDBSignInMethodStepsRefuseTheSessionAlone(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	ctx := env.session(t)
+	_, passkey := env.register(t, ctx, passkeySiteOrigin, "Phone")
+
+	_, err := env.authClient().BeginPasskeyRegistration(ctx, &publirav1.BeginPasskeyRegistrationRequest{Tenant: tenantContext(env.tenant)})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a registration on the session alone code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_ceremonies WHERE user_id = $1 AND ceremony = 'registration'", env.reader.ID); got != 0 {
+		t.Fatalf("open registration ceremonies = %d, want none begun on the session alone", got)
+	}
+	_, err = env.authClient().DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: passkey.Id})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a removal on the session alone code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1", env.reader.ID); got != 1 {
+		t.Fatalf("passkeys = %d, want the passkey kept", got)
+	}
+	_, err = env.authClient().UnlinkIdentity(ctx, &publirav1.UnlinkIdentityRequest{
+		Tenant:   tenantContext(env.tenant),
+		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+	})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("an unlink on the session alone code = %v, want invalid_argument (err=%v)", connect.CodeOf(err), err)
+	}
+}
