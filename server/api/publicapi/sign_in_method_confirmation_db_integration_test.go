@@ -142,6 +142,8 @@ func TestDBPasskeyConfirmationsShareTheStepUpPasswordLimit(t *testing.T) {
 }
 
 func TestDBUnlinkIdentityChecksTheConfirmationItIsSent(t *testing.T) {
+	t.Parallel()
+
 	env := newIdentityDBEnv(t)
 	env.enableProviders(t)
 	signedIn := env.mustSignIn(t, publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
