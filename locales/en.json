@@ -3924,6 +3924,7 @@
         "disable_submit": "Turn off",
         "disable_submitting": "Turning off…",
         "disable_done": "The authenticator app has been turned off.",
+        "disable_required": "This tenant requires two-step verification for administrators, so the authenticator app cannot be turned off while it is your only second factor. Add a passkey first.",
         "load_failed": "Could not read the two-step verification status. Please try again later.",
         "passkeys_title": "Passkeys",
         "passkeys_description": "Confirm a sign-in with your device's screen lock, a password manager, or a security key instead of typing a code.",
@@ -6942,6 +6943,7 @@
       "mfa_secret_help": "Enter this key in your authenticator app if you cannot scan the code.",
       "mfa_secret_label": "Setup key",
       "mfa_set_up_in_console": "This account signs in to the tenant's console with a passkey, so set up two-step verification from Account settings in the console.",
+      "mfa_disable_in_console": "This tenant requires two-step verification for administrators, so turn it off from Account settings in the console.",
       "mfa_status_disabled": "Two-step verification is off.",
       "mfa_status_enabled": "Two-step verification has been on since {$date}.",
       "name_help": "This name appears on your profile.",
@@ -8823,6 +8825,7 @@
         "disable_submit": "Turn off",
         "disable_submitting": "Turning off…",
         "disable_done": "Two-step verification has been turned off.",
+        "disable_required": "Two-step verification cannot be turned off while this platform requires it.",
         "load_failed": "Could not read the two-step verification status. Please try again later."
       },
       "password": "Password",

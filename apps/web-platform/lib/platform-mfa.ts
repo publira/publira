@@ -408,6 +408,16 @@ export const disablePlatformMfa = async (
 
     return { ok: true };
   } catch (error) {
+    // The platform started requiring the factor after the page was drawn.
+    if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLastRequiredFactor)) {
+      const t = await getMessagesFor(locale);
+
+      return {
+        message: t("platform.settings.mfa.disable_required"),
+        ok: false,
+      };
+    }
+
     return {
       message: await sessionMfaFailureMessage(error, locale, "enabled"),
       ok: false,

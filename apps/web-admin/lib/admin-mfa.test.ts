@@ -2,6 +2,7 @@ import {
   Code,
   ConnectError,
   ErrorInfoSchema,
+  RPC_ERROR_REASON,
 } from "@publira/api-client/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,6 +13,7 @@ const {
   mockCacheLife,
   mockCacheTag,
   mockDeletePasskey,
+  mockDisableMfa,
   mockFinishPasskeyRegistration,
   mockFinishPasskeyVerification,
   mockGetAccessToken,
@@ -26,6 +28,7 @@ const {
   mockCacheLife: vi.fn(),
   mockCacheTag: vi.fn(),
   mockDeletePasskey: vi.fn(),
+  mockDisableMfa: vi.fn(),
   mockFinishPasskeyRegistration: vi.fn(),
   mockFinishPasskeyVerification: vi.fn(),
   mockGetAccessToken: vi.fn(),
@@ -51,6 +54,7 @@ vi.mock("./api", () => ({
       beginPasskeyRegistration: mockBeginPasskeyRegistration,
       beginPasskeyVerification: mockBeginPasskeyVerification,
       deletePasskey: mockDeletePasskey,
+      disableMfa: mockDisableMfa,
       finishPasskeyRegistration: mockFinishPasskeyRegistration,
       finishPasskeyVerification: mockFinishPasskeyVerification,
       getMfaStatus: mockGetMfaStatus,
@@ -733,5 +737,47 @@ describe("regenerating the recovery codes with a passkey", () => {
         "en"
       )
     ).rejects.toBe(error);
+  });
+});
+
+describe("turning the authenticator app off", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("says why when it is the last factor the tenant requires", async () => {
+    mockDisableMfa.mockRejectedValueOnce(
+      reasonError(
+        Code.FailedPrecondition,
+        RPC_ERROR_REASON.mfaLastRequiredFactor
+      )
+    );
+
+    const { disableAdminMfa } = await import("./admin-mfa");
+
+    await expect(disableAdminMfa("TENANT001", "123456", "en")).resolves.toEqual(
+      {
+        message:
+          "This tenant requires two-step verification for administrators, so the authenticator app cannot be turned off while it is your only second factor. Add a passkey first.",
+        ok: false,
+      }
+    );
+  });
+
+  it("keeps the wording of an authenticator that is already off", async () => {
+    mockDisableMfa.mockRejectedValueOnce(
+      new ConnectError("mfa is not enabled", Code.FailedPrecondition)
+    );
+
+    const { disableAdminMfa } = await import("./admin-mfa");
+
+    await expect(disableAdminMfa("TENANT001", "123456", "en")).resolves.toEqual(
+      {
+        message:
+          "Two-step verification is not set up for this account. Set it up from account settings.",
+        ok: false,
+      }
+    );
   });
 });

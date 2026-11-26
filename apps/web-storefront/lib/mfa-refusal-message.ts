@@ -1,7 +1,9 @@
 import { rpcErrorMessage } from "@publira/api-client/error-messages";
 import {
+  RPC_ERROR_REASON,
   rpcErrorDisposition,
   rpcErrorHasFieldViolation,
+  rpcErrorHasReason,
 } from "@publira/api-client/errors";
 import type { Locale } from "@publira/i18n";
 
@@ -79,6 +81,12 @@ export const mfaDisableRefusalMessage = (
     rpcErrorHasFieldViolation(refusal.error, "password")
   ) {
     return t("storefront.settings.mfa_disable_wrong_password");
+  }
+
+  if (
+    rpcErrorHasReason(refusal.error, RPC_ERROR_REASON.mfaLastRequiredFactor)
+  ) {
+    return t("storefront.settings.mfa_disable_in_console");
   }
 
   return rpcErrorMessage(

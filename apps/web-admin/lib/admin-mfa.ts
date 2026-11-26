@@ -662,6 +662,14 @@ export const disableAdminMfa = async (
 
     return { ok: true };
   } catch (error) {
+    // The tenant started requiring the factor, or the last passkey went,
+    // after the page was drawn.
+    if (rpcErrorHasReason(error, RPC_ERROR_REASON.mfaLastRequiredFactor)) {
+      const t = await getMessagesFor(locale);
+
+      return { message: t("admin.settings.mfa.disable_required"), ok: false };
+    }
+
     return {
       message: await sessionMfaFailureMessage(error, locale, "enabled"),
       ok: false,

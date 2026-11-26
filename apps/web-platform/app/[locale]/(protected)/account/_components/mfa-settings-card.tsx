@@ -138,6 +138,25 @@ const MfaDisableForm = () => (
   </ActionForm.Root>
 );
 
+/**
+ * Stands where the disable form would while the platform requires the factor:
+ * the API refuses to take it off then, so the form would only fail.
+ */
+const MfaDisableRequired = () => (
+  <div className="grid gap-1">
+    <p className="text-sm font-medium text-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+        <Message message="platform.settings.mfa.disable_title" />
+      </Suspense>
+    </p>
+    <p className="text-xs text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+        <Message message="platform.settings.mfa.disable_required" />
+      </Suspense>
+    </p>
+  </div>
+);
+
 const MfaStatusSummary = ({ status }: { status: PlatformMfaStatus }) => (
   <div className="grid gap-1">
     <p className="text-sm text-foreground">
@@ -171,7 +190,7 @@ const MfaStatusSummary = ({ status }: { status: PlatformMfaStatus }) => (
 
 /**
  * The operator's own second factor: turn it on, replace the recovery codes, or
- * turn it off.
+ * turn it off while the platform does not require it.
  */
 export const MfaSettingsCard = ({ status }: MfaSettingsCardProps) => (
   <ConsoleSection.Root>
@@ -195,7 +214,7 @@ export const MfaSettingsCard = ({ status }: MfaSettingsCardProps) => (
       {status.enabled ? (
         <>
           <MfaRegenerateForm />
-          <MfaDisableForm />
+          {status.required ? <MfaDisableRequired /> : <MfaDisableForm />}
         </>
       ) : (
         <MfaEnrollment.Root

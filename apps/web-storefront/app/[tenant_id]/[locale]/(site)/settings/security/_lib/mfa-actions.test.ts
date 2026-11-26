@@ -229,6 +229,27 @@ describe("two-step verification under Security", () => {
     });
   });
 
+  it("sends a tenant admin the tenant requires it of to the console", async () => {
+    const { disableMfaAction } = await actions();
+    const t = await getMessagesFor("en");
+    mockDisableMyMfa.mockResolvedValueOnce({
+      error: new ConnectError("required", Code.FailedPrecondition, undefined, [
+        {
+          desc: ErrorInfoSchema,
+          value: { domain: "publira", reason: "MFA_LAST_REQUIRED_FACTOR" },
+        },
+      ]),
+      ok: false,
+    });
+
+    await expect(
+      disableMfaAction(null, form({ code: "123456", password: "pw" }))
+    ).resolves.toEqual({
+      message: t("storefront.settings.mfa_disable_in_console"),
+      ok: false,
+    });
+  });
+
   it("turns it off with a passkey for an account without a password", async () => {
     const { disableMfaWithPasskeyAction } = await actions();
     mockDisableMyMfa.mockResolvedValueOnce({ ok: true });

@@ -3924,6 +3924,7 @@
         "disable_submit": "끄기",
         "disable_submitting": "끄는 중…",
         "disable_done": "인증 앱을 해제했습니다.",
+        "disable_required": "이 테넌트는 관리자에게 2단계 인증을 필수로 하고 있으므로, 인증 앱이 유일한 2단계 인증 수단인 동안에는 끌 수 없습니다. 먼저 패스키를 추가해 주세요.",
         "load_failed": "2단계 인증 상태를 불러오지 못했습니다.",
         "passkeys_title": "패스키",
         "passkeys_description": "코드를 입력하는 대신 기기의 화면 잠금, 비밀번호 관리자 또는 보안 키로 로그인을 확인합니다.",
@@ -6942,6 +6943,7 @@
       "mfa_secret_help": "코드를 스캔할 수 없으면 이 키를 인증 앱에 직접 입력해 주세요.",
       "mfa_secret_label": "설정 키",
       "mfa_set_up_in_console": "이 계정은 테넌트의 콘솔에 패스키로 로그인하므로, 2단계 인증은 콘솔의 계정 설정에서 설정해 주세요.",
+      "mfa_disable_in_console": "이 테넌트는 관리자에게 2단계 인증을 필수로 하고 있으므로, 2단계 인증은 콘솔의 계정 설정에서 꺼 주세요.",
       "mfa_status_disabled": "2단계 인증이 꺼져 있습니다.",
       "mfa_status_enabled": "{$date}부터 2단계 인증이 켜져 있습니다.",
       "name_help": "이 이름은 프로필에 표시됩니다.",
@@ -8823,6 +8825,7 @@
         "disable_submit": "끄기",
         "disable_submitting": "끄는 중…",
         "disable_done": "2단계 인증을 껐습니다.",
+        "disable_required": "이 플랫폼이 2단계 인증을 필수로 하고 있는 동안에는 끌 수 없습니다.",
         "load_failed": "2단계 인증 상태를 불러오지 못했습니다."
       },
       "password": "비밀번호",
