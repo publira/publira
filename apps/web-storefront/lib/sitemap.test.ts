@@ -464,8 +464,20 @@ describe("getSitemapChunk", () => {
 
     expect(chunk.ok).toBe(true);
     const entries = chunk.ok ? chunk.value.entries : [];
-    const xml = renderSitemapUrlset(BILINGUAL_ADDRESS, entries);
-    expect(countOf(xml, "<url>")).toBe(entries.length);
+    // Every entry is translated into the same one locale, so each writes as
+    // many URLs as the first: the file is counted from that one rather than
+    // rendered a second time.
+    expect(
+      new Set(
+        entries.map(({ publishedLocales }) => publishedLocales?.join(","))
+      )
+    ).toStrictEqual(new Set(["ja"]));
+    expect(
+      countOf(
+        renderSitemapUrlset(BILINGUAL_ADDRESS, entries.slice(0, 1)),
+        "<url>"
+      )
+    ).toBe(1);
     expect(entries.length).toBeLessThanOrEqual(SITEMAP_URL_LIMIT);
     expect(entries.length).toBeGreaterThan(SITEMAP_URL_LIMIT - 500 * 2);
   });
@@ -503,9 +515,14 @@ describe("getSitemapChunk", () => {
 
   it("ends a file before it would pass the byte limit", async () => {
     // Pages at slugs as long as the column holds, the most bytes an entry takes.
+    // The slugs are of one length and the times of one form, so every entry
+    // renders as many bytes as the first: the file is counted from that one
+    // rather than rendered a second time, which would double the 50 MiB the
+    // walk already renders.
     answerPages(40, (page, index) =>
       entry({
         kind: SitemapEntryKind.PAGE,
+        lastModifiedAt: "2026-01-01T00:00:00Z",
         publishedLocales: [...getLocales()],
         slug: "/".concat(`${page}-${index}-`.padEnd(254, "p")),
       })
@@ -513,9 +530,18 @@ describe("getSitemapChunk", () => {
 
     const chunk = await getSitemapChunk(TENANT_ID, ADDRESS, "p1");
     const entries = chunk.ok ? chunk.value.entries : [];
-    const bytes = utf8Bytes(renderSitemapUrlset(ADDRESS, entries));
+    expect(new Set(entries.map(({ href }) => href.length))).toStrictEqual(
+      new Set([255])
+    );
+    const emptyBytes = utf8Bytes(renderSitemapUrlset(ADDRESS, []));
+
+    const entryBytes =
+      utf8Bytes(renderSitemapUrlset(ADDRESS, entries.slice(0, 1))) - emptyBytes;
+
+    const bytes = emptyBytes + entries.length * entryBytes;
 
     expect(bytes).toBeLessThanOrEqual(SITEMAP_BYTE_LIMIT);
+    expect(bytes).toBeGreaterThan(SITEMAP_BYTE_LIMIT - 500 * entryBytes);
     expect(entries.length * LOCALE_COUNT).toBeLessThan(
       SITEMAP_URL_LIMIT - 500 * LOCALE_COUNT
     );
