@@ -21,6 +21,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -88,8 +89,8 @@ func TestAppStoresRoundTripBothStoresWithoutRevealingAKey(t *testing.T) {
 	if read.AppStore != want {
 		t.Fatalf("app store = %+v, want %+v", read.AppStore, want)
 	}
-	if !strings.HasPrefix(read.AppStore.PrivateKeyHint, "••••") {
-		t.Fatalf("private key hint = %q, want a masked value", read.AppStore.PrivateKeyHint)
+	if want := secrethint.PrivateKey(appStoreKey); want == "" || read.AppStore.PrivateKeyHint != want {
+		t.Fatalf("private key hint = %q, want the fingerprint of its public key, %q", read.AppStore.PrivateKeyHint, want)
 	}
 	wantPlay := paymentsettings.GooglePlayConfig{
 		Enabled:                     true,

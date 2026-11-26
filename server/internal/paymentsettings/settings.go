@@ -19,15 +19,13 @@ import (
 
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
 const (
 	ActionUpdated = "tenant_payment_settings_updated"
 	TargetType    = "payment_config"
-
-	maskFill = "••••••••"
-	maskTail = 4
 )
 
 var (
@@ -139,33 +137,10 @@ type AuditMeta struct {
 	TargetID    string
 }
 
-// MaskSecret turns a live credential into a display hint (prefix + bullets +
-// last four characters). The result is stored alongside ciphertext so public
-// reads never decrypt.
-func MaskSecret(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return ""
-	}
-	prefix, rest := splitSecretPrefix(value)
-	if len(rest) <= maskTail {
-		return prefix + strings.Repeat("•", 4)
-	}
-	return prefix + maskFill + rest[len(rest)-maskTail:]
-}
-
-func splitSecretPrefix(value string) (string, string) {
-	i := strings.LastIndex(value, "_")
-	if i < 0 || i == len(value)-1 {
-		return "", value
-	}
-	return value[:i+1], value[i+1:]
-}
-
 // hintFor answers what the console shows for a stored value of field.
 func hintFor(field paymentprovider.Field, value string) string {
 	if field.Secret {
-		return MaskSecret(value)
+		return secrethint.Mask(value)
 	}
 	return value
 }
@@ -190,7 +165,7 @@ func encryptSecret(plaintext string, mgr SecretManager) (string, string, error) 
 	if err != nil {
 		return "", "", err
 	}
-	return encrypted, MaskSecret(plaintext), nil
+	return encrypted, secrethint.Mask(plaintext), nil
 }
 
 func encryptValue(plaintext string, mgr SecretManager) (string, error) {

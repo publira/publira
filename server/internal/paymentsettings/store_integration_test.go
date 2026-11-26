@@ -20,6 +20,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -259,13 +260,13 @@ func TestCredentialFieldsMigrationKeepsStripeSettingsReady(t *testing.T) {
 			secret_key_encrypted, webhook_secret_encrypted, secret_key_hint, webhook_secret_hint
 		) VALUES ($1, 'stripe', true, $2, $3, $4, $5)
 	`, ready.ID, secretEncrypted, webhookEncrypted,
-		paymentsettings.MaskSecret(integrationSecretKey), paymentsettings.MaskSecret(integrationWebhookSecret)); err != nil {
+		secrethint.Mask(integrationSecretKey), secrethint.Mask(integrationWebhookSecret)); err != nil {
 		t.Fatalf("insert ready settings: %v", err)
 	}
 	if _, err := pg.DB.ExecContext(ctx, `
 		INSERT INTO tenant_payment_config (tenant_id, provider, enabled, secret_key_encrypted, secret_key_hint)
 		VALUES ($1, 'stripe', false, $2, $3)
-	`, disabled.ID, secretEncrypted, paymentsettings.MaskSecret(integrationSecretKey)); err != nil {
+	`, disabled.ID, secretEncrypted, secrethint.Mask(integrationSecretKey)); err != nil {
 		t.Fatalf("insert disabled settings: %v", err)
 	}
 
@@ -292,8 +293,8 @@ func TestCredentialFieldsMigrationKeepsStripeSettingsReady(t *testing.T) {
 		t.Fatal("migrated credentials do not decrypt to what was stored")
 	}
 	for name, want := range map[string]string{
-		stripe.FieldSecretKey:     paymentsettings.MaskSecret(integrationSecretKey),
-		stripe.FieldWebhookSecret: paymentsettings.MaskSecret(integrationWebhookSecret),
+		stripe.FieldSecretKey:     secrethint.Mask(integrationSecretKey),
+		stripe.FieldWebhookSecret: secrethint.Mask(integrationWebhookSecret),
 	} {
 		field, ok := cfg.Field(name)
 		if !ok || !field.Configured || field.Hint != want {

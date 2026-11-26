@@ -15,6 +15,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
@@ -158,8 +159,8 @@ func TestStoreUpdatesEachFieldOnItsOwn(t *testing.T) {
 	if after[cardSecretKey] == before[cardSecretKey] {
 		t.Fatal("replace reused the secret key's ciphertext")
 	}
-	if hints[cardSecretKey] != MaskSecret(rotated) {
-		t.Fatalf("replaced hint = %q, want %q", hints[cardSecretKey], MaskSecret(rotated))
+	if hints[cardSecretKey] != secrethint.Mask(rotated) {
+		t.Fatalf("replaced hint = %q, want %q", hints[cardSecretKey], secrethint.Mask(rotated))
 	}
 	if after[cardPublishableKey] != before[cardPublishableKey] {
 		t.Fatal("unchanged publishable key was rewritten")
@@ -531,7 +532,7 @@ func putRow(t *testing.T, queries *memoryPaymentQueries, tenantID uuid.UUID, pro
 			t.Fatalf("EncryptString: %v", err)
 		}
 		encrypted[name] = envelope
-		hints[name] = MaskSecret(value)
+		hints[name] = secrethint.Mask(value)
 	}
 	encryptedJSON, err := json.Marshal(encrypted)
 	if err != nil {

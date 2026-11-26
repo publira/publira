@@ -12,6 +12,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/signin/signintest"
@@ -97,8 +98,8 @@ func TestSettingsStoreTheAppleKeySealedAndAnswerOnlyItsHint(t *testing.T) {
 	if !cfg.Apple.Ready || cfg.Apple.TeamID != "TEAM123456" || cfg.Apple.KeyID != "KEY1234567" || !cfg.Apple.PrivateKeyConfigured {
 		t.Fatalf("apple = %+v", cfg.Apple)
 	}
-	if strings.Contains(cfg.Apple.PrivateKeyHint, "PRIVATE KEY") || !strings.Contains(cfg.Apple.PrivateKeyHint, "•") {
-		t.Fatalf("hint = %q, want a masked key", cfg.Apple.PrivateKeyHint)
+	if want := secrethint.PrivateKey(keyPEM); want == "" || cfg.Apple.PrivateKeyHint != want {
+		t.Fatalf("hint = %q, want the fingerprint of its public key, %q", cfg.Apple.PrivateKeyHint, want)
 	}
 	if got := cfg.Apple.Audiences(); len(got) != 2 || got[0] != servicesID || got[1] != "com.example.app" {
 		t.Fatalf("apple audiences = %v", got)

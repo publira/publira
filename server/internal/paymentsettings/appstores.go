@@ -7,7 +7,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -18,6 +17,7 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
@@ -299,7 +299,7 @@ func (a *AppStores) appStoreParams(tenantID uuid.UUID, existing dbmodels.TenantA
 		return dbmodels.UpsertTenantAppStoreConfigParams{}, err
 	}
 	if update.PrivateKeyUpdateMode == secretupdate.Replace {
-		hint = MaskSecret(pemBody(update.PrivateKey))
+		hint = secrethint.PrivateKey(update.PrivateKey)
 	}
 	if update.Enabled && (issuerID == "" || keyID == "" || encrypted == "") {
 		return dbmodels.UpsertTenantAppStoreConfigParams{}, ErrAppStoreCredentialsRequired
@@ -339,7 +339,7 @@ func (a *AppStores) googlePlayParams(tenantID uuid.UUID, existing dbmodels.Tenan
 	switch update.ServiceAccountKeyUpdateMode {
 	case secretupdate.Replace:
 		email = key.ClientEmail
-		hint = MaskSecret(key.PrivateKeyID)
+		hint = secrethint.Mask(key.PrivateKeyID)
 	case secretupdate.Clear:
 		email = ""
 	}
@@ -453,16 +453,6 @@ func validateAppStorePrivateKey(value string) error {
 		return ErrInvalidAppStorePrivateKey
 	}
 	return nil
-}
-
-// pemBody is the base64 of a PEM block with the armor and line breaks taken
-// away, so a hint of a .p8 file shows key material rather than its END line.
-func pemBody(value string) string {
-	block, _ := pem.Decode([]byte(strings.TrimSpace(value)))
-	if block == nil {
-		return ""
-	}
-	return base64.StdEncoding.EncodeToString(block.Bytes)
 }
 
 type serviceAccountKey struct {

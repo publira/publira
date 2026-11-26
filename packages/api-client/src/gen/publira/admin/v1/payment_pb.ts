@@ -174,8 +174,10 @@ export type PaymentCredentialFieldState = Message<"publira.admin.v1.PaymentCrede
   configured: boolean;
 
   /**
-   * Display hint derived at write time: prefix + bullets + last four for a
-   * secret field, and the value itself for one that is not secret. Empty when
+   * Display hint derived at write time, and the value itself for a field that
+   * is not secret. For a secret field it is the provider's key type prefix
+   * when the value starts with one (sk_live_, whsec_), a run of bullets, and
+   * the last four characters of a value long enough to spare them. Empty when
    * the field is not stored.
    *
    * @generated from field: string hint = 3;
@@ -676,7 +678,8 @@ export type TenantAppStorePaymentSettings = Message<"publira.admin.v1.TenantAppS
   privateKeyConfigured: boolean;
 
   /**
-   * Display hint derived at write time. Empty when no key is stored.
+   * The SHA-256 fingerprint of the stored key's public key, as OpenSSH prints
+   * one (SHA256:...). Empty when no key is stored.
    *
    * @generated from field: string private_key_hint = 5;
    */

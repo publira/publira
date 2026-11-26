@@ -3150,7 +3150,8 @@ type TenantAppleSignInSettings struct {
 	TeamId               string `protobuf:"bytes,3,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	KeyId                string `protobuf:"bytes,4,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
 	PrivateKeyConfigured bool   `protobuf:"varint,5,opt,name=private_key_configured,json=privateKeyConfigured,proto3" json:"private_key_configured,omitempty"`
-	// Display hint derived at write time. Empty when no key is stored.
+	// The SHA-256 fingerprint of the stored key's public key, as OpenSSH prints
+	// one (SHA256:...). Empty when no key is stored.
 	PrivateKeyHint string `protobuf:"bytes,6,opt,name=private_key_hint,json=privateKeyHint,proto3" json:"private_key_hint,omitempty"`
 	// The bundle identifier the iOS app signs in with, which the tenant's iOS
 	// app association names. Empty where it names none, and edited there, not

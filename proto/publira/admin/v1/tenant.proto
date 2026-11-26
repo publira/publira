@@ -423,7 +423,8 @@ message TenantAppleSignInSettings {
   string team_id = 3;
   string key_id = 4;
   bool private_key_configured = 5;
-  // Display hint derived at write time. Empty when no key is stored.
+  // The SHA-256 fingerprint of the stored key's public key, as OpenSSH prints
+  // one (SHA256:...). Empty when no key is stored.
   string private_key_hint = 6;
   // The bundle identifier the iOS app signs in with, which the tenant's iOS
   // app association names. Empty where it names none, and edited there, not

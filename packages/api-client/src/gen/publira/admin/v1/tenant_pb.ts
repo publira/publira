@@ -1453,7 +1453,8 @@ export type TenantAppleSignInSettings = Message<"publira.admin.v1.TenantAppleSig
   privateKeyConfigured: boolean;
 
   /**
-   * Display hint derived at write time. Empty when no key is stored.
+   * The SHA-256 fingerprint of the stored key's public key, as OpenSSH prints
+   * one (SHA256:...). Empty when no key is stored.
    *
    * @generated from field: string private_key_hint = 6;
    */

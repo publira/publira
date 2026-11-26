@@ -285,8 +285,10 @@ type PaymentCredentialFieldState struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	Name       string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Configured bool                   `protobuf:"varint,2,opt,name=configured,proto3" json:"configured,omitempty"`
-	// Display hint derived at write time: prefix + bullets + last four for a
-	// secret field, and the value itself for one that is not secret. Empty when
+	// Display hint derived at write time, and the value itself for a field that
+	// is not secret. For a secret field it is the provider's key type prefix
+	// when the value starts with one (sk_live_, whsec_), a run of bullets, and
+	// the last four characters of a value long enough to spare them. Empty when
 	// the field is not stored.
 	Hint string `protobuf:"bytes,3,opt,name=hint,proto3" json:"hint,omitempty"`
 	// The stored value of a field the provider declares public, which the
@@ -1216,7 +1218,8 @@ type TenantAppStorePaymentSettings struct {
 	IssuerId             string `protobuf:"bytes,2,opt,name=issuer_id,json=issuerId,proto3" json:"issuer_id,omitempty"`
 	KeyId                string `protobuf:"bytes,3,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
 	PrivateKeyConfigured bool   `protobuf:"varint,4,opt,name=private_key_configured,json=privateKeyConfigured,proto3" json:"private_key_configured,omitempty"`
-	// Display hint derived at write time. Empty when no key is stored.
+	// The SHA-256 fingerprint of the stored key's public key, as OpenSSH prints
+	// one (SHA256:...). Empty when no key is stored.
 	PrivateKeyHint string `protobuf:"bytes,5,opt,name=private_key_hint,json=privateKeyHint,proto3" json:"private_key_hint,omitempty"`
 	// The app the store sells in: the bundle identifier the tenant's iOS app
 	// association names. Empty where it names none, and edited there, not here.

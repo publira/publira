@@ -255,8 +255,10 @@ type InboundEmailCredentialFieldState struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	Name       string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Configured bool                   `protobuf:"varint,2,opt,name=configured,proto3" json:"configured,omitempty"`
-	// Display hint derived at write time: prefix + bullets + last four for a
-	// secret field, and the value itself for one that is not secret. Empty when
+	// Display hint derived at write time, and the value itself for a field that
+	// is not secret. For a secret field it is the provider's key type prefix
+	// when the value starts with one (sk_live_, whsec_), a run of bullets, and
+	// the last four characters of a value long enough to spare them. Empty when
 	// the field is not stored.
 	Hint          string `protobuf:"bytes,3,opt,name=hint,proto3" json:"hint,omitempty"`
 	unknownFields protoimpl.UnknownFields

@@ -15,6 +15,7 @@ import (
 	"github.com/publira/publira/server/internal/paymentprovider/payjp"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
 	"github.com/publira/publira/server/internal/paymentsettings"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -163,7 +164,7 @@ func TestStoreHoldsMoreThanOneProvider(t *testing.T) {
 		}
 	})
 
-	if provider, enabled, hint := configProvider(t, ctx, pg.DB, tenant.ID); provider != payjp.ID || !enabled || hint != paymentsettings.MaskSecret(integrationPayjpSecretKey) {
+	if provider, enabled, hint := configProvider(t, ctx, pg.DB, tenant.ID); provider != payjp.ID || !enabled || hint != secrethint.Mask(integrationPayjpSecretKey) {
 		t.Fatalf("the previous release reads %s enabled %v hint %q, want PAY.JP, the one that sells", provider, enabled, hint)
 	}
 
@@ -378,7 +379,7 @@ func previousReleaseSave(t *testing.T, ctx context.Context, conn dbmodels.DBTX, 
 			t.Fatalf("EncryptString: %v", err)
 		}
 		encrypted[name] = envelope
-		hints[name] = paymentsettings.MaskSecret(value)
+		hints[name] = secrethint.Mask(value)
 	}
 	for _, name := range cleared {
 		delete(encrypted, name)
@@ -431,7 +432,7 @@ func TestPreviousReleaseSavesKeepARetiredProvidersCredentials(t *testing.T) {
 		if _, retired, err := store.RemoveProvider(ctx, tenant.ID, stripe.ID, paymentsettings.AuditMeta{}); err != nil || !retired {
 			t.Fatalf("RemoveProvider stripe: retired %v, %v; want it retired", retired, err)
 		}
-		if provider, enabled, hint := configProvider(t, ctx, conn, tenant.ID); provider != stripe.ID || enabled || hint != paymentsettings.MaskSecret(integrationSecretKey) {
+		if provider, enabled, hint := configProvider(t, ctx, conn, tenant.ID); provider != stripe.ID || enabled || hint != secrethint.Mask(integrationSecretKey) {
 			t.Fatalf("the previous release reads %s enabled %v hint %q, want Stripe off with its fields", provider, enabled, hint)
 		}
 
@@ -514,7 +515,7 @@ func TestPreviousReleaseSwitchRetiresTheProviderSwitchedFrom(t *testing.T) {
 		if !equalIDs(heldIDs(held), stripe.ID+" (retired)", payjp.ID) {
 			t.Fatalf("held after the second switch = %v, want Stripe retired beside PAY.JP", heldIDs(held))
 		}
-		if _, enabled, hint := configProvider(t, ctx, conn, tenant.ID); enabled || hint != paymentsettings.MaskSecret(integrationPayjpSecretKey) {
+		if _, enabled, hint := configProvider(t, ctx, conn, tenant.ID); enabled || hint != secrethint.Mask(integrationPayjpSecretKey) {
 			t.Fatalf("the previous release reads enabled %v secret key %q, want PAY.JP off with the secret key it has", enabled, hint)
 		}
 
@@ -551,7 +552,7 @@ func TestPaymentProvidersMigrationCopiesTheTenantsProvider(t *testing.T) {
 		VALUES ($1, 'stripe', true, jsonb_build_object('secret_key', $2::text, 'webhook_secret', $3::text),
 			jsonb_build_object('secret_key', $4::text, 'webhook_secret', $5::text), 'JPY')
 	`, tenant.ID, secretEncrypted, webhookEncrypted,
-		paymentsettings.MaskSecret(integrationSecretKey), paymentsettings.MaskSecret(integrationWebhookSecret)); err != nil {
+		secrethint.Mask(integrationSecretKey), secrethint.Mask(integrationWebhookSecret)); err != nil {
 		t.Fatalf("insert the previous release's settings: %v", err)
 	}
 	pg.MigrateUp(t)
@@ -590,7 +591,7 @@ func TestPreviousReleaseSaveOfARetiredProviderSwitchedToClearsAField(t *testing.
 		}
 
 		previousReleaseSave(t, ctx, conn, tenant.ID, payjp.ID, false, nil)
-		if provider, enabled, hint := configProvider(t, ctx, conn, tenant.ID); provider != payjp.ID || enabled || hint != paymentsettings.MaskSecret(integrationPayjpSecretKey) {
+		if provider, enabled, hint := configProvider(t, ctx, conn, tenant.ID); provider != payjp.ID || enabled || hint != secrethint.Mask(integrationPayjpSecretKey) {
 			t.Fatalf("the previous release reads %s enabled %v hint %q, want PAY.JP off with its fields", provider, enabled, hint)
 		}
 
@@ -643,7 +644,7 @@ func TestRetiredProviderMigrationShowsTheRetiredProvidersCredentials(t *testing.
 			SET enabled = true,
 				credentials_encrypted = jsonb_build_object('secret_key', $2::text, 'webhook_secret', $3::text),
 				credential_hints = jsonb_build_object('secret_key', $4::text, 'webhook_secret', $5::text)
-			WHERE tenant_id = $1`, []any{tenant.ID, secretEncrypted, webhookEncrypted, paymentsettings.MaskSecret(integrationSecretKey), paymentsettings.MaskSecret(integrationWebhookSecret)}},
+			WHERE tenant_id = $1`, []any{tenant.ID, secretEncrypted, webhookEncrypted, secrethint.Mask(integrationSecretKey), secrethint.Mask(integrationWebhookSecret)}},
 		{`UPDATE tenant_payment_providers SET retired_at = now() WHERE tenant_id = $1`, []any{tenant.ID}},
 	} {
 		if _, err := pg.DB.ExecContext(ctx, statement.query, statement.args...); err != nil {
@@ -655,7 +656,7 @@ func TestRetiredProviderMigrationShowsTheRetiredProvidersCredentials(t *testing.
 	}
 
 	pg.MigrateUp(t)
-	if provider, enabled, hint := configProvider(t, ctx, pg.DB, tenant.ID); provider != stripe.ID || enabled || hint != paymentsettings.MaskSecret(integrationSecretKey) {
+	if provider, enabled, hint := configProvider(t, ctx, pg.DB, tenant.ID); provider != stripe.ID || enabled || hint != secrethint.Mask(integrationSecretKey) {
 		t.Fatalf("the previous release reads %s enabled %v hint %q, want Stripe off with its fields", provider, enabled, hint)
 	}
 
