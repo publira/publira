@@ -102,6 +102,31 @@ test.describe("web-storefront Open Graph cards", () => {
     await expectImage(request, url);
   });
 
+  for (const rated of [SEED_TENANT.r15Series, SEED_TENANT.r18Series]) {
+    test(`${rated.title}, a rated series, unfurls into the drawn card despite its eye-catch`, async ({
+      page,
+      request,
+    }) => {
+      await page.goto(storefrontPath(`/series/${rated.publicId}`));
+
+      const url = await openGraphImage(page);
+      expect(url).toBe(`${SEED_ORIGIN}/og/series/${rated.publicId}`);
+      await expectImage(request, url);
+    });
+
+    test(`an episode of ${rated.title} unfurls into the drawn card`, async ({
+      page,
+      request,
+    }) => {
+      const path = `/series/${rated.publicId}/episodes/${rated.freeEpisodeId}`;
+      await page.goto(storefrontPath(path));
+
+      const url = await openGraphImage(page);
+      expect(url).toBe(`${SEED_ORIGIN}/og${path}`);
+      await expectImage(request, url);
+    });
+  }
+
   test("an episode unfurls with a picture", async ({ page, request }) => {
     await page.goto(
       storefrontPath(

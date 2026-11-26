@@ -65,7 +65,11 @@ describe("resolveSeriesOpenGraphImage", () => {
   it("keeps the uploaded og variant", () => {
     expect(
       resolveSeriesOpenGraphImage(
-        { alt: "Published Series", variants: [variant("og", 1200, 630)] },
+        {
+          ageRating: undefined,
+          alt: "Published Series",
+          variants: [variant("og", 1200, 630)],
+        },
         SERIES_CARD
       )
     ).toEqual({
@@ -79,7 +83,11 @@ describe("resolveSeriesOpenGraphImage", () => {
   it("falls back to the drawn card when the series has no og variant", () => {
     expect(
       resolveSeriesOpenGraphImage(
-        { alt: "Published Series", variants: [variant("portrait", 600, 800)] },
+        {
+          ageRating: undefined,
+          alt: "Published Series",
+          variants: [variant("portrait", 600, 800)],
+        },
         SERIES_CARD
       )
     ).toEqual({
@@ -93,11 +101,32 @@ describe("resolveSeriesOpenGraphImage", () => {
   it("falls back to the drawn card when the series has no eye-catch", () => {
     expect(
       resolveSeriesOpenGraphImage(
-        { alt: "Published Series", variants: undefined },
+        { ageRating: undefined, alt: "Published Series", variants: undefined },
         SERIES_CARD
       ).url
     ).toBe(SERIES_CARD);
   });
+
+  it.each(["r15", "r18"] as const)(
+    "draws the card for a series rated %s, whatever it uploaded",
+    (ageRating) => {
+      expect(
+        resolveSeriesOpenGraphImage(
+          {
+            ageRating,
+            alt: "Published Series",
+            variants: [variant("og", 1200, 630)],
+          },
+          SERIES_CARD
+        )
+      ).toEqual({
+        alt: "Published Series",
+        height: 630,
+        url: SERIES_CARD,
+        width: 1200,
+      });
+    }
+  );
 });
 
 describe("resolveEpisodeOpenGraphImage", () => {
@@ -120,7 +149,7 @@ describe("resolveEpisodeOpenGraphImage", () => {
     expect(
       resolveEpisodeOpenGraphImage(
         { alt: "Episode 2", variants: [episodeOg] },
-        { alt: "Published Series", variants: [seriesOg] },
+        { ageRating: undefined, alt: "Published Series", variants: [seriesOg] },
         EPISODE_CARD
       )
     ).toEqual({
@@ -135,7 +164,7 @@ describe("resolveEpisodeOpenGraphImage", () => {
     expect(
       resolveEpisodeOpenGraphImage(
         { alt: "Episode 2", variants: undefined },
-        { alt: "Published Series", variants: [seriesOg] },
+        { ageRating: undefined, alt: "Published Series", variants: [seriesOg] },
         EPISODE_CARD
       )
     ).toEqual({
@@ -150,7 +179,7 @@ describe("resolveEpisodeOpenGraphImage", () => {
     expect(
       resolveEpisodeOpenGraphImage(
         { alt: "Episode 2", variants: [variant("landscape", 1600, 900)] },
-        { alt: "Published Series", variants: [seriesOg] },
+        { ageRating: undefined, alt: "Published Series", variants: [seriesOg] },
         EPISODE_CARD
       ).url
     ).toBe(seriesOg.url);
@@ -160,7 +189,7 @@ describe("resolveEpisodeOpenGraphImage", () => {
     expect(
       resolveEpisodeOpenGraphImage(
         { alt: "Episode 2", variants: undefined },
-        { alt: "Published Series", variants: undefined },
+        { ageRating: undefined, alt: "Published Series", variants: undefined },
         EPISODE_CARD
       )
     ).toEqual({
@@ -170,6 +199,28 @@ describe("resolveEpisodeOpenGraphImage", () => {
       width: 1200,
     });
   });
+});
+
+describe("resolveEpisodeOpenGraphImage of a rated series", () => {
+  const og = variant("og", 1200, 630);
+
+  it.each(["r15", "r18"] as const)(
+    "draws the card for an episode of a series rated %s, whatever either uploaded",
+    (ageRating) => {
+      expect(
+        resolveEpisodeOpenGraphImage(
+          { alt: "Episode 2", variants: [og] },
+          { ageRating, alt: "Published Series", variants: [og] },
+          EPISODE_CARD
+        )
+      ).toEqual({
+        alt: "Episode 2",
+        height: 630,
+        url: EPISODE_CARD,
+        width: 1200,
+      });
+    }
+  );
 });
 
 describe("openGraphMetadata", () => {

@@ -139,7 +139,11 @@ export const generateMetadata = async (
   const image = cardPath
     ? resolveEpisodeOpenGraphImage(
         { alt: title, variants: episode.eyeCatchImageVariants },
-        { alt: series.title, variants: work?.eyeCatchImageVariants },
+        {
+          ageRating: series.ageRating,
+          alt: series.title,
+          variants: work?.eyeCatchImageVariants,
+        },
         cardPath
       )
     : undefined;

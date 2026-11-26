@@ -267,6 +267,22 @@ describe("seriesJsonLd", () => {
     ]);
   });
 
+  it.each(["r15", "r18"] as const)(
+    "carries no image for a work rated %s",
+    (ageRating) => {
+      const document = seriesJsonLd(SITE, {
+        ...SERIES,
+        ageRating,
+        eyeCatchImageVariants: [
+          variant("portrait", 1200, "/images/series/portrait-1200.webp"),
+          variant("landscape", 1600, "/images/series/landscape-1600.webp"),
+        ],
+      });
+
+      expect(document).not.toHaveProperty("image");
+    }
+  );
+
   it("keeps an image on the tenant's image host as the API answered it", () => {
     const eyeCatchImageVariants = [
       variant(

@@ -144,7 +144,11 @@ export const generateMetadata = async (
   // Relative, like the alternates, so both need the same `metadataBase`.
   const image = cardPath
     ? resolveSeriesOpenGraphImage(
-        { alt: series.title, variants: series.eyeCatchImageVariants },
+        {
+          ageRating: series.ageRating,
+          alt: series.title,
+          variants: series.eyeCatchImageVariants,
+        },
         cardPath
       )
     : undefined;

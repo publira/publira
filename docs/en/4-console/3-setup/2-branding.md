@@ -2,7 +2,7 @@
 title: Branding
 description: Give the site the publisher's logo, browser icon, sign-in image, colors, and typefaces, design a dark palette beside the light one, upload other companies' marks under their guidelines, and check the theme in the preview before readers see it.
 published: 2026-10-07
-updated: 2026-10-28
+updated: 2026-11-26
 ---
 
 **Branding**, under **Administration**, decides how the site looks: the logo in its header, the icon in the browser's tab, the image beside its sign-in form, the marks of other companies, its colors, and the faces its text is set in. The screen has **Logo**, **Icon**, **Sign-in image**, **Brand marks**, and the theme's colors and typefaces, with a dark palette beside them. Each is saved on its own, and saving one leaves the others as they are.
@@ -34,7 +34,7 @@ None of the three is used in the tenant's mail, which is sent in Publira's own c
 
 ## Link previews
 
-A link to any page of the site, shared in a chat or a post, unfurls with a picture. A series or an episode with a **Link preview (1200:630)** image shows that image as it was uploaded, as [Series](../1-catalog/1-series.md#the-cover-image) describes. Every other page, and a series or episode without one, shows a card the site draws for it:
+A link to any page of the site, shared in a chat or a post, unfurls with a picture. A series or an episode with a **Link preview (1200:630)** image shows that image as it was uploaded, as [Series](../1-catalog/1-series.md#the-cover-image) describes, unless the series is rated **R15** or **R18**: a shared link reaches people who have not confirmed their age, so a rated series and its episodes never show their cover in one. Every other page, a series or episode without the image, and a rated series and its episodes show a card the site draws for it:
 
 - The page's own name, large: the series' or the episode's title, the name of the label, genre, tag, or Author, or the title of a page under **Pages**. An episode's card has its series' title above it, and a label's, genre's, or Author's card the name of the list it belongs to. The home page, and every page that names nothing of its own such as the ranking, shows the **Site tagline** from [Settings](./1-settings.md), or the site's name where there is none.
 - The logo at the bottom, or the site's name in its place where no logo is uploaded.
