@@ -2,7 +2,7 @@
 title: Sign-in with Apple and Google
 description: Let readers sign in to the site and the app with an Apple or Google account, and create what Apple and Google need for it.
 published: 2026-10-06
-updated: 2026-10-17
+updated: 2026-11-26
 ---
 
 Readers sign in to a tenant's site with an email address and a password. **Integrations** › **Sign-in** adds two buttons beside that form, **Continue with Apple** and **Continue with Google**, so a reader can sign up and sign in with an account they already have. This page takes a Tenant admin through both providers for the site, and says what readers see once they are on. The app shares the same setup; what only the app needs is on [In-app purchase and sign-in](../5-mobile-app/5-purchases-and-sign-in.md#sign-in-with-apple-and-google).
@@ -129,10 +129,13 @@ A link is refused, with the reason on the screen, when the Apple or Google accou
 
 The same screen on the site lists the reader's **Passkeys**, each with when it was added and when it last signed them in, and **Remove**. **Add a passkey** asks the browser for a new one, kept by the device's screen lock, a password manager, or a security key, and then for a name to tell it apart by, which the reader may skip. From then on, **Sign in with a passkey** signs them in with it. The section is there in every browser that can use a passkey, whatever is set up under **Sign-in**, and a reader can hold up to 20 passkeys. **Passkeys** on the app's account screen lists the same passkeys, adds one, and renames and removes each.
 
+On the site, **Add a passkey**, **Remove**, and **Unlink** each open a dialog that asks for the reader's **Current password** before anything changes, so a session left signed in on a shared computer cannot add a way into the account or take one away. A wrong password is refused in the dialog, and counts against the same limits as the password typed to change the email address. Each passkey added or removed, and each account unlinked, is also reported by email to the account's address, with a link back to **Security**.
+
 An account created through Apple or Google has no password. The same screen offers **Set a password**, which mails a link to set one, after which the reader can sign in with their email address as well. Until then:
 
 - The account keeps one way to sign in: its last linked account cannot be unlinked while it holds no passkey, and its last passkey cannot be removed while it has no linked account.
 - Deleting the account and changing the email address are confirmed by signing in with Apple or Google again, through **Confirm with Apple** or **Confirm with Google**, or with one of the reader's passkeys, through **Confirm with a passkey**, in place of the password, on the site and in the app alike.
+- On the site, adding or removing a passkey and unlinking an account are confirmed the same way, in their dialogs. Adding a passkey with one the reader already holds asks the browser for that one first, and adding one after signing in with Apple or Google again brings the reader back to **Security**, where **Create the passkey** finishes it.
 
 ### Mail to a Hide My Email address
 

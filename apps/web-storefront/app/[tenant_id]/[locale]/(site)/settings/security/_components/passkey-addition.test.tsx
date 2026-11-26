@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithClientMessages } from "#lib/render-with-client-messages";
 
+import type { PasskeyConfirmationStartState } from "../../_lib/passkey-confirmation-state";
 import type {
   PasskeyRegistrationStartState,
   PasskeyRegistrationState,
@@ -13,12 +14,16 @@ import type {
 import * as PasskeyAddition from "./passkey-addition";
 
 const {
+  beginConfirmation,
   beginRegistration,
   browserSupportsWebAuthn,
   finishRegistration,
   namePasskey,
+  startAuthentication,
   startRegistration,
 } = vi.hoisted(() => ({
+  beginConfirmation:
+    vi.fn<(formData: FormData) => Promise<PasskeyConfirmationStartState>>(),
   beginRegistration:
     vi.fn<(formData: FormData) => Promise<PasskeyRegistrationStartState>>(),
   browserSupportsWebAuthn: vi.fn<() => boolean>(),
@@ -28,12 +33,18 @@ const {
     vi.fn<
       (state: ActionForm.State, formData: FormData) => Promise<ActionForm.State>
     >(),
+  startAuthentication:
+    vi.fn<(options: { optionsJSON: unknown }) => Promise<typeof ASSERTION>>(),
   startRegistration:
     vi.fn<(options: { optionsJSON: unknown }) => Promise<typeof CREDENTIAL>>(),
 }));
 
 // The Actions are `"use server"`, so the module they live in cannot be
 // evaluated here at all.
+vi.mock("../../_lib/passkey-confirmation-actions", () => ({
+  beginPasskeyConfirmationAction: beginConfirmation,
+}));
+
 vi.mock("../_lib/passkey-actions", () => ({
   beginPasskeyRegistrationAction: beginRegistration,
   finishPasskeyRegistrationAction: finishRegistration,
@@ -44,6 +55,7 @@ vi.mock("../_lib/passkey-actions", () => ({
 // stand in for.
 vi.mock("@simplewebauthn/browser", () => ({
   browserSupportsWebAuthn,
+  startAuthentication,
   startRegistration,
 }));
 
@@ -57,6 +69,10 @@ const webAuthnError = (name: string) =>
 const CREATION_OPTIONS = { challenge: "Y2hhbGxlbmdl", rp: { name: "Site" } };
 
 const CREDENTIAL = { id: "credential-id", response: {}, type: "public-key" };
+
+const REQUEST_OPTIONS = { challenge: "Y29uZmlybQ" };
+
+const ASSERTION = { id: "existing-id", response: {}, type: "public-key" };
 
 const renderAddition = () =>
   renderWithClientMessages(
@@ -194,4 +210,90 @@ describe("PasskeyAddition", () => {
       expect(finishRegistration).not.toHaveBeenCalled();
     }
   );
+
+  it("confirms with another passkey before beginning, when asked to", async () => {
+    beginConfirmation.mockResolvedValueOnce({
+      message: "",
+      ok: true,
+      optionsJson: JSON.stringify(REQUEST_OPTIONS),
+    });
+    startAuthentication.mockResolvedValueOnce(ASSERTION);
+
+    await renderWithClientMessages(
+      <PasskeyAddition.Root
+        add={
+          <PasskeyAddition.AddForm confirmWith="passkey">
+            <input name="tenantId" type="hidden" value="TENANT001" />
+            <PasskeyAddition.Added />
+            <ActionForm.Submit>Confirm with a passkey</ActionForm.Submit>
+          </PasskeyAddition.AddForm>
+        }
+        name={<p>Name this passkey</p>}
+      />
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm with a passkey" })
+    );
+
+    expect(await screen.findByText("Name this passkey")).toBeDefined();
+    expect(startAuthentication).toHaveBeenCalledWith({
+      optionsJSON: REQUEST_OPTIONS,
+    });
+    const begun = beginRegistration.mock.calls[0]?.[0];
+    expect(begun?.get("passkeyCredential")).toBe(JSON.stringify(ASSERTION));
+  });
+
+  it("begins nothing when the reader closes the confirming passkey's prompt", async () => {
+    beginConfirmation.mockResolvedValueOnce({
+      message: "",
+      ok: true,
+      optionsJson: JSON.stringify(REQUEST_OPTIONS),
+    });
+    startAuthentication.mockRejectedValueOnce(webAuthnError("NotAllowedError"));
+
+    await renderWithClientMessages(
+      <PasskeyAddition.Root
+        add={
+          <PasskeyAddition.AddForm confirmWith="passkey">
+            <PasskeyAddition.Added />
+            <ActionForm.Submit>Confirm with a passkey</ActionForm.Submit>
+          </PasskeyAddition.AddForm>
+        }
+        name={<p>Name this passkey</p>}
+      />
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm with a passkey" })
+    );
+
+    expect(
+      await screen.findByText(
+        "The passkey request was cancelled or timed out. Try again."
+      )
+    ).toBeDefined();
+    expect(beginRegistration).not.toHaveBeenCalled();
+  });
+
+  it("creates the passkey over the options a provider sign-in left, without beginning again", async () => {
+    await renderWithClientMessages(
+      <PasskeyAddition.Root
+        add={
+          <PasskeyAddition.ResumeForm
+            optionsJson={JSON.stringify(CREATION_OPTIONS)}
+          >
+            <PasskeyAddition.Added />
+            <ActionForm.Submit>Create the passkey</ActionForm.Submit>
+          </PasskeyAddition.ResumeForm>
+        }
+        name={<p>Name this passkey</p>}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Create the passkey" }));
+
+    expect(await screen.findByText("Name this passkey")).toBeDefined();
+    expect(beginRegistration).not.toHaveBeenCalled();
+    expect(startRegistration).toHaveBeenCalledWith({
+      optionsJSON: CREATION_OPTIONS,
+    });
+  });
 });

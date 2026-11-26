@@ -580,20 +580,47 @@ export const listMyIdentities = async (
 };
 
 /**
- * Unlink a provider from the signed-in reader's account. The API refuses to
- * take the last one from an account without a password, which comes back as
- * the error for the form to word.
+ * The request fields an {@link AccountConfirmation} fills in, for the RPCs
+ * that take it beside their own `provider`: the provider of a fresh sign-in
+ * is then `confirmationProvider`.
+ */
+const unlinkConfirmationFields = (confirmation: AccountConfirmation) => {
+  if ("password" in confirmation) {
+    return { password: confirmation.password };
+  }
+
+  if ("passkeyCredential" in confirmation) {
+    return { passkeyCredentialJson: confirmation.passkeyCredential };
+  }
+
+  return {
+    confirmationProvider: IDENTITY_PROVIDERS[confirmation.provider],
+    idToken: confirmation.idToken,
+    nonce: confirmation.nonce,
+  };
+};
+
+/**
+ * Unlink a provider from the signed-in reader's account, confirmed as an
+ * email change is. The API refuses to take the last one from an account
+ * without a password, and a confirmation that does not verify, which both
+ * come back as the error for the form to word.
  */
 export const unlinkMyIdentity = async (
   tenantId: string,
   provider: SignInProvider,
+  confirmation: AccountConfirmation,
   accessToken?: string
 ): Promise<{ ok: true } | { error: unknown; ok: false }> => {
   const sid = await resolveAccessToken(accessToken);
 
   try {
     await apiClient.auth.unlinkIdentity(
-      { provider: IDENTITY_PROVIDERS[provider], tenant: { tenantId } },
+      {
+        provider: IDENTITY_PROVIDERS[provider],
+        tenant: { tenantId },
+        ...unlinkConfirmationFields(confirmation),
+      },
       buildSessionHeaders(sid)
     );
 
@@ -747,19 +774,20 @@ export const listMyPasskeys = async (
 };
 
 /**
- * Begin registering a passkey for the signed-in reader. The options exclude
- * the passkeys the reader holds already, and the API refuses an account that
- * holds as many as it may.
+ * Begin registering a passkey for the signed-in reader, confirmed as an email
+ * change is. The options exclude the passkeys the reader holds already, and
+ * the API refuses an account that holds as many as it may.
  */
 export const beginMyPasskeyRegistration = async (
   tenantId: string,
+  confirmation: AccountConfirmation,
   accessToken?: string
 ): Promise<PasskeyChangeOutcome<{ optionsJson: string }>> => {
   const sid = await resolveAccessToken(accessToken);
 
   try {
     const response = await apiClient.auth.beginPasskeyRegistration(
-      { tenant: { tenantId } },
+      { tenant: { tenantId }, ...confirmationFields(confirmation) },
       buildSessionHeaders(sid)
     );
 
@@ -820,20 +848,21 @@ export const renameMyPasskey = async (
 };
 
 /**
- * Remove one of the reader's passkeys. The API refuses to take the last way
- * in from an account without a password, which comes back as the error for
- * the form to word.
+ * Remove one of the reader's passkeys, confirmed as an email change is. The
+ * API refuses to take the last way in from an account without a password,
+ * which comes back as the error for the form to word.
  */
 export const deleteMyPasskey = async (
   tenantId: string,
   id: string,
+  confirmation: AccountConfirmation,
   accessToken?: string
 ): Promise<PasskeyChangeOutcome> => {
   const sid = await resolveAccessToken(accessToken);
 
   try {
     await apiClient.auth.deletePasskey(
-      { id, tenant: { tenantId } },
+      { id, tenant: { tenantId }, ...confirmationFields(confirmation) },
       buildSessionHeaders(sid)
     );
 
@@ -1273,7 +1302,8 @@ export type AccountConfirmation =
 
 /**
  * The confirmation fields other than the password that `RequestEmailChange`,
- * `DeleteMe`, and `DisableMfa` all take.
+ * `DeleteMe`, `DisableMfa`, `BeginPasskeyRegistration`, and `DeletePasskey`
+ * all take.
  */
 export const freshConfirmationFields = (
   confirmation: Exclude<AccountConfirmation, { password: string }>
@@ -1285,6 +1315,15 @@ export const freshConfirmationFields = (
         nonce: confirmation.nonce,
         provider: IDENTITY_PROVIDERS[confirmation.provider],
       };
+
+/**
+ * Every confirmation field of the RPCs that name the password `password`:
+ * `BeginPasskeyRegistration` and `DeletePasskey`.
+ */
+const confirmationFields = (confirmation: AccountConfirmation) =>
+  "password" in confirmation
+    ? { password: confirmation.password }
+    : freshConfirmationFields(confirmation);
 
 export const requestPublicEmailChange = async (
   tenantId: string,

@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-import { applyScenarioSql, querySql, quoteSqlLiteral } from "../src/db";
+import { applyScenarioSql, querySql, quoteSqlLiteral, runSql } from "../src/db";
 import { SEED_TENANT_ID } from "../src/scenarios/auth";
 import {
   PASSKEY_SETTINGS_READER,
@@ -28,12 +28,28 @@ const passkeysSection = (page: Page) =>
   page.getByRole("region", { name: "Passkeys" });
 
 /**
- * Add a passkey from **Passkeys** and name it, or skip naming it when no name
- * is given, ending back on the add form.
+ * Add a passkey from **Passkeys**, confirmed in its dialog with `password` or,
+ * without one, with a passkey the account holds already, and name it, or skip
+ * naming it when no name is given, ending back on the add button.
  */
-const addPasskey = async (page: Page, name?: string): Promise<void> => {
+const addPasskey = async (
+  page: Page,
+  { name, password }: { name?: string; password?: string }
+): Promise<void> => {
   const section = passkeysSection(page);
   await section.getByRole("button", { name: "Add a passkey" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Add a passkey" });
+
+  if (password) {
+    await dialog.getByLabel("Current password").fill(password);
+    await dialog.getByRole("button", { name: "Add a passkey" }).click();
+  } else {
+    await dialog
+      .getByRole("button", { name: "Confirm with a passkey" })
+      .click();
+  }
+
   await expect(section.getByRole("status")).toContainText(
     "The passkey has been added."
   );
@@ -95,7 +111,21 @@ test.describe("web-storefront passkey settings", () => {
     await expect(passkeysSection(page)).toContainText(
       "No passkeys are registered."
     );
-    await addPasskey(page, "E2E laptop");
+    // Nothing is added on the session alone: the dialog asks for the password,
+    // and a wrong one stays in it.
+    await passkeysSection(page)
+      .getByRole("button", { name: "Add a passkey" })
+      .click();
+    const addDialog = page.getByRole("dialog", { name: "Add a passkey" });
+    await addDialog.getByLabel("Current password").fill("not-the-password");
+    await addDialog.getByRole("button", { name: "Add a passkey" }).click();
+    await expect(addDialog).toContainText("The password is incorrect.");
+    await addDialog.getByRole("button", { name: "Cancel" }).click();
+
+    await addPasskey(page, {
+      name: "E2E laptop",
+      password: PASSKEY_SETTINGS_READER.password,
+    });
     await expect(passkeysSection(page).getByText("E2E laptop")).toBeVisible();
     await expect(passkeysSection(page)).toContainText("Not used yet");
 
@@ -108,6 +138,15 @@ test.describe("web-storefront passkey settings", () => {
     await passkeysSection(page)
       .getByRole("button", { name: "Remove E2E laptop" })
       .click();
+
+    const removeDialog = page.getByRole("dialog", {
+      name: "Remove E2E laptop?",
+    });
+
+    await removeDialog
+      .getByLabel("Current password")
+      .fill(PASSKEY_SETTINGS_READER.password);
+    await removeDialog.getByRole("button", { name: "Remove" }).click();
     await expect(page.getByRole("status")).toContainText(
       "The passkey has been removed."
     );
@@ -130,14 +169,42 @@ test.describe("web-storefront passkey settings", () => {
         tenantId: SEED_TENANT_ID,
       }
     );
+    const reader = quoteSqlLiteral(PASSWORDLESS_PASSKEY_READER.publicId);
+
+    // The first passkey is confirmed with a password the account then loses,
+    // since an account with neither a password nor a linked provider has
+    // nothing else to confirm one with.
+    runSql(
+      `UPDATE users SET password_hash = (SELECT password_hash FROM users WHERE public_id = ${quoteSqlLiteral(PASSKEY_SETTINGS_READER.publicId)}) WHERE public_id = ${reader}`
+    );
+    await page.goto(storefrontUrl("/settings/security"));
+    await addPasskey(page, {
+      name: "First",
+      password: PASSKEY_SETTINGS_READER.password,
+    });
+    runSql(`UPDATE users SET password_hash = NULL WHERE public_id = ${reader}`);
+
     await page.goto(storefrontUrl("/settings/security"));
     await expect(
       page.getByRole("heading", { name: "Set a password" })
     ).toBeVisible();
 
-    await addPasskey(page);
+    // Without a password, the passkey it holds confirms the next one, and the
+    // removal of either.
+    await addPasskey(page, {});
     const section = passkeysSection(page);
     await expect(section.getByText("Unnamed passkey")).toBeVisible();
+    await section.getByRole("button", { name: "Remove First" }).click();
+    const removeDialog = page.getByRole("dialog", { name: "Remove First?" });
+    await expect(removeDialog).toContainText(
+      "Your account has no password. Confirm with a passkey or a linked account."
+    );
+    await removeDialog
+      .getByRole("button", { name: "Confirm with a passkey" })
+      .click();
+    await expect(page.getByRole("status")).toContainText(
+      "The passkey has been removed."
+    );
     await expect(
       section.getByRole("button", { name: "Remove Unnamed passkey" })
     ).toBeDisabled();
