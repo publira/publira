@@ -47,7 +47,12 @@ export type PendingPasskeyRegistration = z.output<
 export const writePendingPasskeyRegistration = async (
   pending: PendingPasskeyRegistration
 ): Promise<void> => {
-  const sealed = await encryptPayload(pending, resolveAuthSecret());
+  const sealed = await encryptPayload(
+    pending,
+    resolveAuthSecret(),
+    "pending-passkey-registration"
+  );
+
   const cookieStore = await cookies();
   cookieStore.set({
     httpOnly: true,
@@ -78,7 +83,11 @@ export const readPendingPasskeyRegistration = async (
   }
 
   const parsed = pendingPasskeyRegistrationSchema.safeParse(
-    await decryptPayload(raw, resolveAuthSecret())
+    await decryptPayload(
+      raw,
+      resolveAuthSecret(),
+      "pending-passkey-registration"
+    )
   );
 
   return parsed.success && parsed.data.tenantId === tenantId

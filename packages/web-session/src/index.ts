@@ -21,10 +21,25 @@ export type JsonValue =
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
-// A256GCM takes exactly 32 bytes, so a shorter secret cannot key the JWE at all.
+// A256GCM takes a 32-byte key, and the secret it is derived from is held to
+// the same floor so the derived key never carries less entropy than it needs.
 const AES_GCM_KEY_BYTES = 32;
 
-const toAesGcmKeyBytes = (secret: string): Uint8Array => {
+/**
+ * What a sealed value is for. Each purpose has a key of its own, so a value
+ * sealed for one cookie does not open as another although every cookie of an
+ * app is sealed under the same `PUBLIRA_AUTH_SECRET`.
+ */
+export type SealPurpose =
+  | "mfa-challenge"
+  | "pending-passkey-registration"
+  | "pending-sign-up"
+  | "session"
+  | "sign-in-request";
+
+// Synchronous, so an unusable secret throws at the call rather than as a
+// rejected promise a caller could fold into "no payload".
+const usableSecretBytes = (secret: string): Uint8Array<ArrayBuffer> => {
   const raw = textEncoder.encode(secret);
 
   if (raw.length < AES_GCM_KEY_BYTES) {
@@ -33,7 +48,37 @@ const toAesGcmKeyBytes = (secret: string): Uint8Array => {
     );
   }
 
-  return raw.slice(0, AES_GCM_KEY_BYTES);
+  return raw;
+};
+
+/**
+ * The A256GCM key for one purpose, derived with HKDF-SHA-256 from every byte
+ * of the secret, so changing any part of the secret changes every key.
+ */
+const deriveKey = async (
+  secretBytes: Uint8Array<ArrayBuffer>,
+  purpose: SealPurpose
+): Promise<Uint8Array> => {
+  const material = await crypto.subtle.importKey(
+    "raw",
+    secretBytes,
+    "HKDF",
+    false,
+    ["deriveBits"]
+  );
+
+  const bits = await crypto.subtle.deriveBits(
+    {
+      hash: "SHA-256",
+      info: textEncoder.encode(`publira web-session ${purpose}`),
+      name: "HKDF",
+      salt: new Uint8Array(0),
+    },
+    material,
+    AES_GCM_KEY_BYTES * 8
+  );
+
+  return new Uint8Array(bits);
 };
 
 /**
@@ -41,35 +86,39 @@ const toAesGcmKeyBytes = (secret: string): Uint8Array => {
  *
  * The session cookie is not the only thing a console hands back to itself
  * through the browser: web-admin also carries the half-finished login an MFA
- * challenge stands for. Both want the same A256GCM key and the same "the
- * browser may hold it but neither read nor forge it" property, so the sealing
- * lives here once and each cookie owns the payload shape it needs.
+ * challenge stands for. Both want the same "the browser may hold it but
+ * neither read nor forge it" property, so the sealing lives here once and
+ * each cookie owns the payload shape it needs and names its purpose.
  */
 export const encryptPayload = <TPayload>(
   payload: TPayload,
-  secret: string
+  secret: string,
+  purpose: SealPurpose
 ): Promise<string> => {
-  const key = toAesGcmKeyBytes(secret);
+  const secretBytes = usableSecretBytes(secret);
 
-  return new CompactEncrypt(textEncoder.encode(JSON.stringify(payload)))
-    .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
-    .encrypt(key);
+  return deriveKey(secretBytes, purpose).then((key) =>
+    new CompactEncrypt(textEncoder.encode(JSON.stringify(payload)))
+      .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
+      .encrypt(key)
+  );
 };
 
 /**
- * Open a payload sealed by {@link encryptPayload}, or `null` when the value is
- * not one this deployment sealed.
+ * Open a payload sealed by {@link encryptPayload} for the same purpose, or
+ * `null` when the value is not one this deployment sealed for it.
  *
  * The result is any JSON value on purpose: a cookie is untrusted input even
  * once it decrypts, so the caller validates the shape it expects.
  */
 export const decryptPayload = async (
   token: string,
-  secret: string
+  secret: string,
+  purpose: SealPurpose
 ): Promise<JsonValue> => {
   // Outside the try: an unusable key is a misconfigured deployment, and
   // reporting it as "no session" would send every visitor to the login screen.
-  const key = toAesGcmKeyBytes(secret);
+  const key = await deriveKey(usableSecretBytes(secret), purpose);
 
   try {
     const { plaintext } = await compactDecrypt(token, key);
@@ -84,7 +133,7 @@ export const decryptPayload = async (
 export const encryptSessionPayload = (
   payload: WebSessionPayload,
   secret: string
-): Promise<string> => encryptPayload(payload, secret);
+): Promise<string> => encryptPayload(payload, secret, "session");
 
 const isWebSessionPayload = (
   payload: JsonValue
@@ -101,7 +150,7 @@ export const decryptSessionPayload = async (
   token: string,
   secret: string
 ): Promise<WebSessionPayload | null> => {
-  const payload = await decryptPayload(token, secret);
+  const payload = await decryptPayload(token, secret, "session");
 
   return isWebSessionPayload(payload) ? payload : null;
 };
@@ -125,9 +174,9 @@ export const isSessionExpired = (
  * There is deliberately no fallback: a built-in value would be published in
  * this repository, and it keys a JWE whose payload carries the API access
  * token. Anyone holding it could forge a session cookie or read one. So the
- * variable is required, and a value too short to key A256GCM is rejected
- * rather than quietly padded — a secret that was set but does not take effect
- * is the failure mode that is hardest to notice.
+ * variable is required, and a value shorter than the A256GCM key derived from
+ * it is rejected rather than quietly stretched — a secret that was set but
+ * does not take effect is the failure mode that is hardest to notice.
  */
 export const resolveAuthSecret = (): string => {
   const secret = process.env.PUBLIRA_AUTH_SECRET?.trim() ?? "";

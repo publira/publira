@@ -73,7 +73,7 @@ export const readMfaChallenge =
     }
 
     const parsed = mfaChallengeSchema.safeParse(
-      await decryptPayload(raw, resolveAuthSecret())
+      await decryptPayload(raw, resolveAuthSecret(), "mfa-challenge")
     );
 
     if (!parsed.success || isSessionExpired(parsed.data.expiresAt)) {
@@ -110,7 +110,12 @@ export const writeMfaChallenge = async (
     )
   );
 
-  const sealed = await encryptPayload(challenge, resolveAuthSecret());
+  const sealed = await encryptPayload(
+    challenge,
+    resolveAuthSecret(),
+    "mfa-challenge"
+  );
+
   const cookieStore = await cookies();
   cookieStore.set({
     maxAge,

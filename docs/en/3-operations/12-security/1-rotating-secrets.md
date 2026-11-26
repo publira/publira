@@ -2,7 +2,7 @@
 title: Rotating secrets
 description: Replace an install's secret encryption keys, a database role's password, and its signing keys and tokens without losing what they protect.
 published: 2026-10-21
-updated: 2026-11-24
+updated: 2026-11-26
 ---
 
 These procedures replace each secret that [Where each secret may go](./index.md#where-each-secret-may-go) names. Read them before you need them — each is easier to run on a quiet day than during an incident.
@@ -138,7 +138,7 @@ Rotate it whenever it may have leaked, and whenever a session key has: a session
 
 Each web app seals its session cookie with its own `PUBLIRA_AUTH_SECRET`. A new key makes every cookie it sealed unreadable, so its users land on the sign-in screen, without a message, while the other apps keep their sessions. Rotating the key of `web-storefront` signs readers out of the site but not out of the mobile app, and cancels a Sign in with Apple or Google that was under way; rotating the key of `web-admin` also cancels a two-step verification sign-in that was under way.
 
-The value has to be at least 32 bytes, and only its first 32 bytes are used, so generate a whole new one with `openssl rand -base64 32` rather than editing the end of the old one.
+The value has to be at least 32 bytes. Generate a whole new one with `openssl rand -base64 32` rather than editing the old one: a leaked value with part of it changed is secret only in the part you changed.
 
 ### The cache revalidation token
 
