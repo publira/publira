@@ -13,6 +13,7 @@ import (
 	"net/netip"
 	"slices"
 	"strings"
+	"syscall"
 	"unicode"
 )
 
@@ -57,32 +58,31 @@ func ParseAllowed(raw string) ([]netip.Prefix, error) {
 	return allowed, nil
 }
 
-// Dial connects to address, a host and a port, at the first address the host
-// resolves to that is public or in allowed. The address is checked as it is
-// dialled, after resolution, so a name that resolves elsewhere between a check
-// and the dial cannot slip past it. A host none of whose addresses may be
+// Dial connects to address, a host and a port, as dialer would, at an address
+// the host resolves to that is public or in allowed. The check runs as each
+// address is dialled, after resolution, so a name that resolves elsewhere
+// between a check and the dial cannot slip past it, and dialer keeps its own
+// handling of a host with several addresses: the timeout shared between them
+// and the fallback from IPv6 to IPv4. A host none of whose addresses may be
 // dialled is [ErrRestricted].
 func Dial(ctx context.Context, dialer *net.Dialer, network, address string, allowed []netip.Prefix) (net.Conn, error) {
-	host, port, err := net.SplitHostPort(address)
-	if err != nil {
-		return nil, fmt.Errorf("split the address: %w", err)
-	}
-	addresses, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
-	if err != nil {
-		return nil, fmt.Errorf("resolve the host: %w", err)
-	}
-	lastErr := ErrRestricted
-	for _, addr := range addresses {
-		if !Public(addr) && !inAllowed(addr, allowed) {
-			continue
+	guarded := *dialer
+	control := dialer.ControlContext
+	guarded.Control = nil
+	guarded.ControlContext = func(ctx context.Context, network, address string, conn syscall.RawConn) error {
+		addrPort, err := netip.ParseAddrPort(address)
+		if err != nil || (!Public(addrPort.Addr()) && !inAllowed(addrPort.Addr(), allowed)) {
+			return ErrRestricted
 		}
-		conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(addr.Unmap().String(), port))
-		if err == nil {
-			return conn, nil
+		if control != nil {
+			return control(ctx, network, address, conn)
 		}
-		lastErr = err
+		if dialer.Control != nil {
+			return dialer.Control(network, address, conn)
+		}
+		return nil
 	}
-	return nil, lastErr
+	return guarded.DialContext(ctx, network, address)
 }
 
 func inAllowed(addr netip.Addr, allowed []netip.Prefix) bool {

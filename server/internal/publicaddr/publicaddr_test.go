@@ -1,9 +1,14 @@
 package publicaddr
 
 import (
+	"errors"
+	"net"
 	"net/netip"
 	"slices"
+	"strconv"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestPublicRefusesWhatTheOperatorsNetworkHolds(t *testing.T) {
@@ -57,4 +62,46 @@ func TestParseAllowedReadsAddressesAndRanges(t *testing.T) {
 			t.Errorf("ParseAllowed(%q) = %v, want refused", raw, got)
 		}
 	}
+}
+
+// A restricted address is refused before anything connects to it, and a host
+// is reached at an allowed address whichever other addresses it resolves to.
+func TestDialChecksEveryAddressItConnectsTo(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	var accepted atomic.Int32
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			accepted.Add(1)
+			_ = conn.Close()
+		}
+	}()
+	port := strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+
+	for _, host := range []string{"127.0.0.1", "localhost"} {
+		if conn, err := Dial(t.Context(), dialer, "tcp", net.JoinHostPort(host, port), nil); !errors.Is(err, ErrRestricted) {
+			if conn != nil {
+				_ = conn.Close()
+			}
+			t.Errorf("Dial(%s) with nothing allowed = %v, want %v", host, err, ErrRestricted)
+		}
+	}
+	if got := accepted.Load(); got != 0 {
+		t.Fatalf("connections accepted before the address was allowed = %d, want 0", got)
+	}
+
+	allowed := []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}
+	conn, err := Dial(t.Context(), dialer, "tcp", net.JoinHostPort("localhost", port), allowed)
+	if err != nil {
+		t.Fatalf("Dial(localhost) with 127.0.0.1 allowed = %v, want it connected", err)
+	}
+	_ = conn.Close()
 }
