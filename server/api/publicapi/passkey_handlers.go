@@ -17,6 +17,7 @@ import (
 	"github.com/publira/publira/server/internal/clientip"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/dberr"
+	"github.com/publira/publira/server/internal/outbox"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/publicid"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -48,8 +49,8 @@ const passkeyNameMaxLength = 64
 // another, each of which is a row nothing else would ever remove.
 const maxPasskeysPerAccount = 20
 
-// passkeyConfirmationField is the request field an assertion confirming
-// DeleteMe or RequestEmailChange arrives in.
+// passkeyConfirmationField is the request field an assertion confirming a step
+// arrives in.
 const passkeyConfirmationField = "passkey_credential_json"
 
 // A refused sign-in assertion answers as a wrong password does.
@@ -418,36 +419,65 @@ func (s *apiServer) FinishPasskeyLogin(
 	return &publirav1.FinishPasskeyLoginResponse{User: user, AccessToken: accessToken}, nil
 }
 
+// BeginPasskeyRegistration begins the ceremony that adds a passkey, checking
+// and spending the confirmation of the account the request sends. The
+// confirmation is taken here rather than at the finish: the ceremony is bound
+// to the caller and spent by one finish, so the begin is what decides whether
+// a passkey may be added at all.
 func (s *apiServer) BeginPasskeyRegistration(
 	ctx context.Context,
 	req *publirav1.BeginPasskeyRegistrationRequest,
 ) (*publirav1.BeginPasskeyRegistrationResponse, error) {
+	const action = "passkey_registration_begin"
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
+		auth.AuditEvent(ctx, action, "failure", "", "", "invalid_session")
 		return nil, err
 	}
-	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
+	fail := func(reason string, err error) (*publirav1.BeginPasskeyRegistrationResponse, error) {
+		auth.AuditEvent(ctx, action, "failure", tenant.PublicID, user.PublicID, reason)
 		return nil, err
+	}
+	confirmation := accountConfirmation{
+		password:    req.Password,
+		provider:    req.Provider,
+		idToken:     req.IdToken,
+		nonce:       req.Nonce,
+		passkeyJSON: req.PasskeyCredentialJson,
+	}
+	if confirmation.sent() && !confirmation.single() {
+		return fail("invalid_input", accountConfirmationRequiredError())
+	}
+	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
+		return fail("rate_limited", err)
 	}
 	q := s.queriesFor(ctx)
 	rp, err := s.siteRelyingParty(ctx, q, tenant)
 	if err != nil {
-		return nil, err
+		return fail("relying_party_failed", err)
 	}
 	holder, err := s.passkeyUser(ctx, q, rp, user)
 	if err != nil {
-		return nil, err
+		return fail("passkey_lookup_failed", err)
 	}
+	// Refused before the confirmation is checked, so it is not spent on a
+	// ceremony that could not add anything.
 	if len(holder.Credentials) >= maxPasskeysPerAccount {
-		return nil, passkeyLimitError()
+		return fail("passkey_limit", passkeyLimitError())
+	}
+	if confirmation.sent() {
+		if reason, err := s.confirmAccount(ctx, q, tenant, user, confirmation); err != nil {
+			return fail(reason, err)
+		}
 	}
 	options, ceremony, err := rp.BeginRegistration(holder)
 	if err != nil {
 		return nil, s.internalError(ctx, "failed to begin passkey registration", err, "user_id", user.ID.String())
 	}
 	if err := s.startPasskeyCeremony(ctx, tenant.ID, user.ID, tenantwebauthn.CeremonyRegistration, ceremony); err != nil {
-		return nil, err
+		return fail("ceremony_start_failed", err)
 	}
+	auth.AuditEvent(ctx, action, "success", tenant.PublicID, user.PublicID, "ceremony_started")
 	return &publirav1.BeginPasskeyRegistrationResponse{CreationOptionsJson: string(options)}, nil
 }
 
@@ -572,6 +602,9 @@ func (s *apiServer) FinishPasskeyRegistration(
 	if err != nil {
 		return fail("store_failed", s.internalDBError(ctx, "failed to store passkey", err, "user_id", user.ID.String()))
 	}
+	if err := enqueueReaderSignInMethodChangedNoticeEmail(ctx, txq, tenant.ID, user.ID, outbox.SignInMethodPasskeyAdded, "", stored.ID); err != nil {
+		return fail("notice_enqueue_failed", s.internalDBError(ctx, "failed to enqueue the passkey added notice email", err, "user_id", user.ID.String()))
+	}
 	if err := tx.Commit(); err != nil {
 		return fail("transaction_commit_failed", s.internalDBError(ctx, "failed to commit passkey registration", err, "user_id", user.ID.String()))
 	}
@@ -663,8 +696,9 @@ func (s *apiServer) RenamePasskey(
 	return &publirav1.RenamePasskeyResponse{Passkey: passkeyProto(renamed)}, nil
 }
 
-// DeletePasskey removes one of the reader's passkeys, unless it is the last
-// way an account without a password signs in. That is the rule UnlinkIdentity
+// DeletePasskey removes one of the reader's passkeys, checking the
+// confirmation of the account the request sends, unless it is the last way an
+// account without a password signs in. That is the rule UnlinkIdentity
 // applies to a linked provider, extended to passkeys, and both take the
 // account row's lock, so an unlink and a removal racing over the account's
 // last two ways in cannot each find the other still there.
@@ -681,6 +715,16 @@ func (s *apiServer) DeletePasskey(
 	fail := func(reason string, err error) (*publirav1.DeletePasskeyResponse, error) {
 		auth.AuditEvent(ctx, action, "failure", tenant.PublicID, user.PublicID, reason)
 		return nil, err
+	}
+	confirmation := accountConfirmation{
+		password:    req.Password,
+		provider:    req.Provider,
+		idToken:     req.IdToken,
+		nonce:       req.Nonce,
+		passkeyJSON: req.PasskeyCredentialJson,
+	}
+	if confirmation.sent() && !confirmation.single() {
+		return fail("invalid_input", accountConfirmationRequiredError())
 	}
 	if err := s.chargeReaderAction(ctx, actionPasskey, tenant.ID, user.ID); err != nil {
 		return fail("rate_limited", err)
@@ -716,8 +760,18 @@ func (s *apiServer) DeletePasskey(
 			return fail("last_sign_in_method", connect.NewError(connect.CodeFailedPrecondition, "the account has no password, so it keeps its last passkey"))
 		}
 	}
+	// Checked against the locked row and spent on the transaction, after every
+	// refusal above, so a removal that does not happen spends nothing.
+	if confirmation.sent() {
+		if reason, err := s.confirmAccount(ctx, txq, tenant, locked, confirmation); err != nil {
+			return fail(reason, err)
+		}
+	}
 	if _, err := txq.DeleteUserWebauthnCredential(ctx, row.ID); err != nil {
 		return fail("delete_failed", s.internalDBError(ctx, "failed to delete passkey", err, "user_id", user.ID.String()))
+	}
+	if err := enqueueReaderSignInMethodChangedNoticeEmail(ctx, txq, tenant.ID, user.ID, outbox.SignInMethodPasskeyRemoved, "", row.ID); err != nil {
+		return fail("notice_enqueue_failed", s.internalDBError(ctx, "failed to enqueue the passkey removed notice email", err, "user_id", user.ID.String()))
 	}
 	if err := tx.Commit(); err != nil {
 		return fail("transaction_commit_failed", s.internalDBError(ctx, "failed to commit passkey removal", err, "user_id", user.ID.String()))
@@ -748,9 +802,8 @@ func (s *apiServer) isLastSignInPasskey(ctx context.Context, q dbmodels.Querier,
 	return passkeys <= 1, nil
 }
 
-// BeginPasskeyConfirmation begins the assertion that confirms DeleteMe or
-// RequestEmailChange in place of a password, allowing the caller's own
-// passkeys alone.
+// BeginPasskeyConfirmation begins the assertion that confirms a step in place
+// of a password, allowing the caller's own passkeys alone.
 func (s *apiServer) BeginPasskeyConfirmation(
 	ctx context.Context,
 	req *publirav1.BeginPasskeyConfirmationRequest,

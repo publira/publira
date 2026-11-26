@@ -263,6 +263,30 @@
       "preview": "새 비밀번호를 설정해 주세요.",
       "subject": "{$tenant_name} 비밀번호 재설정"
     },
+    "reader_sign_in_method_changed_notice": {
+      "action": "보안 설정 열기",
+      "email": "이메일 주소: {$email}",
+      "fallback_link": "버튼이 작동하지 않으면 다음 URL을 브라우저에 붙여 넣어 주세요.",
+      "identity_unlinked": {
+        "body": "{$provider_name} 계정의 연결이 해제되어 더 이상 로그인에 사용할 수 없습니다.",
+        "heading": "{$provider_name} 계정의 연결이 해제되었습니다",
+        "preview": "{$provider_name} 계정의 연결이 해제되었습니다.",
+        "subject": "{$tenant_name} {$provider_name} 계정 연결 해제됨"
+      },
+      "passkey_added": {
+        "body": "계정에 패스키가 추가되어 이제 로그인에 사용할 수 있습니다.",
+        "heading": "패스키가 추가되었습니다",
+        "preview": "계정에 패스키가 추가되었습니다.",
+        "subject": "{$tenant_name} 패스키 추가됨"
+      },
+      "passkey_removed": {
+        "body": "계정에서 패스키가 삭제되어 더 이상 로그인에 사용할 수 없습니다.",
+        "heading": "패스키가 삭제되었습니다",
+        "preview": "계정에서 패스키가 삭제되었습니다.",
+        "subject": "{$tenant_name} 패스키 삭제됨"
+      },
+      "warning": "이 변경을 하지 않으셨다면 즉시 로그인하여 보안에서 패스키와 연결된 계정을 확인해 주세요."
+    },
     "reader_signup_attempt_notice": {
       "action_confirmed": "비밀번호 재설정",
       "action_unconfirmed": "확인 메일 다시 보내기",

@@ -1472,7 +1472,8 @@ func (s *apiServer) UpdateMe(
 }
 
 // confirmationsGiven counts the ways a request confirmed itself with, of
-// which DeleteMe and RequestEmailChange take exactly one.
+// which DeleteMe, RequestEmailChange and the steps confirmAccount confirms take
+// exactly one.
 func confirmationsGiven(given ...bool) int {
 	count := 0
 	for _, g := range given {

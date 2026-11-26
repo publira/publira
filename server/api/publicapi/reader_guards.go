@@ -341,8 +341,9 @@ func (s *apiServer) chargeAction(ctx context.Context, policy platformpolicy.Poli
 }
 
 // chargeStepUp spends one of the account's step-up allowances, before the
-// password ChangePassword, DeleteMe and RequestEmailChange ask for on top of
-// the session is verified, and before every code the two-step verification RPCs
+// password ChangePassword, DeleteMe, RequestEmailChange and the steps
+// confirmAccount confirms ask for on top of the session is verified, and
+// before every code the two-step verification RPCs
 // check, VerifyMfa at sign-in included. The allowance is the login guard's
 // rather than one of the reader actions above, because the tenant console
 // checks the password of the same account and has to spend the same counters:

@@ -812,7 +812,8 @@ class ListMyIdentitiesResponse extends $pb.GeneratedMessage {
   $pb.PbList<LinkedIdentity> get identities => $_getList(0);
 
   /// False for an account a provider sign-in created, which confirms DeleteMe
-  /// with a fresh sign-in and keeps its last linked provider.
+  /// and the other steps that ask for the password with a fresh sign-in, and
+  /// keeps its last linked provider.
   @$pb.TagNumber(2)
   $core.bool get hasPassword => $_getBF(1);
   @$pb.TagNumber(2)
@@ -823,8 +824,9 @@ class ListMyIdentitiesResponse extends $pb.GeneratedMessage {
   void clearHasPassword() => $_clearField(2);
 
   /// True when the reader holds a passkey the storefront signs them in with,
-  /// which ListMyPasskeys lists and which confirms DeleteMe and an email change
-  /// through BeginPasskeyConfirmation.
+  /// which ListMyPasskeys lists and which confirms DeleteMe, an email change,
+  /// and the steps that add or take away a way to sign in through
+  /// BeginPasskeyConfirmation.
   @$pb.TagNumber(3)
   $core.bool get hasPasskey => $_getBF(2);
   @$pb.TagNumber(3)
@@ -839,10 +841,22 @@ class UnlinkIdentityRequest extends $pb.GeneratedMessage {
   factory UnlinkIdentityRequest({
     $0.TenantContext? tenant,
     IdentityProvider? provider,
+    $core.String? password,
+    IdentityProvider? confirmationProvider,
+    $core.String? idToken,
+    $core.String? nonce,
+    $core.String? passkeyCredentialJson,
   }) {
     final result = UnlinkIdentityRequest._();
     if (tenant != null) result.tenant = tenant;
     if (provider != null) result.provider = provider;
+    if (password != null) result.password = password;
+    if (confirmationProvider != null)
+      result.confirmationProvider = confirmationProvider;
+    if (idToken != null) result.idToken = idToken;
+    if (nonce != null) result.nonce = nonce;
+    if (passkeyCredentialJson != null)
+      result.passkeyCredentialJson = passkeyCredentialJson;
     return result;
   }
 
@@ -863,6 +877,12 @@ class UnlinkIdentityRequest extends $pb.GeneratedMessage {
         subBuilder: $0.TenantContext.$_createMessage)
     ..aE<IdentityProvider>(2, _omitFieldNames ? '' : 'provider',
         enumValues: IdentityProvider.values)
+    ..aOS(3, _omitFieldNames ? '' : 'password')
+    ..aE<IdentityProvider>(4, _omitFieldNames ? '' : 'confirmationProvider',
+        enumValues: IdentityProvider.values)
+    ..aOS(5, _omitFieldNames ? '' : 'idToken')
+    ..aOS(6, _omitFieldNames ? '' : 'nonce')
+    ..aOS(7, _omitFieldNames ? '' : 'passkeyCredentialJson')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -912,6 +932,60 @@ class UnlinkIdentityRequest extends $pb.GeneratedMessage {
   $core.bool hasProvider() => $_has(1);
   @$pb.TagNumber(2)
   void clearProvider() => $_clearField(2);
+
+  /// The confirmation RequestEmailChangeRequest takes, exactly one of the
+  /// three: the account's password, wrong being invalid_argument on password;
+  /// an ID token and its nonce from a provider linked to the account, the one
+  /// being unlinked included, named by confirmation_provider; or an assertion
+  /// made with one of the account's passkeys over a challenge
+  /// BeginPasskeyConfirmation issued. It is checked once the refusals above
+  /// have passed, and spent only by an unlink that succeeds. A request that
+  /// sends none is taken on the session alone, as a client of the previous
+  /// release sends it.
+  @$pb.TagNumber(3)
+  $core.String get password => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set password($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPassword() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPassword() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  IdentityProvider get confirmationProvider => $_getN(3);
+  @$pb.TagNumber(4)
+  set confirmationProvider(IdentityProvider value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasConfirmationProvider() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearConfirmationProvider() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get idToken => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set idToken($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasIdToken() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearIdToken() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get nonce => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set nonce($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasNonce() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearNonce() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get passkeyCredentialJson => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set passkeyCredentialJson($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPasskeyCredentialJson() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPasskeyCredentialJson() => $_clearField(7);
 }
 
 class UnlinkIdentityResponse extends $pb.GeneratedMessage {
@@ -1575,9 +1649,20 @@ class FinishPasskeyLoginResponse extends $pb.GeneratedMessage {
 class BeginPasskeyRegistrationRequest extends $pb.GeneratedMessage {
   factory BeginPasskeyRegistrationRequest({
     $0.TenantContext? tenant,
+    $core.String? password,
+    IdentityProvider? provider,
+    $core.String? idToken,
+    $core.String? nonce,
+    $core.String? passkeyCredentialJson,
   }) {
     final result = BeginPasskeyRegistrationRequest._();
     if (tenant != null) result.tenant = tenant;
+    if (password != null) result.password = password;
+    if (provider != null) result.provider = provider;
+    if (idToken != null) result.idToken = idToken;
+    if (nonce != null) result.nonce = nonce;
+    if (passkeyCredentialJson != null)
+      result.passkeyCredentialJson = passkeyCredentialJson;
     return result;
   }
 
@@ -1596,6 +1681,12 @@ class BeginPasskeyRegistrationRequest extends $pb.GeneratedMessage {
       createEmptyInstance: BeginPasskeyRegistrationRequest.$_createMessage)
     ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
         subBuilder: $0.TenantContext.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'password')
+    ..aE<IdentityProvider>(3, _omitFieldNames ? '' : 'provider',
+        enumValues: IdentityProvider.values)
+    ..aOS(4, _omitFieldNames ? '' : 'idToken')
+    ..aOS(5, _omitFieldNames ? '' : 'nonce')
+    ..aOS(6, _omitFieldNames ? '' : 'passkeyCredentialJson')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1636,6 +1727,59 @@ class BeginPasskeyRegistrationRequest extends $pb.GeneratedMessage {
   void clearTenant() => $_clearField(1);
   @$pb.TagNumber(1)
   $0.TenantContext ensureTenant() => $_ensure(0);
+
+  /// The confirmation DeleteMeRequest takes, exactly one of the three: the
+  /// account's password, wrong being invalid_argument on password; an ID token
+  /// and its nonce from a provider linked to the account; or an assertion made
+  /// with one of its passkeys over a challenge BeginPasskeyConfirmation
+  /// issued. It is spent here, and the ceremony it begins is what
+  /// FinishPasskeyRegistration finishes, so the finish takes none of its own.
+  /// A request that sends none is taken on the session alone, as a client of
+  /// the previous release sends it.
+  @$pb.TagNumber(2)
+  $core.String get password => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set password($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPassword() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPassword() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  IdentityProvider get provider => $_getN(2);
+  @$pb.TagNumber(3)
+  set provider(IdentityProvider value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasProvider() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearProvider() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get idToken => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set idToken($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasIdToken() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearIdToken() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get nonce => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set nonce($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasNonce() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearNonce() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get passkeyCredentialJson => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set passkeyCredentialJson($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasPasskeyCredentialJson() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearPasskeyCredentialJson() => $_clearField(6);
 }
 
 class BeginPasskeyRegistrationResponse extends $pb.GeneratedMessage {
@@ -2142,10 +2286,21 @@ class DeletePasskeyRequest extends $pb.GeneratedMessage {
   factory DeletePasskeyRequest({
     $0.TenantContext? tenant,
     $core.String? id,
+    $core.String? password,
+    IdentityProvider? provider,
+    $core.String? idToken,
+    $core.String? nonce,
+    $core.String? passkeyCredentialJson,
   }) {
     final result = DeletePasskeyRequest._();
     if (tenant != null) result.tenant = tenant;
     if (id != null) result.id = id;
+    if (password != null) result.password = password;
+    if (provider != null) result.provider = provider;
+    if (idToken != null) result.idToken = idToken;
+    if (nonce != null) result.nonce = nonce;
+    if (passkeyCredentialJson != null)
+      result.passkeyCredentialJson = passkeyCredentialJson;
     return result;
   }
 
@@ -2165,6 +2320,12 @@ class DeletePasskeyRequest extends $pb.GeneratedMessage {
     ..aOM<$0.TenantContext>(1, _omitFieldNames ? '' : 'tenant',
         subBuilder: $0.TenantContext.$_createMessage)
     ..aOS(2, _omitFieldNames ? '' : 'id')
+    ..aOS(3, _omitFieldNames ? '' : 'password')
+    ..aE<IdentityProvider>(4, _omitFieldNames ? '' : 'provider',
+        enumValues: IdentityProvider.values)
+    ..aOS(5, _omitFieldNames ? '' : 'idToken')
+    ..aOS(6, _omitFieldNames ? '' : 'nonce')
+    ..aOS(7, _omitFieldNames ? '' : 'passkeyCredentialJson')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2213,6 +2374,56 @@ class DeletePasskeyRequest extends $pb.GeneratedMessage {
   $core.bool hasId() => $_has(1);
   @$pb.TagNumber(2)
   void clearId() => $_clearField(2);
+
+  /// The confirmation DeleteMeRequest takes, exactly one of the three, checked
+  /// once the refusals above have passed and spent only by a removal that
+  /// succeeds. An assertion may be made with the passkey being removed. A
+  /// request that sends none is taken on the session alone, as a client of the
+  /// previous release sends it.
+  @$pb.TagNumber(3)
+  $core.String get password => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set password($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPassword() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPassword() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  IdentityProvider get provider => $_getN(3);
+  @$pb.TagNumber(4)
+  set provider(IdentityProvider value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasProvider() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearProvider() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get idToken => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set idToken($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasIdToken() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearIdToken() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get nonce => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set nonce($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasNonce() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearNonce() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get passkeyCredentialJson => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set passkeyCredentialJson($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPasskeyCredentialJson() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPasskeyCredentialJson() => $_clearField(7);
 }
 
 class DeletePasskeyResponse extends $pb.GeneratedMessage {
@@ -2258,8 +2469,9 @@ class DeletePasskeyResponse extends $pb.GeneratedMessage {
   static DeletePasskeyResponse? _defaultInstance;
 }
 
-/// Begins the fresh assertion that confirms DeleteMe, RequestEmailChange, or
-/// DisableMfa in place of a password, allowing the caller's own passkeys alone.
+/// Begins the fresh assertion that confirms DeleteMe, RequestEmailChange,
+/// DisableMfa, BeginPasskeyRegistration, DeletePasskey, or UnlinkIdentity in
+/// place of a password, allowing the caller's own passkeys alone.
 /// failed_precondition for a reader who holds none.
 class BeginPasskeyConfirmationRequest extends $pb.GeneratedMessage {
   factory BeginPasskeyConfirmationRequest({

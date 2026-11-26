@@ -263,6 +263,30 @@
       "preview": "設定新密碼。",
       "subject": "{$tenant_name}密碼重設"
     },
+    "reader_sign_in_method_changed_notice": {
+      "action": "開啟安全性設定",
+      "email": "電子郵件地址：{$email}",
+      "fallback_link": "如果按鈕無法使用，請將以下網址貼到瀏覽器中開啟。",
+      "identity_unlinked": {
+        "body": "您的{$provider_name}帳戶已解除連結，已無法再用於登入。",
+        "heading": "已解除{$provider_name}帳戶連結",
+        "preview": "您的{$provider_name}帳戶已解除連結。",
+        "subject": "{$tenant_name}已解除{$provider_name}帳戶連結"
+      },
+      "passkey_added": {
+        "body": "您的帳戶已新增通行金鑰，現在可以用它登入。",
+        "heading": "已新增通行金鑰",
+        "preview": "您的帳戶已新增通行金鑰。",
+        "subject": "{$tenant_name}已新增通行金鑰"
+      },
+      "passkey_removed": {
+        "body": "您的帳戶已刪除通行金鑰，它已無法再用於登入。",
+        "heading": "已刪除通行金鑰",
+        "preview": "您的帳戶已刪除通行金鑰。",
+        "subject": "{$tenant_name}已刪除通行金鑰"
+      },
+      "warning": "如果這不是您本人的操作，請立即登入，並在「安全性」中檢查您的通行金鑰和已連結的帳戶。"
+    },
     "reader_signup_attempt_notice": {
       "action_confirmed": "重設密碼",
       "action_unconfirmed": "重新寄送確認郵件",

@@ -19,6 +19,7 @@ import (
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/locale"
 	"github.com/publira/publira/server/internal/platformconfig"
+	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/tenanttz"
 )
@@ -33,6 +34,17 @@ const (
 	EventTypeReaderPasswordResetEmail           = "reader_password_reset_email"
 	EventTypeReaderPasswordChangedNoticeEmail   = "reader_password_changed_notice_email"
 	EventTypeReaderSignupAttemptNoticeEmail     = "reader_signup_attempt_notice_email"
+	// EventTypeReaderSignInMethodChangedNoticeEmail tells the account's address
+	// that a passkey was added or removed, or a provider unlinked.
+	EventTypeReaderSignInMethodChangedNoticeEmail = "reader_sign_in_method_changed_notice_email"
+)
+
+// The changes a ReaderSignInMethodChangedNoticeEmailPayload reports. Each is
+// the template's change value as it is, and picks the copy the mail reads.
+const (
+	SignInMethodPasskeyAdded     = "passkey_added"
+	SignInMethodPasskeyRemoved   = "passkey_removed"
+	SignInMethodIdentityUnlinked = "identity_unlinked"
 )
 
 // ReaderEmailVerificationEmailPayload names the verification row the mail is
@@ -74,6 +86,19 @@ type ReaderPasswordResetEmailPayload struct {
 type ReaderPasswordChangedNoticeEmailPayload struct {
 	TenantID string `json:"tenant_id"`
 	UserID   string `json:"user_id"`
+}
+
+// ReaderSignInMethodChangedNoticeEmailPayload names the account a way to sign
+// in was added to or taken from, and which change it was. The passkey or link
+// the change is about may be gone by the time the mail goes out, so the
+// payload carries everything the mail says about it.
+type ReaderSignInMethodChangedNoticeEmailPayload struct {
+	TenantID string `json:"tenant_id"`
+	UserID   string `json:"user_id"`
+	// Change is one of the SignInMethod values.
+	Change string `json:"change"`
+	// Provider is the signin provider unlinked, empty for a passkey.
+	Provider string `json:"provider,omitempty"`
 }
 
 // ReaderSignupAttemptNoticeEmailPayload names the account a sign-up tried to
@@ -420,6 +445,97 @@ func NewReaderPasswordChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler 
 			},
 			TimeZone: delivery.timeZone,
 		})
+	}
+}
+
+// NewReaderSignInMethodChangedNoticeEmailHandler tells a reader that a way to
+// sign in to their account was added or taken away. Whoever holds a session
+// can take those steps with the account's password or one of its other ways
+// in, so the mail is the report of a change the owner did not make: a passkey
+// added is a way in that outlives a password change, and a provider unlinked
+// may be the owner's only one. The link it carries is the storefront's
+// security settings, where both can be put right after signing in.
+func NewReaderSignInMethodChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("reader sign-in method changed notice email"); err != nil {
+			return err
+		}
+		var payload ReaderSignInMethodChangedNoticeEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode reader sign-in method changed notice email payload: %w", err))
+		}
+		tenantID, err := tenantAuthEventTenantID(event, payload.TenantID)
+		if err != nil {
+			return Permanent(err)
+		}
+		readerID, err := uuid.Parse(payload.UserID)
+		if err != nil {
+			return Permanent(fmt.Errorf("%s payload has an invalid user_id", event.EventType))
+		}
+		var providerName string
+		switch payload.Change {
+		case SignInMethodPasskeyAdded, SignInMethodPasskeyRemoved:
+		case SignInMethodIdentityUnlinked:
+			providerName = signInProviderName(payload.Provider)
+			if providerName == "" {
+				return Permanent(fmt.Errorf("%s payload has an unknown provider %q", event.EventType, payload.Provider))
+			}
+		default:
+			return Permanent(fmt.Errorf("%s payload has an unknown change %q", event.EventType, payload.Change))
+		}
+
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+		reader, err := queries.GetUserByID(ctx, readerID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Permanent(fmt.Errorf("reader %s no longer exists", readerID))
+		}
+		if err != nil {
+			return fmt.Errorf("load reader: %w", err)
+		}
+		// The worker reads past RLS, so the account the payload names is checked
+		// against the tenant the mail goes out for rather than assumed to be one
+		// of its readers.
+		if !reader.TenantID.Valid || reader.TenantID.UUID != tenantID {
+			return Permanent(fmt.Errorf("reader %s does not belong to tenant %s", readerID, tenantID))
+		}
+		settingsURL, err := tenantSiteURL(delivery.tenant, securitySettingsPath)
+		if err != nil {
+			return fmt.Errorf("build reader security settings url: %w", err)
+		}
+
+		return deliverEmail(ctx, cfg, delivery.settings, reader.Email, emailrenderer.Request{
+			Template: "reader_sign_in_method_changed_notice",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"change":        payload.Change,
+				"email":         reader.Email,
+				"provider_name": providerName,
+				"settings_url":  settingsURL,
+				"tenant_name":   delivery.tenantName,
+			},
+			TimeZone: delivery.timeZone,
+		})
+	}
+}
+
+// securitySettingsPath is the storefront page that lists a reader's passkeys
+// and linked providers.
+const securitySettingsPath = "/settings/security"
+
+// signInProviderName is the provider's own name, the same in every locale, for
+// a signin provider value, and empty for one this install does not offer.
+func signInProviderName(provider string) string {
+	switch provider {
+	case signin.ProviderApple:
+		return "Apple"
+	case signin.ProviderGoogle:
+		return "Google"
+	default:
+		return ""
 	}
 }
 

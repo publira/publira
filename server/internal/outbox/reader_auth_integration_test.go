@@ -668,6 +668,88 @@ func TestReaderPasswordChangedNoticeEmailRejectsAnAccountOfAnotherTenant(t *test
 	}
 }
 
+// A passkey added or a provider unlinked is reported to the account's address,
+// with the storefront's security settings as the way to put it right, and a
+// provider by its own name.
+func TestReaderSignInMethodChangedNoticeEmailGoesToTheAccountOwner(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	reader := pg.SeedEndUser(t, tenant.ID, "READEROUTB40", "reader@example.com", "Reader")
+
+	for _, testCase := range []struct {
+		change, provider, wantProviderName string
+	}{
+		{change: outbox.SignInMethodPasskeyAdded},
+		{change: outbox.SignInMethodPasskeyRemoved},
+		{change: outbox.SignInMethodIdentityUnlinked, provider: "apple", wantProviderName: "Apple"},
+	} {
+		t.Run(testCase.change, func(t *testing.T) {
+			renderer := &recordingReaderRenderer{}
+			mailer := &recordingReaderMailer{}
+			handler := outbox.NewReaderSignInMethodChangedNoticeEmailHandler(outbox.EmailHandlerConfig{
+				DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: renderer,
+			})
+			event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderSignInMethodChangedNoticeEmail,
+				outbox.ReaderSignInMethodChangedNoticeEmailPayload{
+					TenantID: tenant.ID.String(), UserID: reader.ID.String(), Change: testCase.change, Provider: testCase.provider,
+				},
+				"reader_sign_in_method_changed_notice_email:"+testCase.change+":"+reader.ID.String())
+
+			if err := handler(context.Background(), event); err != nil {
+				t.Fatalf("handler: %v", err)
+			}
+			if len(renderer.requests) != 1 {
+				t.Fatalf("render requests = %d, want 1", len(renderer.requests))
+			}
+			request := renderer.requests[0]
+			if request.Template != "reader_sign_in_method_changed_notice" {
+				t.Fatalf("template = %q, want reader_sign_in_method_changed_notice", request.Template)
+			}
+			if request.Data["change"] != testCase.change || request.Data["provider_name"] != testCase.wantProviderName {
+				t.Fatalf("change, provider_name = %v, %v, want %s, %q", request.Data["change"], request.Data["provider_name"], testCase.change, testCase.wantProviderName)
+			}
+			if url, _ := request.Data["settings_url"].(string); url != "https://"+tenant.Domain+"/settings/security" {
+				t.Fatalf("settings_url = %v", request.Data["settings_url"])
+			}
+			if len(mailer.recipients) != 1 || mailer.recipients[0] != reader.Email {
+				t.Fatalf("recipients = %v, want [%s]", mailer.recipients, reader.Email)
+			}
+		})
+	}
+}
+
+// A change or a provider this build has no copy for is not retried, and an
+// account of another tenant is not mailed.
+func TestReaderSignInMethodChangedNoticeEmailRefusesWhatItCannotSend(t *testing.T) {
+	pg, tenant, encryptor := newReaderEmailEnv(t)
+	reader := pg.SeedEndUser(t, tenant.ID, "READEROUTB41", "reader@example.com", "Reader")
+	other := pg.SeedTenant(t, "READEROUT040", "other-sign-in-outbox.example.com", "Other Sign-in Outbox Tenant")
+	stranger := pg.SeedEndUser(t, other.ID, "READEROUTB42", "stranger@example.com", "Stranger")
+
+	for name, payload := range map[string]outbox.ReaderSignInMethodChangedNoticeEmailPayload{
+		"an unknown change":        {UserID: reader.ID.String(), Change: "password_removed"},
+		"an unknown provider":      {UserID: reader.ID.String(), Change: outbox.SignInMethodIdentityUnlinked, Provider: "github"},
+		"another tenant's account": {UserID: stranger.ID.String(), Change: outbox.SignInMethodPasskeyAdded},
+	} {
+		t.Run(name, func(t *testing.T) {
+			mailer := &recordingReaderMailer{}
+			handler := outbox.NewReaderSignInMethodChangedNoticeEmailHandler(outbox.EmailHandlerConfig{
+				DB: pg.DB, Encryptor: encryptor, Mailer: mailer, Renderer: &recordingReaderRenderer{},
+			})
+			payload.TenantID = tenant.ID.String()
+			event := newReaderOutboxEvent(t, tenant.ID, outbox.EventTypeReaderSignInMethodChangedNoticeEmail, payload,
+				"reader_sign_in_method_changed_notice_email:"+name)
+
+			err := handler(context.Background(), event)
+			if !outbox.IsPermanent(err) {
+				t.Fatalf("handler error = %v, want a permanent failure", err)
+			}
+			if len(mailer.recipients) != 0 {
+				t.Fatalf("sent %d, want none", len(mailer.recipients))
+			}
+		})
+	}
+}
+
 // The sign-up that produced this event was answered as if the address were
 // free, so the mail is the only report of it, and the account's own inbox is
 // the only place it may go.

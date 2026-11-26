@@ -263,6 +263,30 @@
       "preview": "设置新密码。",
       "subject": "{$tenant_name}密码重设"
     },
+    "reader_sign_in_method_changed_notice": {
+      "action": "打开安全设置",
+      "email": "邮箱地址：{$email}",
+      "fallback_link": "如果按钮无法使用，请将以下URL粘贴到浏览器中打开。",
+      "identity_unlinked": {
+        "body": "您的{$provider_name}账户已解除关联，已无法再用于登录。",
+        "heading": "已解除{$provider_name}账户关联",
+        "preview": "您的{$provider_name}账户已解除关联。",
+        "subject": "{$tenant_name}已解除{$provider_name}账户关联"
+      },
+      "passkey_added": {
+        "body": "您的账户已添加通行密钥，现在可以用它登录。",
+        "heading": "已添加通行密钥",
+        "preview": "您的账户已添加通行密钥。",
+        "subject": "{$tenant_name}已添加通行密钥"
+      },
+      "passkey_removed": {
+        "body": "您的账户已删除通行密钥，它已无法再用于登录。",
+        "heading": "已删除通行密钥",
+        "preview": "您的账户已删除通行密钥。",
+        "subject": "{$tenant_name}已删除通行密钥"
+      },
+      "warning": "如果这不是您本人的操作，请立即登录，并在“安全”中检查您的通行密钥和关联账户。"
+    },
     "reader_signup_attempt_notice": {
       "action_confirmed": "重设密码",
       "action_unconfirmed": "重新发送确认邮件",

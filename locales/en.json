@@ -263,6 +263,30 @@
       "preview": "Set a new password.",
       "subject": "{$tenant_name} password reset"
     },
+    "reader_sign_in_method_changed_notice": {
+      "action": "Open Security settings",
+      "email": "Email address: {$email}",
+      "fallback_link": "If the button does not work, paste this URL into your browser.",
+      "identity_unlinked": {
+        "body": "Your {$provider_name} account was unlinked and can no longer be used to sign in.",
+        "heading": "Your {$provider_name} account was unlinked",
+        "preview": "Your {$provider_name} account was unlinked.",
+        "subject": "{$tenant_name} {$provider_name} account unlinked"
+      },
+      "passkey_added": {
+        "body": "A passkey was added to your account and can now be used to sign in.",
+        "heading": "A passkey was added",
+        "preview": "A passkey was added to your account.",
+        "subject": "{$tenant_name} passkey added"
+      },
+      "passkey_removed": {
+        "body": "A passkey was removed from your account and can no longer be used to sign in.",
+        "heading": "A passkey was removed",
+        "preview": "A passkey was removed from your account.",
+        "subject": "{$tenant_name} passkey removed"
+      },
+      "warning": "If you did not make this change, sign in and check your passkeys and linked accounts under Security right away."
+    },
     "reader_signup_attempt_notice": {
       "action_confirmed": "Reset password",
       "action_unconfirmed": "Send a new confirmation email",
