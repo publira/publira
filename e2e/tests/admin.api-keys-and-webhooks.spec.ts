@@ -16,6 +16,7 @@ import {
   WEBHOOKS_READER,
   WEBHOOKS_SCENARIO,
 } from "../src/scenarios/webhooks";
+import { serverActionAnswered } from "../src/server-action";
 import { mintAccessToken } from "../src/session";
 import { PUBLIC_API_BASE_URL, WEB_ADMIN_WEBHOOKS_BASE_URL } from "../src/urls";
 import {
@@ -371,10 +372,14 @@ test.describe("API keys and webhooks", () => {
       await expect(testDelivery).toContainText("Dead");
       await expect(testDelivery.getByRole("cell").nth(3)).toHaveText("1");
 
+      // The row leaves Dead while the resend is owed and takes the form's
+      // message with it, so nothing on screen says the resend was recorded.
+      const resent = serverActionAnswered(page);
       await testDelivery.getByRole("button", { name: /^Resend /u }).click();
+      await resent;
 
-      // The row leaves Dead while the resend is owed, so the list itself is
-      // what reports it: another attempt on the same delivery, given up again.
+      // The list itself is what reports the resend: another attempt on the
+      // same delivery, given up again.
       await expect(async () => {
         await page.reload();
         await expect(testDelivery.getByRole("cell").nth(3)).toHaveText("2", {
