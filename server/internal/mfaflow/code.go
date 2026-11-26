@@ -25,24 +25,43 @@ type Outcome struct {
 // code is one. It owns the failure counter and the lock: a refusal here has
 // already been counted, and the error it returns is the one to hand the
 // client.
+//
+// The attempt is counted before the code is checked rather than after it is
+// refused. Reading the lock and counting a refusal as two statements would
+// let every request that read the lock before the attempt that reached the
+// limit committed have its code checked, so the limit would be as many
+// guesses as could be sent at once.
 func CheckCode(ctx context.Context, acct Account, totp *Totp, code string, allowRecovery bool) (Outcome, error) {
-	locked, err := Locked(ctx, acct)
-	if err != nil {
-		return Outcome{}, err
-	}
-	if locked {
-		return Outcome{Reason: "locked"}, LockedError()
-	}
 	if strings.TrimSpace(code) == "" {
+		locked, err := Locked(ctx, acct)
+		if err != nil {
+			return Outcome{}, err
+		}
+		if locked {
+			return Outcome{Reason: "locked"}, LockedError()
+		}
 		return Outcome{Reason: "code_missing"}, CodeRequiredError()
+	}
+	var encryptor Encryptor
+	if totp != nil {
+		// Checked before the attempt is counted: a server that cannot open
+		// the secret has checked nothing, and its owner should not be locked
+		// out by it.
+		if encryptor = acct.Encryptor(); encryptor == nil {
+			return Outcome{Reason: "secret_manager_unavailable"}, secretManagerUnavailableError()
+		}
+	}
+
+	allowed, startedLock, err := acct.ReserveAttempt(ctx, acct.Queries(ctx))
+	if err != nil {
+		return Outcome{}, acct.InternalError(ctx, "failed to reserve mfa attempt", err)
+	}
+	if !allowed {
+		return Outcome{Reason: "locked"}, LockedError()
 	}
 
 	q := acct.Queries(ctx)
 	if totp != nil {
-		encryptor := acct.Encryptor()
-		if encryptor == nil {
-			return Outcome{Reason: "secret_manager_unavailable"}, secretManagerUnavailableError()
-		}
 		secret, err := encryptor.DecryptString(totp.SecretEncrypted)
 		if err != nil {
 			return Outcome{Reason: "secret_undecryptable"}, acct.InternalError(ctx, "failed to decrypt mfa totp secret", err)
@@ -60,7 +79,7 @@ func CheckCode(ctx context.Context, acct Account, totp *Totp, code string, allow
 				return Outcome{}, acct.InternalError(ctx, "failed to mark mfa totp verified", err)
 			}
 			if !claimed {
-				return refuseCode(ctx, acct, "code_reused")
+				return refuseReserved(startedLock, "code_reused")
 			}
 			if err := ResetFailures(ctx, acct); err != nil {
 				return Outcome{}, err
@@ -82,12 +101,17 @@ func CheckCode(ctx context.Context, acct Account, totp *Totp, code string, allow
 		}
 	}
 
-	return refuseCode(ctx, acct, "invalid_code")
+	return refuseReserved(startedLock, "invalid_code")
 }
 
-func refuseCode(ctx context.Context, acct Account, reason string) (Outcome, error) {
-	reason, err := Refuse(ctx, acct, reason, InvalidCodeError())
-	return Outcome{Reason: reason}, err
+// refuseReserved answers a code whose attempt was counted before it was
+// checked: refusal, or the lock when this was the attempt that started it, so
+// the client learns it is locked out now rather than on its next attempt.
+func refuseReserved(startedLock bool, reason string) (Outcome, error) {
+	if startedLock {
+		return Outcome{Reason: "locked"}, LockedError()
+	}
+	return Outcome{Reason: reason}, InvalidCodeError()
 }
 
 // Locked reports whether refused attempts, of every factor the account holds,
@@ -100,11 +124,12 @@ func Locked(ctx context.Context, acct Account) (bool, error) {
 	return locked, nil
 }
 
-// Refuse counts one refused attempt and answers the reason and the error the
-// client gets: refusal, or the lock when this was the attempt that started
-// it, so the client learns it is locked out now rather than on its next
-// attempt. Every factor counts toward the one limit, so alternating between
-// them buys a guesser nothing.
+// Refuse counts one refused attempt that was not counted before it was
+// checked, as a passkey assertion is not, and answers the reason and the
+// error the client gets: refusal, or the lock when this was the attempt that
+// started it, so the client learns it is locked out now rather than on its
+// next attempt. Every factor counts toward the one limit, so alternating
+// between them buys a guesser nothing.
 //
 // The reason is empty when the attempt could not be counted.
 func Refuse(ctx context.Context, acct Account, reason string, refusal error) (string, error) {

@@ -4854,6 +4854,23 @@ type Querier interface {
 	RequeueDeadOutboxEvents(ctx context.Context, arg RequeueDeadOutboxEventsParams) ([]OutboxEvent, error)
 	// Owes a dead delivery again, keeping the attempts made so far.
 	ResendWebhookDelivery(ctx context.Context, arg ResendWebhookDeliveryParams) error
+	// Counts one attempt at a code before the code is checked, unless the
+	// operator is locked, as ReserveUserMfaAttempt does for tenant staff: the
+	// read of the lock and the count are one statement, so no more than the limit
+	// can pass it before the lock starts. Returning no row is a locked operator,
+	// or one without an authenticator to count on.
+	ReservePlatformUserMfaTotpAttempt(ctx context.Context, arg ReservePlatformUserMfaTotpAttemptParams) (PlatformUserMfaTotp, error)
+	// Counts one attempt at a code before the code is checked, unless the account
+	// is locked, so that the read of the lock and the count are one statement.
+	// Two statements would let every request that read the lock before the fifth
+	// failure committed go on to have its code checked. The conflicting row is
+	// locked and this WHERE is evaluated against the version the last request
+	// committed, so no more than the limit can pass it before the lock starts.
+	// Returning no row is therefore a locked account. A code that checks out is
+	// forgotten again through ResetUserMfaFailures; one that does not has been
+	// counted here already. The counter and the lock move as RecordUserMfaFailure
+	// moves them.
+	ReserveUserMfaAttempt(ctx context.Context, arg ReserveUserMfaAttemptParams) (UserMfaLockout, error)
 	ResetPlatformUserMfaTotpFailures(ctx context.Context, platformUserID uuid.UUID) error
 	// A second factor that checked out clears the count, and so does starting an
 	// enrollment, so a stalled attempt never blocks the next one.

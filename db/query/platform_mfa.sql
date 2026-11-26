@@ -76,6 +76,29 @@ SET failed_attempts = CASE
 WHERE platform_user_id = sqlc.arg('platform_user_id')
 RETURNING *;
 
+-- name: ReservePlatformUserMfaTotpAttempt :one
+-- Counts one attempt at a code before the code is checked, unless the
+-- operator is locked, as ReserveUserMfaAttempt does for tenant staff: the
+-- read of the lock and the count are one statement, so no more than the limit
+-- can pass it before the lock starts. Returning no row is a locked operator,
+-- or one without an authenticator to count on.
+UPDATE platform_user_mfa_totp
+SET failed_attempts = CASE
+        WHEN failed_attempts + 1 >= sqlc.arg('max_failed_attempts')::int THEN 0
+        ELSE failed_attempts + 1
+    END,
+    locked_until = CASE
+        WHEN failed_attempts + 1 >= sqlc.arg('max_failed_attempts')::int THEN sqlc.arg('locked_until')::timestamptz
+        ELSE locked_until
+    END,
+    updated_at = now()
+WHERE platform_user_id = sqlc.arg('platform_user_id')
+    AND (
+        locked_until IS NULL
+        OR locked_until <= sqlc.arg('now')::timestamptz
+    )
+RETURNING *;
+
 -- name: DeletePlatformUserMfaTotp :exec
 DELETE FROM platform_user_mfa_totp
 WHERE platform_user_id = $1;

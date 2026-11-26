@@ -79,6 +79,13 @@ func (a *fakeAccount) DeleteTotp(context.Context, dbmodels.Querier) error {
 func (a *fakeAccount) Locked(context.Context, dbmodels.Querier) (bool, error) {
 	return a.lockedUntil.After(time.Now()), nil
 }
+func (a *fakeAccount) ReserveAttempt(ctx context.Context, q dbmodels.Querier) (bool, bool, error) {
+	if a.lockedUntil.After(time.Now()) {
+		return false, false, nil
+	}
+	startedLock, err := a.CountFailure(ctx, q)
+	return true, startedLock, err
+}
 func (a *fakeAccount) CountFailure(context.Context, dbmodels.Querier) (bool, error) {
 	a.failures++
 	if a.failures >= mfa.MaxFailedAttempts {
@@ -190,6 +197,37 @@ func TestCheckCodeLocksOnTheAttemptThatReachesTheLimit(t *testing.T) {
 	// The lock holds against a right code as well.
 	if _, err := CheckCode(context.Background(), acct, &acct.totp, currentCode(t, secret), false); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("a right code while locked = %v, want resource_exhausted", err)
+	}
+}
+
+// The attempt that reaches the limit is still checked, and a right code on it
+// is accepted and clears the count rather than leaving the account locked.
+func TestCheckCodeAcceptsARightCodeOnTheAttemptThatReachesTheLimit(t *testing.T) {
+	acct, secret := newFakeAccount(t)
+
+	for attempt := 1; attempt < mfa.MaxFailedAttempts; attempt++ {
+		if _, err := CheckCode(context.Background(), acct, &acct.totp, "000000", false); connect.CodeOf(err) != connect.CodeUnauthenticated {
+			t.Fatalf("attempt %d = %v, want unauthenticated", attempt, err)
+		}
+	}
+	if _, err := CheckCode(context.Background(), acct, &acct.totp, currentCode(t, secret), false); err != nil {
+		t.Fatalf("a right code on attempt %d: %v", mfa.MaxFailedAttempts, err)
+	}
+	if acct.failures != 0 || !acct.lockedUntil.IsZero() {
+		t.Fatalf("after a right code: %d failures, locked until %v; want neither", acct.failures, acct.lockedUntil)
+	}
+}
+
+// A missing code checks nothing, so it spends none of the account's attempts.
+func TestCheckCodeCountsNoAttemptForAMissingCode(t *testing.T) {
+	acct, _ := newFakeAccount(t)
+
+	outcome, err := CheckCode(context.Background(), acct, &acct.totp, " ", false)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument || outcome.Reason != "code_missing" {
+		t.Fatalf("CheckCode with no code = %v, %q; want invalid_argument, code_missing", err, outcome.Reason)
+	}
+	if acct.failures != 0 {
+		t.Fatalf("failures after a missing code = %d, want 0", acct.failures)
 	}
 }
 

@@ -481,6 +481,71 @@ func TestAdminMfaVerifyLocksTheAccountAfterRepeatedFailures(t *testing.T) {
 	}
 }
 
+// Wrong codes sent at once are counted as they arrive, not once each has been
+// checked, so no more of them are checked than the limit allows: the ones
+// past it are refused with the lock, however many read the account unlocked.
+func TestAdminMfaVerifyChecksNoMoreConcurrentCodesThanTheLimit(t *testing.T) {
+	t.Parallel()
+
+	// Not a multiple of the limit, so that attempts past it which were
+	// checked and counted would leave the counter short of zero.
+	const attempts = 4*mfa.MaxFailedAttempts + 2
+	// Every request holds a connection of its own, so a pool no wider than
+	// the limit would serialise the guesses into batches the limit absorbs.
+	env := newAdminDBEnvWith(t, &testStorageProvider{}, openMailGuard(), nil, nil, func(server *adminServer) {
+		server.db.SetMaxOpenConns(attempts)
+	})
+	tenant := seedMfaTenant(t, env)
+	enrollMfa(t, env, tenant)
+	challenge := mfaLogin(t, env, tenant).MfaChallenge.Token
+	// A wrong code shaped like a recovery code is compared against every
+	// recovery code the account holds, which keeps each check open long
+	// enough for the others to read the lock before it is counted.
+	guesses, err := mfa.GenerateRecoveryCodes()
+	if err != nil {
+		t.Fatalf("GenerateRecoveryCodes: %v", err)
+	}
+	guess := guesses[0]
+
+	var start sync.WaitGroup
+	start.Add(1)
+	results := make(chan error, attempts)
+	for range attempts {
+		go func() {
+			start.Wait()
+			_, err := env.authClient().VerifyMfa(context.Background(), &publiraadminv1.AdminAuthServiceVerifyMfaRequest{
+				Tenant:         tenant.tenantContext(),
+				ChallengeToken: challenge,
+				Code:           guess,
+			})
+			results <- err
+		}()
+	}
+	start.Done()
+
+	refused := 0
+	for range attempts {
+		err := <-results
+		switch connect.CodeOf(err) {
+		case connect.CodeUnauthenticated:
+			refused++
+		case connect.CodeResourceExhausted:
+		default:
+			t.Fatalf("VerifyMfa = %v, want unauthenticated or resource exhausted (err=%v)", connect.CodeOf(err), err)
+		}
+	}
+	// The attempt that reaches the limit is answered with the lock it started.
+	if refused != mfa.MaxFailedAttempts-1 {
+		t.Fatalf("codes refused as wrong = %d, want %d", refused, mfa.MaxFailedAttempts-1)
+	}
+	// Starting the lock put the counter back to zero, and an attempt is
+	// counted before it is checked, so a count above zero is an attempt
+	// checked past the limit.
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_lockouts WHERE user_id = $1 AND failed_attempts = 0 AND locked_until > now()", tenant.User.ID); got != 1 {
+		t.Fatal("the lockout counted attempts past the limit, or is not locked")
+	}
+}
+
 func TestAdminMfaRegenerateReplacesEveryRecoveryCode(t *testing.T) {
 	t.Parallel()
 

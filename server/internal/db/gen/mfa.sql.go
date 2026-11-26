@@ -319,6 +319,70 @@ func (q *Queries) RecordUserMfaFailure(ctx context.Context, arg RecordUserMfaFai
 	return i, err
 }
 
+const ReserveUserMfaAttempt = `-- name: ReserveUserMfaAttempt :one
+INSERT INTO user_mfa_lockouts AS l (user_id, tenant_id, failed_attempts, locked_until)
+VALUES (
+        $1,
+        $2,
+        CASE
+            WHEN 1 >= $3::int THEN 0
+            ELSE 1
+        END,
+        CASE
+            WHEN 1 >= $3::int THEN $4::timestamptz
+        END
+    ) ON CONFLICT (user_id) DO UPDATE
+SET failed_attempts = CASE
+        WHEN l.failed_attempts + 1 >= $3::int THEN 0
+        ELSE l.failed_attempts + 1
+    END,
+    locked_until = CASE
+        WHEN l.failed_attempts + 1 >= $3::int THEN $4::timestamptz
+        ELSE l.locked_until
+    END,
+    updated_at = now()
+WHERE l.locked_until IS NULL
+    OR l.locked_until <= $5::timestamptz
+RETURNING user_id, tenant_id, failed_attempts, locked_until, updated_at
+`
+
+type ReserveUserMfaAttemptParams struct {
+	UserID            uuid.UUID `json:"user_id"`
+	TenantID          uuid.UUID `json:"tenant_id"`
+	MaxFailedAttempts int32     `json:"max_failed_attempts"`
+	LockedUntil       time.Time `json:"locked_until"`
+	Now               time.Time `json:"now"`
+}
+
+// Counts one attempt at a code before the code is checked, unless the account
+// is locked, so that the read of the lock and the count are one statement.
+// Two statements would let every request that read the lock before the fifth
+// failure committed go on to have its code checked. The conflicting row is
+// locked and this WHERE is evaluated against the version the last request
+// committed, so no more than the limit can pass it before the lock starts.
+// Returning no row is therefore a locked account. A code that checks out is
+// forgotten again through ResetUserMfaFailures; one that does not has been
+// counted here already. The counter and the lock move as RecordUserMfaFailure
+// moves them.
+func (q *Queries) ReserveUserMfaAttempt(ctx context.Context, arg ReserveUserMfaAttemptParams) (UserMfaLockout, error) {
+	row := q.db.QueryRowContext(ctx, ReserveUserMfaAttempt,
+		arg.UserID,
+		arg.TenantID,
+		arg.MaxFailedAttempts,
+		arg.LockedUntil,
+		arg.Now,
+	)
+	var i UserMfaLockout
+	err := row.Scan(
+		&i.UserID,
+		&i.TenantID,
+		&i.FailedAttempts,
+		&i.LockedUntil,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const ResetUserMfaFailures = `-- name: ResetUserMfaFailures :exec
 DELETE FROM user_mfa_lockouts
 WHERE user_id = $1

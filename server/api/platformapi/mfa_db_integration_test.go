@@ -2,6 +2,7 @@ package platformapi
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log/slog"
 	"net/http/httptest"
@@ -34,6 +35,7 @@ import (
 type operatorMfaEnv struct {
 	server   *httptest.Server
 	pg       *testutil.PostgresEnv
+	db       *sql.DB
 	operator testutil.PlatformOperator
 	auth     publirasplatformv1connect.PlatformAuthServiceClient
 }
@@ -49,6 +51,7 @@ func newOperatorMfaEnv(t *testing.T) *operatorMfaEnv {
 	return &operatorMfaEnv{
 		server:   server,
 		pg:       pg,
+		db:       db,
 		operator: pg.SeedPlatformOperator(t, "PLATMFA0001", "operator@example.com", "MFA Operator"),
 		auth:     publirasplatformv1connect.NewPlatformAuthServiceClient(connect.NewClient(connecthttp.NewTransport(server.Client(), server.URL))),
 	}
@@ -345,6 +348,60 @@ func TestDBOperatorMfaLocksAfterRepeatedFailures(t *testing.T) {
 	_, err = env.auth.VerifyMfa(context.Background(), &publirasplatformv1.PlatformAuthServiceVerifyMfaRequest{ChallengeToken: login.MfaChallenge.Token, Code: operatorMfaCode(t, secret, 1)})
 	if mfaErrorReason(t, err) != rpcerrors.ReasonMfaLocked {
 		t.Fatalf("a right code while locked = %v, want %s", err, rpcerrors.ReasonMfaLocked)
+	}
+}
+
+// Wrong codes sent at once are counted as they arrive, not once each has been
+// checked, so no more of them are checked than the limit allows.
+func TestDBOperatorMfaChecksNoMoreConcurrentCodesThanTheLimit(t *testing.T) {
+	t.Parallel()
+
+	// Not a multiple of the limit, so that attempts past it which were
+	// checked and counted would leave the counter short of zero.
+	const attempts = 4*mfa.MaxFailedAttempts + 2
+	// Every request holds a connection of its own, so a pool no wider than
+	// the limit would serialise the guesses into batches the limit absorbs.
+	env := newOperatorMfaEnv(t)
+	env.db.SetMaxOpenConns(attempts)
+	env.enroll(t)
+	challenge := env.login(t, env.operator).MfaChallenge.Token
+	// A wrong code shaped like a recovery code is compared against every
+	// recovery code the account holds, which keeps each check open long
+	// enough for the others to read the lock before it is counted.
+	guesses, err := mfa.GenerateRecoveryCodes()
+	if err != nil {
+		t.Fatalf("GenerateRecoveryCodes: %v", err)
+	}
+	guess := guesses[0]
+
+	var wg sync.WaitGroup
+	errs := make([]error, attempts)
+	for i := range attempts {
+		wg.Go(func() {
+			_, errs[i] = env.auth.VerifyMfa(context.Background(), &publirasplatformv1.PlatformAuthServiceVerifyMfaRequest{ChallengeToken: challenge, Code: guess})
+		})
+	}
+	wg.Wait()
+
+	refused := 0
+	for _, err := range errs {
+		switch mfaErrorReason(t, err) {
+		case rpcerrors.ReasonMfaInvalidCode:
+			refused++
+		case rpcerrors.ReasonMfaLocked:
+		default:
+			t.Fatalf("VerifyMfa = %v, want %s or %s", err, rpcerrors.ReasonMfaInvalidCode, rpcerrors.ReasonMfaLocked)
+		}
+	}
+	// The attempt that reaches the limit is answered with the lock it started.
+	if refused != mfa.MaxFailedAttempts-1 {
+		t.Fatalf("codes refused as wrong = %d, want %d", refused, mfa.MaxFailedAttempts-1)
+	}
+	// Starting the lock put the counter back to zero, and an attempt is
+	// counted before it is checked, so a count above zero is an attempt
+	// checked past the limit.
+	if got := countRows(t, env.pg, "SELECT count(*) FROM platform_user_mfa_totp WHERE platform_user_id = $1 AND failed_attempts = 0 AND locked_until > now()", env.operator.ID); got != 1 {
+		t.Fatal("the authenticator counted attempts past the limit, or is not locked")
 	}
 }
 

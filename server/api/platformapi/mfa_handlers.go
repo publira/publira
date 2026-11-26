@@ -148,6 +148,31 @@ func (a operatorMfaAccount) Locked(ctx context.Context, q dbmodels.Querier) (boo
 	return row.LockedUntil.Valid && row.LockedUntil.Time.After(time.Now()), nil
 }
 
+// ReserveAttempt counts on the authenticator's row, as CountFailure does. A
+// row the reservation did not update is either locked or gone: an operator
+// without an authenticator has nothing to count on, as Locked has nothing to
+// lock.
+func (a operatorMfaAccount) ReserveAttempt(ctx context.Context, q dbmodels.Querier) (bool, bool, error) {
+	now := time.Now()
+	reserved, err := q.ReservePlatformUserMfaTotpAttempt(ctx, dbmodels.ReservePlatformUserMfaTotpAttemptParams{
+		PlatformUserID:    a.actor.User.ID,
+		MaxFailedAttempts: mfa.MaxFailedAttempts,
+		LockedUntil:       now.Add(mfa.LockDuration),
+		Now:               now,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		_, found, err := a.totpRow(ctx, q)
+		if err != nil {
+			return false, false, err
+		}
+		return !found, false, nil
+	}
+	if err != nil {
+		return false, false, err
+	}
+	return true, reserved.LockedUntil.Valid && reserved.LockedUntil.Time.After(now), nil
+}
+
 func (a operatorMfaAccount) CountFailure(ctx context.Context, q dbmodels.Querier) (bool, error) {
 	updated, err := q.RecordPlatformUserMfaTotpFailure(ctx, dbmodels.RecordPlatformUserMfaTotpFailureParams{
 		PlatformUserID:    a.actor.User.ID,

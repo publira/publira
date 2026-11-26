@@ -52,8 +52,15 @@ type Account interface {
 	// Locked reports whether refused attempts have locked the account for
 	// now.
 	Locked(ctx context.Context, q dbmodels.Querier) (bool, error)
-	// CountFailure counts one refused attempt and reports whether the account
-	// is locked after it.
+	// ReserveAttempt counts one attempt at a code before the code is checked,
+	// in the same statement that reads the lock, and reports allowed false,
+	// having counted nothing, when refused attempts have locked the account.
+	// startedLock reports that this attempt was the one that reached the
+	// limit, so that refusing it answers with the lock.
+	ReserveAttempt(ctx context.Context, q dbmodels.Querier) (allowed, startedLock bool, err error)
+	// CountFailure counts one refused attempt that was not reserved before it
+	// was checked, as a passkey assertion is not, and reports whether the
+	// account is locked after it.
 	CountFailure(ctx context.Context, q dbmodels.Querier) (locked bool, err error)
 	// ResetFailures forgets the refused attempts counted so far.
 	ResetFailures(ctx context.Context, q dbmodels.Querier) error

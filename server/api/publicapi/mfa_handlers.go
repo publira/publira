@@ -154,6 +154,24 @@ func (a mfaAccount) Locked(ctx context.Context, q dbmodels.Querier) (bool, error
 	return row.LockedUntil.Valid && row.LockedUntil.Time.After(time.Now()), nil
 }
 
+func (a mfaAccount) ReserveAttempt(ctx context.Context, q dbmodels.Querier) (bool, bool, error) {
+	now := time.Now()
+	reserved, err := q.ReserveUserMfaAttempt(ctx, dbmodels.ReserveUserMfaAttemptParams{
+		UserID:            a.actor.User.ID,
+		TenantID:          a.actor.Tenant.ID,
+		MaxFailedAttempts: mfa.MaxFailedAttempts,
+		LockedUntil:       now.Add(mfa.LockDuration),
+		Now:               now,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, false, nil
+	}
+	if err != nil {
+		return false, false, err
+	}
+	return true, reserved.LockedUntil.Valid && reserved.LockedUntil.Time.After(now), nil
+}
+
 func (a mfaAccount) CountFailure(ctx context.Context, q dbmodels.Querier) (bool, error) {
 	updated, err := q.RecordUserMfaFailure(ctx, dbmodels.RecordUserMfaFailureParams{
 		UserID:            a.actor.User.ID,

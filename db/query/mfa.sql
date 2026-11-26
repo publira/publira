@@ -120,6 +120,42 @@ SET failed_attempts = CASE
     updated_at = now()
 RETURNING *;
 
+-- name: ReserveUserMfaAttempt :one
+-- Counts one attempt at a code before the code is checked, unless the account
+-- is locked, so that the read of the lock and the count are one statement.
+-- Two statements would let every request that read the lock before the fifth
+-- failure committed go on to have its code checked. The conflicting row is
+-- locked and this WHERE is evaluated against the version the last request
+-- committed, so no more than the limit can pass it before the lock starts.
+-- Returning no row is therefore a locked account. A code that checks out is
+-- forgotten again through ResetUserMfaFailures; one that does not has been
+-- counted here already. The counter and the lock move as RecordUserMfaFailure
+-- moves them.
+INSERT INTO user_mfa_lockouts AS l (user_id, tenant_id, failed_attempts, locked_until)
+VALUES (
+        sqlc.arg('user_id'),
+        sqlc.arg('tenant_id'),
+        CASE
+            WHEN 1 >= sqlc.arg('max_failed_attempts')::int THEN 0
+            ELSE 1
+        END,
+        CASE
+            WHEN 1 >= sqlc.arg('max_failed_attempts')::int THEN sqlc.arg('locked_until')::timestamptz
+        END
+    ) ON CONFLICT (user_id) DO UPDATE
+SET failed_attempts = CASE
+        WHEN l.failed_attempts + 1 >= sqlc.arg('max_failed_attempts')::int THEN 0
+        ELSE l.failed_attempts + 1
+    END,
+    locked_until = CASE
+        WHEN l.failed_attempts + 1 >= sqlc.arg('max_failed_attempts')::int THEN sqlc.arg('locked_until')::timestamptz
+        ELSE l.locked_until
+    END,
+    updated_at = now()
+WHERE l.locked_until IS NULL
+    OR l.locked_until <= sqlc.arg('now')::timestamptz
+RETURNING *;
+
 -- name: ResetUserMfaFailures :exec
 -- A second factor that checked out clears the count, and so does starting an
 -- enrollment, so a stalled attempt never blocks the next one.

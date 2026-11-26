@@ -276,6 +276,58 @@ func (q *Queries) RecordPlatformUserMfaTotpFailure(ctx context.Context, arg Reco
 	return i, err
 }
 
+const ReservePlatformUserMfaTotpAttempt = `-- name: ReservePlatformUserMfaTotpAttempt :one
+UPDATE platform_user_mfa_totp
+SET failed_attempts = CASE
+        WHEN failed_attempts + 1 >= $1::int THEN 0
+        ELSE failed_attempts + 1
+    END,
+    locked_until = CASE
+        WHEN failed_attempts + 1 >= $1::int THEN $2::timestamptz
+        ELSE locked_until
+    END,
+    updated_at = now()
+WHERE platform_user_id = $3
+    AND (
+        locked_until IS NULL
+        OR locked_until <= $4::timestamptz
+    )
+RETURNING platform_user_id, secret_encrypted, enabled_at, last_verified_step, failed_attempts, locked_until, created_at, updated_at
+`
+
+type ReservePlatformUserMfaTotpAttemptParams struct {
+	MaxFailedAttempts int32     `json:"max_failed_attempts"`
+	LockedUntil       time.Time `json:"locked_until"`
+	PlatformUserID    uuid.UUID `json:"platform_user_id"`
+	Now               time.Time `json:"now"`
+}
+
+// Counts one attempt at a code before the code is checked, unless the
+// operator is locked, as ReserveUserMfaAttempt does for tenant staff: the
+// read of the lock and the count are one statement, so no more than the limit
+// can pass it before the lock starts. Returning no row is a locked operator,
+// or one without an authenticator to count on.
+func (q *Queries) ReservePlatformUserMfaTotpAttempt(ctx context.Context, arg ReservePlatformUserMfaTotpAttemptParams) (PlatformUserMfaTotp, error) {
+	row := q.db.QueryRowContext(ctx, ReservePlatformUserMfaTotpAttempt,
+		arg.MaxFailedAttempts,
+		arg.LockedUntil,
+		arg.PlatformUserID,
+		arg.Now,
+	)
+	var i PlatformUserMfaTotp
+	err := row.Scan(
+		&i.PlatformUserID,
+		&i.SecretEncrypted,
+		&i.EnabledAt,
+		&i.LastVerifiedStep,
+		&i.FailedAttempts,
+		&i.LockedUntil,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const ResetPlatformUserMfaTotpFailures = `-- name: ResetPlatformUserMfaTotpFailures :exec
 UPDATE platform_user_mfa_totp
 SET failed_attempts = 0,
