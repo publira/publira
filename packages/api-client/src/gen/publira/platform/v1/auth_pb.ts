@@ -766,6 +766,10 @@ export const PlatformAuthService: GenService<{
     output: typeof PlatformAuthServiceConfirmMfaEnrollmentResponseSchema;
   },
   /**
+   * Takes the authenticator off. failed_precondition for an operator who
+   * holds none, and, with the MFA_LAST_REQUIRED_FACTOR reason, while the
+   * platform policy requires the factor of every operator.
+   *
    * @generated from rpc publira.platform.v1.PlatformAuthService.DisableMfa
    */
   disableMfa: {

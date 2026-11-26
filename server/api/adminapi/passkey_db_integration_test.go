@@ -591,8 +591,8 @@ func TestAdminPasskeyDeleteRefusesTheLastFactorTheTenantRequires(t *testing.T) {
 		Id:           registered.Passkey.Id,
 		Confirmation: passkeyConfirmation(t, env, tenant, authenticator),
 	})
-	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("DeletePasskey of the last required factor = %v, want failed_precondition", err)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition || errorInfoReason(t, err) != rpcerrors.ReasonMfaLastRequiredFactor {
+		t.Fatalf("DeletePasskey of the last required factor = %v, want failed_precondition with %s", err, rpcerrors.ReasonMfaLastRequiredFactor)
 	}
 	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1", tenant.User.ID); got != 1 {
 		t.Fatalf("passkeys = %d, want the one refused removal kept", got)
@@ -606,6 +606,54 @@ func TestAdminPasskeyDeleteRefusesTheLastFactorTheTenantRequires(t *testing.T) {
 		Confirmation: passkeyConfirmation(t, env, tenant, authenticator),
 	}); err != nil {
 		t.Fatalf("DeletePasskey beside an authenticator: %v", err)
+	}
+}
+
+// The authenticator is held to the same rule as a passkey: where the tenant
+// requires a second factor, it is not taken off while it is the last one,
+// and the refusal spends none of the codes it was sent.
+func TestAdminMfaDisableRefusesTheLastFactorTheTenantRequires(t *testing.T) {
+	env := newPasskeyDBEnv(t)
+	tenant := seedMfaTenant(t, env)
+	secret, codes := enrollMfa(t, env, tenant)
+	requireTenantAdminMFA(t, env)
+	ctx := testutil.WithBearer(context.Background(), tenant.token())
+
+	for _, code := range []string{mfaNextCode(t, secret), codes[0]} {
+		_, err := env.authClient().DisableMfa(ctx, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
+			Tenant: tenant.tenantContext(),
+			Code:   code,
+		})
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition || errorInfoReason(t, err) != rpcerrors.ReasonMfaLastRequiredFactor {
+			t.Fatalf("DisableMfa of the last required factor = %v, want failed_precondition with %s", err, rpcerrors.ReasonMfaLastRequiredFactor)
+		}
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_totp WHERE user_id = $1 AND enabled_at IS NOT NULL", tenant.User.ID); got != 1 {
+		t.Fatalf("enabled user_mfa_totp rows = %d, want the refused one kept", got)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1 AND used_at IS NULL", tenant.User.ID); got != mfa.RecoveryCodeCount {
+		t.Fatalf("unused recovery codes = %d, want the batch untouched (%d)", got, mfa.RecoveryCodeCount)
+	}
+	if got := env.countRows(t,
+		"SELECT count(*) FROM audit_logs WHERE tenant_id = $1 AND actor_user_id = $2 AND action = 'admin_mfa_disabled' AND outcome = 'failure'",
+		tenant.Tenant.ID, tenant.User.ID); got != 2 {
+		t.Fatalf("admin_mfa_disabled failures = %d, want 2", got)
+	}
+
+	// With a passkey beside it, the authenticator is no longer the last, and
+	// the recovery codes stay with the passkey.
+	addPasskey(t, env, tenant, "", codeConfirmation(mfaNextCode(t, secret)))
+	if _, err := env.authClient().DisableMfa(ctx, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
+		Tenant: tenant.tenantContext(),
+		Code:   codes[0],
+	}); err != nil {
+		t.Fatalf("DisableMfa beside a passkey: %v", err)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_totp WHERE user_id = $1", tenant.User.ID); got != 0 {
+		t.Fatalf("user_mfa_totp rows = %d, want none", got)
+	}
+	if got := env.countRows(t, "SELECT count(*) FROM user_mfa_recovery_codes WHERE user_id = $1", tenant.User.ID); got != mfa.RecoveryCodeCount {
+		t.Fatalf("recovery codes = %d, want the batch kept for the passkey (%d)", got, mfa.RecoveryCodeCount)
 	}
 }
 

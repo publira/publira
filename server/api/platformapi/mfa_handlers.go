@@ -520,7 +520,7 @@ func (s *platformServer) DisableMfa(
 	if err != nil {
 		return nil, err
 	}
-	if err := mfaflow.Disable(ctx, s.operatorMfaAccount(actor), req.Code); err != nil {
+	if err := mfaflow.Disable(ctx, s.operatorMfaAccount(actor), req.Code, s.operatorMfaRequired); err != nil {
 		return nil, err
 	}
 	return &publirasplatformv1.PlatformAuthServiceDisableMfaResponse{Disabled: true}, nil

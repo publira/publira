@@ -519,7 +519,11 @@ type AuthServiceClient interface {
 	ConfirmMfaEnrollment(context.Context, *v1.ConfirmMfaEnrollmentRequest) (*v1.ConfirmMfaEnrollmentResponse, error)
 	// Takes the authenticator off, with its recovery codes unless the account
 	// keeps a passkey in the tenant's console that they stand in for too.
-	// failed_precondition for an account that holds none.
+	// failed_precondition for an account that holds none, and, with the
+	// MFA_LAST_REQUIRED_FACTOR reason, for a member of staff whose role the
+	// platform requires a second factor of in the tenant's console: the site
+	// sees none of the console's passkeys, so the console takes it off instead,
+	// where it can tell whether another factor stays.
 	DisableMfa(context.Context, *v1.DisableMfaRequest) (*v1.DisableMfaResponse, error)
 	// Replaces the recovery codes. failed_precondition for an account that holds
 	// no authenticator.
@@ -648,7 +652,11 @@ type AuthServiceHandler interface {
 	ConfirmMfaEnrollment(context.Context, *v1.ConfirmMfaEnrollmentRequest) (*v1.ConfirmMfaEnrollmentResponse, error)
 	// Takes the authenticator off, with its recovery codes unless the account
 	// keeps a passkey in the tenant's console that they stand in for too.
-	// failed_precondition for an account that holds none.
+	// failed_precondition for an account that holds none, and, with the
+	// MFA_LAST_REQUIRED_FACTOR reason, for a member of staff whose role the
+	// platform requires a second factor of in the tenant's console: the site
+	// sees none of the console's passkeys, so the console takes it off instead,
+	// where it can tell whether another factor stays.
 	DisableMfa(context.Context, *v1.DisableMfaRequest) (*v1.DisableMfaResponse, error)
 	// Replaces the recovery codes. failed_precondition for an account that holds
 	// no authenticator.

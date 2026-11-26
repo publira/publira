@@ -50,6 +50,7 @@ export const RPC_ERROR_REASON = {
   lastTenantAdmin: "LAST_TENANT_ADMIN",
   legalPageAgreementRequired: "LEGAL_PAGE_AGREEMENT_REQUIRED",
   mfaInvalidCode: "MFA_INVALID_CODE",
+  mfaLastRequiredFactor: "MFA_LAST_REQUIRED_FACTOR",
   mfaLocked: "MFA_LOCKED",
   mfaPasskeyRefused: "MFA_PASSKEY_REFUSED",
   mfaSetUpInConsole: "MFA_SET_UP_IN_CONSOLE",

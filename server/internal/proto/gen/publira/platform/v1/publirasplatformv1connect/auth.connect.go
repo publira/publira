@@ -188,6 +188,9 @@ type PlatformAuthServiceClient interface {
 	GetMfaStatus(context.Context, *v1.PlatformAuthServiceGetMfaStatusRequest) (*v1.PlatformAuthServiceGetMfaStatusResponse, error)
 	StartMfaEnrollment(context.Context, *v1.PlatformAuthServiceStartMfaEnrollmentRequest) (*v1.PlatformAuthServiceStartMfaEnrollmentResponse, error)
 	ConfirmMfaEnrollment(context.Context, *v1.PlatformAuthServiceConfirmMfaEnrollmentRequest) (*v1.PlatformAuthServiceConfirmMfaEnrollmentResponse, error)
+	// Takes the authenticator off. failed_precondition for an operator who
+	// holds none, and, with the MFA_LAST_REQUIRED_FACTOR reason, while the
+	// platform policy requires the factor of every operator.
 	DisableMfa(context.Context, *v1.PlatformAuthServiceDisableMfaRequest) (*v1.PlatformAuthServiceDisableMfaResponse, error)
 	RegenerateMfaRecoveryCodes(context.Context, *v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse, error)
 	RequestPasswordReset(context.Context, *v1.PlatformAuthServiceRequestPasswordResetRequest) (*v1.PlatformAuthServiceRequestPasswordResetResponse, error)
@@ -218,6 +221,9 @@ type PlatformAuthServiceHandler interface {
 	GetMfaStatus(context.Context, *v1.PlatformAuthServiceGetMfaStatusRequest) (*v1.PlatformAuthServiceGetMfaStatusResponse, error)
 	StartMfaEnrollment(context.Context, *v1.PlatformAuthServiceStartMfaEnrollmentRequest) (*v1.PlatformAuthServiceStartMfaEnrollmentResponse, error)
 	ConfirmMfaEnrollment(context.Context, *v1.PlatformAuthServiceConfirmMfaEnrollmentRequest) (*v1.PlatformAuthServiceConfirmMfaEnrollmentResponse, error)
+	// Takes the authenticator off. failed_precondition for an operator who
+	// holds none, and, with the MFA_LAST_REQUIRED_FACTOR reason, while the
+	// platform policy requires the factor of every operator.
 	DisableMfa(context.Context, *v1.PlatformAuthServiceDisableMfaRequest) (*v1.PlatformAuthServiceDisableMfaResponse, error)
 	RegenerateMfaRecoveryCodes(context.Context, *v1.PlatformAuthServiceRegenerateMfaRecoveryCodesRequest) (*v1.PlatformAuthServiceRegenerateMfaRecoveryCodesResponse, error)
 	RequestPasswordReset(context.Context, *v1.PlatformAuthServiceRequestPasswordResetRequest) (*v1.PlatformAuthServiceRequestPasswordResetResponse, error)

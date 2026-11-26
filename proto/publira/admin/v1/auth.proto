@@ -505,6 +505,9 @@ service AdminAuthService {
   rpc GetMfaStatus(AdminAuthServiceGetMfaStatusRequest) returns (AdminAuthServiceGetMfaStatusResponse) {}
   rpc StartMfaEnrollment(AdminAuthServiceStartMfaEnrollmentRequest) returns (AdminAuthServiceStartMfaEnrollmentResponse) {}
   rpc ConfirmMfaEnrollment(AdminAuthServiceConfirmMfaEnrollmentRequest) returns (AdminAuthServiceConfirmMfaEnrollmentResponse) {}
+  // Takes the authenticator off. failed_precondition for an account that
+  // holds none, and, with the MFA_LAST_REQUIRED_FACTOR reason, while it is the
+  // account's last second factor and the tenant requires one of its role.
   rpc DisableMfa(AdminAuthServiceDisableMfaRequest) returns (AdminAuthServiceDisableMfaResponse) {}
   // Replaces the recovery codes, for an account that proves its
   // authenticator or one of its passkeys. failed_precondition when the
@@ -529,8 +532,8 @@ service AdminAuthService {
   rpc BeginPasskeyConfirmation(AdminAuthServiceBeginPasskeyConfirmationRequest) returns (AdminAuthServiceBeginPasskeyConfirmationResponse) {}
   rpc ListPasskeys(AdminAuthServiceListPasskeysRequest) returns (AdminAuthServiceListPasskeysResponse) {}
   rpc RenamePasskey(AdminAuthServiceRenamePasskeyRequest) returns (AdminAuthServiceRenamePasskeyResponse) {}
-  // failed_precondition when it is the account's last second factor and the
-  // tenant requires one of its role.
+  // failed_precondition with the MFA_LAST_REQUIRED_FACTOR reason when it is
+  // the account's last second factor and the tenant requires one of its role.
   rpc DeletePasskey(AdminAuthServiceDeletePasskeyRequest) returns (AdminAuthServiceDeletePasskeyResponse) {}
   // Exchanges the account's password, or proof of one of its second factors,
   // for the step-up token the RPCs that say "Requires a recent

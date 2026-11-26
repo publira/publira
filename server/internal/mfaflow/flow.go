@@ -313,16 +313,32 @@ func CompleteVerification(ctx context.Context, acct Account, factor string) (Ver
 // Disable takes the authenticator off once code proves the account. A
 // recovery code counts here: an account whose authenticator is gone has to be
 // able to take the factor off and enroll a new one.
-func Disable(ctx context.Context, acct Account, code string) error {
+//
+// While required says the account has to hold a second factor, the
+// authenticator goes only if another factor stays: sign-in would hold the
+// account to the policy again only once its session ended. That is refused
+// before the code is checked, so the refusal spends none, and decided again
+// under the transaction that takes the authenticator off, so a passkey
+// removed meanwhile is seen. An error from required is returned as it is.
+func Disable(ctx context.Context, acct Account, code string, required func(context.Context) (bool, error)) error {
 	actions := acct.Actions()
-	totp, found, err := acct.Totp(ctx, acct.Queries(ctx))
+	factors, err := FactorsOf(ctx, acct, acct.Queries(ctx))
 	if err != nil {
-		return acct.InternalError(ctx, "failed to get mfa totp", err)
+		return err
 	}
-	if !found || !totp.EnabledAt.Valid {
+	if !factors.TotpEnabled() {
 		return NotEnabledError()
 	}
+	mustKeepOne, err := required(ctx)
+	if err != nil {
+		return err
+	}
+	if mustKeepOne && factors.Passkeys == 0 {
+		acct.Audit(ctx, actions.Disabled, auditlog.OutcomeFailure, ReasonLastRequiredFactor)
+		return LastRequiredFactorError()
+	}
 
+	totp := factors.Totp
 	outcome, err := CheckCode(ctx, acct, &totp, code, true)
 	if err != nil {
 		acct.Audit(ctx, actions.Disabled, auditlog.OutcomeFailure, outcome.Reason)
@@ -330,6 +346,15 @@ func Disable(ctx context.Context, acct Account, code string) error {
 	}
 
 	err = acct.InTx(ctx, func(q dbmodels.Querier) error {
+		if mustKeepOne {
+			passkeys, err := acct.Passkeys(ctx, q)
+			if err != nil {
+				return acct.InternalError(ctx, "failed to count passkeys", err)
+			}
+			if passkeys == 0 {
+				return ErrLastRequiredFactor
+			}
+		}
 		if err := acct.DeleteTotp(ctx, q); err != nil {
 			return acct.InternalError(ctx, "failed to delete mfa totp", err)
 		}
@@ -340,6 +365,10 @@ func Disable(ctx context.Context, acct Account, code string) error {
 		}
 		return notify(ctx, acct, q, ChangeTotpDisabled)
 	})
+	if errors.Is(err, ErrLastRequiredFactor) {
+		acct.Audit(ctx, actions.Disabled, auditlog.OutcomeFailure, ReasonLastRequiredFactor)
+		return LastRequiredFactorError()
+	}
 	if err != nil {
 		return err
 	}

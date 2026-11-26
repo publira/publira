@@ -456,6 +456,35 @@ func TestDBOperatorMfaDisableRemovesTheFactorAndItsRecoveryCodes(t *testing.T) {
 	}
 }
 
+// While the platform policy requires the factor, the operator cannot take it
+// off: their session would keep the console open without one until it ended.
+func TestDBOperatorMfaDisableKeepsAFactorThePolicyRequires(t *testing.T) {
+	t.Parallel()
+
+	env := newOperatorMfaEnv(t)
+	secret, codes := env.enroll(t)
+	requireOperatorMfa(t, env.pg)
+
+	for _, code := range []string{operatorMfaCode(t, secret, 0), codes[0]} {
+		_, err := env.auth.DisableMfa(env.session(), &publirasplatformv1.PlatformAuthServiceDisableMfaRequest{Code: code})
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition || mfaErrorReason(t, err) != rpcerrors.ReasonMfaLastRequiredFactor {
+			t.Fatalf("DisableMfa while required = %v, want failed_precondition with %s", err, rpcerrors.ReasonMfaLastRequiredFactor)
+		}
+	}
+	if got := countRows(t, env.pg, "SELECT count(*) FROM platform_user_mfa_totp WHERE platform_user_id = $1 AND enabled_at IS NOT NULL", env.operator.ID); got != 1 {
+		t.Fatalf("enabled totp rows after the refusal = %d, want 1", got)
+	}
+	// The refusal checks no code, so the recovery code it was sent is unspent.
+	if got := countRows(t, env.pg, "SELECT count(*) FROM platform_user_mfa_recovery_codes WHERE platform_user_id = $1 AND used_at IS NULL", env.operator.ID); got != mfa.RecoveryCodeCount {
+		t.Fatalf("unused recovery codes after the refusal = %d, want %d", got, mfa.RecoveryCodeCount)
+	}
+	if got := countRows(t, env.pg,
+		"SELECT count(*) FROM platform_audit_logs WHERE actor_platform_user_id = $1 AND action = 'operator_mfa_disabled' AND outcome = 'failure'",
+		env.operator.ID); got != 2 {
+		t.Fatalf("operator_mfa_disabled failures = %d, want 2", got)
+	}
+}
+
 // resetMfaAsCommandLine removes the operator's factor the way `publiractl
 // operator reset-mfa` does, as publira_platform and with no code.
 func resetMfaAsCommandLine(t *testing.T, env *operatorMfaEnv) {
@@ -658,10 +687,10 @@ func TestDBOperatorMfaEnrollChallengeBuysOneSession(t *testing.T) {
 		t.Fatalf("recovery code rows = %d, want the %d of the one confirmation that went through", got, mfa.RecoveryCodeCount)
 	}
 
-	signedIn := testutil.WithBearer(context.Background(), session.AccessToken.Token)
-	if _, err := env.auth.DisableMfa(signedIn, &publirasplatformv1.PlatformAuthServiceDisableMfaRequest{Code: session.RecoveryCodes[0]}); err != nil {
-		t.Fatalf("DisableMfa: %v", err)
-	}
+	// The operator cannot take a required factor off, so it is reset from the
+	// command line instead, which leaves the challenge's credentials version
+	// as it was.
+	resetMfaAsCommandLine(t, env)
 	restarted, err := env.auth.StartMfaEnrollment(context.Background(), &publirasplatformv1.PlatformAuthServiceStartMfaEnrollmentRequest{ChallengeToken: login.MfaChallenge.Token})
 	if err != nil {
 		t.Fatalf("StartMfaEnrollment with the spent enroll challenge: %v", err)

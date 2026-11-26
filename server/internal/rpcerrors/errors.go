@@ -106,6 +106,10 @@ const (
 	ReasonLastTenantAdmin = "LAST_TENANT_ADMIN"
 	ReasonMfaInvalidCode  = "MFA_INVALID_CODE"
 	ReasonMfaLocked       = "MFA_LOCKED"
+	// ReasonMfaLastRequiredFactor refuses taking away an account's last
+	// second factor, its authenticator or a passkey, while the policy
+	// requires the account to hold one.
+	ReasonMfaLastRequiredFactor = "MFA_LAST_REQUIRED_FACTOR"
 	// ReasonMfaSetUpInConsole refuses setting an authenticator up on the site
 	// for an account whose second factor is a passkey in the tenant's console:
 	// a site session proves the password alone, which is not enough to add a

@@ -697,10 +697,6 @@ func (s *adminServer) RenamePasskey(
 	return &publiraadminv1.AdminAuthServiceRenamePasskeyResponse{Passkey: passkeyProto(renamed)}, nil
 }
 
-// errLastRequiredFactor refuses removing the second factor an account the
-// policy requires one of cannot do without.
-var errLastRequiredFactor = errors.New("last required second factor")
-
 func (s *adminServer) DeletePasskey(
 	ctx context.Context,
 	req *publiraadminv1.AdminAuthServiceDeletePasskeyRequest,
@@ -727,9 +723,9 @@ func (s *adminServer) DeletePasskey(
 
 	err = s.deletePasskey(ctx, tenant.ID, user.ID, rpID, row.ID, required)
 	switch {
-	case errors.Is(err, errLastRequiredFactor):
-		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRemoved, auditlog.OutcomeFailure, "last_required_factor")
-		return nil, connect.NewError(connect.CodeFailedPrecondition, "the last second factor cannot be removed while two-step verification is required")
+	case errors.Is(err, mfaflow.ErrLastRequiredFactor):
+		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRemoved, auditlog.OutcomeFailure, mfaflow.ReasonLastRequiredFactor)
+		return nil, mfaflow.LastRequiredFactorError()
 	case errors.Is(err, sql.ErrNoRows):
 		return nil, passkeyNotFoundError()
 	case err != nil:
@@ -775,7 +771,7 @@ func (s *adminServer) deletePasskey(ctx context.Context, tenantID, userID uuid.U
 		}
 		if err != nil || !totp.EnabledAt.Valid {
 			if required {
-				return errLastRequiredFactor
+				return mfaflow.ErrLastRequiredFactor
 			}
 			if err := tenantmembers.DeleteRecoveryCodesWithTheLastFactor(ctx, q, userID); err != nil {
 				return s.internalDBError(ctx, "failed to delete mfa recovery codes", err, "user_id", userID.String())

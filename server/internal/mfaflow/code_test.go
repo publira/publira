@@ -8,11 +8,14 @@ import (
 	"time"
 
 	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connectproto"
 	"github.com/google/uuid"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mfa"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
 // fakeAccount keeps one account's second factor in memory. It stores the
@@ -26,8 +29,12 @@ type fakeAccount struct {
 	recoveryCodes map[uuid.UUID]string
 	usedCodes     map[uuid.UUID]bool
 	challengeUsed bool
+	passkeys      int64
 	passkeysErr   error
-	audits        []string
+	// passkeysRemovedInTx is how many passkeys InTx finds removed by the
+	// time it holds the account, as if another request took them meanwhile.
+	passkeysRemovedInTx int64
+	audits              []string
 }
 
 func newFakeAccount(t *testing.T) (*fakeAccount, string) {
@@ -46,13 +53,15 @@ func newFakeAccount(t *testing.T) (*fakeAccount, string) {
 
 func (a *fakeAccount) Queries(context.Context) dbmodels.Querier { return nil }
 func (a *fakeAccount) InTx(_ context.Context, fn func(dbmodels.Querier) error) error {
+	a.passkeys -= a.passkeysRemovedInTx
+	a.passkeysRemovedInTx = 0
 	return fn(nil)
 }
 func (a *fakeAccount) Totp(context.Context, dbmodels.Querier) (Totp, bool, error) {
 	return a.totp, a.totpFound, nil
 }
 func (a *fakeAccount) Passkeys(context.Context, dbmodels.Querier) (int64, error) {
-	return 0, a.passkeysErr
+	return a.passkeys, a.passkeysErr
 }
 func (a *fakeAccount) StoreTotpSecret(_ context.Context, _ dbmodels.Querier, encrypted string) error {
 	a.totp, a.totpFound = Totp{SecretEncrypted: encrypted}, true
@@ -276,14 +285,99 @@ func TestDisableReleasesTheRecoveryCodes(t *testing.T) {
 		t.Fatalf("ReplaceRecoveryCodes: %v", err)
 	}
 
-	if err := Disable(context.Background(), acct, codes[0]); err != nil {
+	if err := Disable(context.Background(), acct, codes[0], notRequired); err != nil {
 		t.Fatalf("Disable with a recovery code: %v", err)
 	}
 	if acct.totpFound || len(acct.recoveryCodes) != 0 {
 		t.Fatalf("after Disable: authenticator found %v, %d recovery codes; want neither", acct.totpFound, len(acct.recoveryCodes))
 	}
-	if err := Disable(context.Background(), acct, codes[1]); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	if err := Disable(context.Background(), acct, codes[1], notRequired); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("Disable without an authenticator = %v, want failed_precondition", err)
+	}
+}
+
+// reasonOf is the ErrorInfo reason err carries, or "" for none.
+func reasonOf(err error) string {
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		return ""
+	}
+	for _, detail := range connectErr.Details() {
+		value, valueErr := connectproto.UnmarshalErrorDetail(detail)
+		if valueErr != nil {
+			continue
+		}
+		if info, ok := value.(*errdetails.ErrorInfo); ok && info.GetDomain() == rpcerrors.ErrorInfoDomain {
+			return info.GetReason()
+		}
+	}
+	return ""
+}
+
+func notRequired(context.Context) (bool, error) { return false, nil }
+
+func required(context.Context) (bool, error) { return true, nil }
+
+func TestDisableKeepsTheLastFactorTheAccountIsRequiredToHold(t *testing.T) {
+	acct, secret := newFakeAccount(t)
+
+	err := Disable(context.Background(), acct, currentCode(t, secret), required)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition || reasonOf(err) != rpcerrors.ReasonMfaLastRequiredFactor {
+		t.Fatalf("Disable of the last required factor = %v, want failed_precondition with %s", err, rpcerrors.ReasonMfaLastRequiredFactor)
+	}
+	if !acct.totpFound || !acct.totp.EnabledAt.Valid {
+		t.Fatal("the authenticator was taken off an account required to hold a factor")
+	}
+	// The refusal comes before the code is checked, so the code is still
+	// good for the next step and nothing counted against the lock.
+	if acct.lastStep != 0 || acct.failures != 0 {
+		t.Fatalf("after the refusal: last step %d, %d failures; want the code unspent", acct.lastStep, acct.failures)
+	}
+	want := []string{"disabled/failure/last_required_factor"}
+	if len(acct.audits) != 1 || acct.audits[0] != want[0] {
+		t.Fatalf("audit entries = %v, want %v", acct.audits, want)
+	}
+}
+
+func TestDisableTakesTheAuthenticatorOffWhileAPasskeyStays(t *testing.T) {
+	acct, secret := newFakeAccount(t)
+	acct.passkeys = 1
+
+	if err := Disable(context.Background(), acct, currentCode(t, secret), required); err != nil {
+		t.Fatalf("Disable with a passkey left: %v", err)
+	}
+	if acct.totpFound {
+		t.Fatal("the authenticator is still there")
+	}
+}
+
+func TestDisableSeesAPasskeyRemovedBeforeItCommits(t *testing.T) {
+	acct, secret := newFakeAccount(t)
+	acct.passkeys = 1
+	acct.passkeysRemovedInTx = 1
+
+	err := Disable(context.Background(), acct, currentCode(t, secret), required)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition || reasonOf(err) != rpcerrors.ReasonMfaLastRequiredFactor {
+		t.Fatalf("Disable after the last passkey went = %v, want failed_precondition with %s", err, rpcerrors.ReasonMfaLastRequiredFactor)
+	}
+	if !acct.totpFound {
+		t.Fatal("the authenticator was taken off after the last passkey went")
+	}
+	if got := acct.audits[len(acct.audits)-1]; got != "disabled/failure/last_required_factor" {
+		t.Fatalf("last audit entry = %q, want the refusal", got)
+	}
+}
+
+func TestDisableReturnsTheRequirementsError(t *testing.T) {
+	acct, secret := newFakeAccount(t)
+	want := connect.NewError(connect.CodeInternal, "policy unavailable")
+
+	err := Disable(context.Background(), acct, currentCode(t, secret), func(context.Context) (bool, error) { return false, want })
+	if !errors.Is(err, want) {
+		t.Fatalf("Disable with a failed requirement = %v, want %v", err, want)
+	}
+	if !acct.totpFound {
+		t.Fatal("the authenticator was taken off when the requirement could not be read")
 	}
 }
 
