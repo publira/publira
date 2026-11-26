@@ -196,12 +196,18 @@ func dialParallel(ctx context.Context, dialer *net.Dialer, network, port string,
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	// A racer stops waiting to be heard only once dialParallel has returned,
+	// never at ctx's end: the loop below counts on hearing from every racer
+	// it started, and a racer that gave up at the deadline would leave it
+	// waiting for good.
 	results := make(chan result)
+	returned := make(chan struct{})
+	defer close(returned)
 	race := func(primary bool, addrs []netip.Addr) {
 		conn, err := dialSerial(ctx, dialer, network, port, addrs)
 		select {
 		case results <- result{conn: conn, err: err, primary: primary}:
-		case <-ctx.Done():
+		case <-returned:
 			if conn != nil {
 				_ = conn.Close()
 			}

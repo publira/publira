@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -169,5 +170,37 @@ func TestDialBoundsTheResolutionByTheDialTimeout(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("Dial was still resolving after the dial timeout")
+	}
+}
+
+// Racing two families whose attempts both stall until the deadline returns at
+// the deadline, whichever way each racer finds out the time is up.
+func TestDialParallelReturnsWhenBothFamiliesStallPastTheDeadline(t *testing.T) {
+	t.Parallel()
+
+	dialer := &net.Dialer{
+		ControlContext: func(ctx context.Context, _, _ string, _ syscall.RawConn) error {
+			<-ctx.Done()
+			return ctx.Err()
+		},
+	}
+	primaries := []netip.Addr{netip.MustParseAddr("::1")}
+	fallbacks := []netip.Addr{netip.MustParseAddr("127.0.0.1")}
+	for range 20 {
+		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+		done := make(chan error, 1)
+		go func() {
+			_, err := dialParallel(ctx, dialer, "tcp", "25", primaries, fallbacks, time.Millisecond)
+			done <- err
+		}()
+		select {
+		case err := <-done:
+			if err == nil {
+				t.Fatal("dialParallel connected through attempts that never finish")
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("dialParallel was still racing after the deadline")
+		}
+		cancel()
 	}
 }
