@@ -242,8 +242,18 @@ func (s *adminServer) FinishPasskeyRegistration(
 		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRegistered, auditlog.OutcomeFailure, reason)
 		return nil, passkeyRegistrationRefusedError()
 	}
+	// Asked once the credential has verified, so a prompt that failed or was
+	// closed spends none of the account's recovery codes. An account at an
+	// enroll challenge holds no factor to prove.
+	confirmed, factor := false, ""
+	if !actor.FromChallenge {
+		confirmed, factor, err = s.confirmFactorChange(ctx, actor, auditActionMfaPasskeyRegistered, req.Confirmation)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-	row, codes, err := s.storePasskey(ctx, actor, rp, credential, name)
+	row, codes, err := s.storePasskey(ctx, actor, rp, credential, name, confirmed)
 	switch {
 	case errors.Is(err, mfaflow.ErrChallengeSpent):
 		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRegistered, auditlog.OutcomeFailure, "challenge_spent")
@@ -251,6 +261,9 @@ func (s *adminServer) FinishPasskeyRegistration(
 	case errors.Is(err, mfaflow.ErrEnrollChallengeStale):
 		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRegistered, auditlog.OutcomeFailure, "challenge_stale")
 		return nil, invalidSessionError()
+	case errors.Is(err, errFactorChangeUnconfirmed):
+		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRegistered, auditlog.OutcomeFailure, "code_missing")
+		return nil, mfaflow.CodeRequiredError()
 	case errors.Is(err, errPasskeyAlreadyRegistered):
 		s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRegistered, auditlog.OutcomeFailure, "already_registered")
 		return nil, connect.NewError(connect.CodeAlreadyExists, "passkey is already registered")
@@ -263,7 +276,7 @@ func (s *adminServer) FinishPasskeyRegistration(
 		Passkey:       passkeyProto(row),
 		RecoveryCodes: codes,
 	}
-	reason := ""
+	reason := factor
 	if actor.FromChallenge {
 		user, accessToken, sessionErr := s.mfaAccount(actor).IssueSession(ctx)
 		if sessionErr == nil {
@@ -291,12 +304,18 @@ var errPasskeyAlreadyRegistered = errors.New("passkey already registered")
 // it with no way back in. A registration that finishes a login claims its
 // challenge in the same transaction, as an enrollment does, so the token buys
 // one session and is left unspent if the store rolls back.
+//
+// confirmed is whether the request proved a factor the account already held.
+// One that did not was sent for an account with none, and a factor that
+// appeared since is seen here, under the lock, as it is for an enroll
+// challenge.
 func (s *adminServer) storePasskey(
 	ctx context.Context,
 	actor mfaActor,
 	rp *tenantwebauthn.RelyingParty,
 	credential *webauthn.Credential,
 	name string,
+	confirmed bool,
 ) (dbmodels.UserWebauthnCredential, []string, error) {
 	userID := actor.User.ID.String()
 	tx, err := s.beginTenantTx(ctx)
@@ -321,14 +340,20 @@ func (s *adminServer) storePasskey(
 		if !claimed {
 			return dbmodels.UserWebauthnCredential{}, nil, mfaflow.ErrChallengeSpent
 		}
-		// mfaActorFor checked this before the lock; a factor enrolled since,
-		// under another login's enroll challenge, is seen here.
+	}
+	if actor.FromChallenge || !confirmed {
+		// Checked before the lock, by mfaActorFor or confirmFactorChange; a
+		// factor enrolled since, under another login's enroll challenge or
+		// another session's request, is seen here.
 		factors, err := mfaflow.FactorsOf(ctx, acct, q)
 		if err != nil {
 			return dbmodels.UserWebauthnCredential{}, nil, err
 		}
 		if factors.Any() {
-			return dbmodels.UserWebauthnCredential{}, nil, mfaflow.ErrEnrollChallengeStale
+			if actor.FromChallenge {
+				return dbmodels.UserWebauthnCredential{}, nil, mfaflow.ErrEnrollChallengeStale
+			}
+			return dbmodels.UserWebauthnCredential{}, nil, errFactorChangeUnconfirmed
 		}
 	}
 	id, err := uuid.NewV7()
@@ -358,6 +383,12 @@ func (s *adminServer) storePasskey(
 			return dbmodels.UserWebauthnCredential{}, nil, errPasskeyAlreadyRegistered
 		}
 		return dbmodels.UserWebauthnCredential{}, nil, s.internalDBError(ctx, "failed to store passkey", err, "user_id", userID)
+	}
+	// An authenticator set up but not yet confirmed may have been started
+	// while the account held nothing to prove, so it is not left to be
+	// confirmed past this passkey without being asked for it.
+	if err := q.DeleteUnconfirmedUserMfaTotp(ctx, actor.User.ID); err != nil {
+		return dbmodels.UserWebauthnCredential{}, nil, s.internalDBError(ctx, "failed to delete an unconfirmed mfa totp", err, "user_id", userID)
 	}
 	unused, err := q.CountUnusedUserMfaRecoveryCodes(ctx, actor.User.ID)
 	if err != nil {
@@ -413,8 +444,9 @@ func (s *adminServer) BeginPasskeyVerification(
 }
 
 // BeginPasskeyConfirmation begins the assertion a signed-in account confirms
-// RegenerateMfaRecoveryCodes with. Its ceremony is of the kind a login's is,
-// so the finish is the same check over the same rows.
+// RegenerateMfaRecoveryCodes, or a change to its factors, with. Its ceremony
+// is of the kind a login's is, so the finish is the same check over the same
+// rows.
 func (s *adminServer) BeginPasskeyConfirmation(
 	ctx context.Context,
 	req *publiraadminv1.AdminAuthServiceBeginPasskeyConfirmationRequest,
@@ -679,6 +711,12 @@ func (s *adminServer) DeletePasskey(
 	if err != nil {
 		return nil, err
 	}
+	// The passkey is one of the account's factors, so there is always one to
+	// prove; the passkey itself is proof enough.
+	_, factor, err := s.confirmFactorChange(ctx, actor, auditActionMfaPasskeyRemoved, req.Confirmation)
+	if err != nil {
+		return nil, err
+	}
 
 	err = s.deletePasskey(ctx, user.ID, rpID, row.ID, required)
 	switch {
@@ -690,7 +728,7 @@ func (s *adminServer) DeletePasskey(
 	case err != nil:
 		return nil, err
 	}
-	s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRemoved, auditlog.OutcomeSuccess, "")
+	s.recordMfaAudit(ctx, actor, auditActionMfaPasskeyRemoved, auditlog.OutcomeSuccess, factor)
 	return &publiraadminv1.AdminAuthServiceDeletePasskeyResponse{}, nil
 }
 

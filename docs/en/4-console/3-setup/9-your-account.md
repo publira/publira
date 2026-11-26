@@ -2,7 +2,7 @@
 title: Your account
 description: Change the email address you sign in to the console with, and protect your account with two-step verification, a passkey, and recovery codes.
 published: 2026-10-07
-updated: 2026-11-12
+updated: 2026-11-26
 ---
 
 Every member of staff, whatever their role, manages their own console account from **Account settings**, in the account menu at the top of the console. It has two cards: **Change the email address** and **Two-step verification**.
@@ -33,9 +33,18 @@ The operator can require it of every Tenant admin on the install. A Tenant admin
 
 ![The Two-step verification card while it is off: Set up under Authenticator app, and Add a passkey under Passkeys.](./your-account-two-step.png)
 
+### Confirming a change
+
+Once you have an authenticator app or a passkey, setting up another or removing one asks for one you already have, so a browser left signed in is not enough to change what your sign-in asks for. The form shows a **Verification code** field, or **Recovery code** if passkeys are all you have:
+
+- Enter a code from your authenticator app, or one of your recovery codes. A recovery code used here is spent.
+- If you have a passkey, leave the field empty instead, and unlock one of your passkeys when the browser asks.
+
+A code or a passkey the console refuses changes nothing and counts toward the same lock as a wrong code at sign-in. Your first second factor asks for none of this, since there is nothing yet to confirm it with.
+
 ### Setting up an authenticator app
 
-1. Under **Authenticator app**, choose **Set up**.
+1. Under **Authenticator app**, choose **Set up**. If you already have a passkey, confirm it first, as [Confirming a change](#confirming-a-change) describes.
 2. Scan the QR code with your authenticator app. If you cannot scan it, enter the **Setup key** shown beside it by hand.
 3. Enter the six-digit code the app shows under **Verification code**, and choose **Turn on two-step verification**.
 4. If the app is your first second factor, the console shows ten **Recovery codes**. Store them somewhere other than your phone, such as a password manager or on paper. They are shown only this once.
@@ -48,7 +57,7 @@ From then on, the console asks for a code from the app each time you sign in. Yo
 
 ### Adding a passkey
 
-1. Under **Passkeys**, choose **Add a passkey**.
+1. Under **Passkeys**, choose **Add a passkey**. If you already have a second factor, confirm it first, as [Confirming a change](#confirming-a-change) describes: with a passkey, the browser asks you to unlock it before it asks to create the new one.
 2. The browser asks to create a passkey for the console. Confirm it with your device's screen lock, a password manager, or a security key.
 3. If the passkey is your first second factor, the console shows ten **Recovery codes**, as it does for an authenticator app. Store them the same way: they are shown only this once.
 4. Under **Name the passkey**, enter a **Name** that tells you where the passkey is kept, such as the device or the password manager, and choose **Save**. **Skip** leaves it unnamed.
@@ -59,7 +68,7 @@ The browser refuses to create a second passkey on an authenticator that already 
 
 ### Removing a passkey
 
-Choose **Remove** beside the passkey and confirm. It no longer signs you in to the console. It stays on your device or in your password manager until you delete it there as well.
+Choose **Remove** beside the passkey, confirm it with a second factor you have, as [Confirming a change](#confirming-a-change) describes, and choose **Remove**. The passkey you are removing is proof enough. It no longer signs you in to the console. It stays on your device or in your password manager until you delete it there as well.
 
 If it was your last passkey and you have no authenticator app, two-step verification is off, and your recovery codes go with it. When the operator requires two-step verification of Tenant admins, the console refuses to remove a Tenant admin's last second factor: add another passkey or set up an authenticator app first.
 
@@ -89,7 +98,7 @@ Before you replace the phone with your authenticator app, sign in with a code fr
 
 Before you replace a device that holds a passkey, add a passkey on the new device and remove the old one from the list. A passkey in a password manager that syncs moves with the password manager, and needs nothing done.
 
-If you have lost a device, sign in with what you have left: another passkey, the authenticator app, or a recovery code. Then remove the lost device's passkey, or turn off the authenticator app it held, so that it no longer counts as yours, and add the new device. Someone who finds the device still needs your password to sign in, but removing it means they never get as far as the second step.
+If you have lost a device, sign in with what you have left: another passkey, the authenticator app, or a recovery code. Then remove the lost device's passkey, or turn off the authenticator app it held, so that it no longer counts as yours, and add the new device. Each of those asks for a factor you still have; a recovery code does if it is all you have left. Someone who finds the device still needs your password to sign in, but removing it means they never get as far as the second step.
 
 If you have lost every second factor and every recovery code, you cannot sign in to the console any more, and your password alone cannot remove two-step verification from your account. Ask another Tenant admin of the tenant: they can remove it from your page under **Readers**, as [Lost two-step verification](../2-readers/1-accounts.md#lost-two-step-verification) describes. If there is none, ask the operator of the install, who can remove it as [A tenant's staff](../../3-operations/3-tenant-staff.md#lost-two-step-verification) describes. Either way, you then sign in with your password and set it up again.
 

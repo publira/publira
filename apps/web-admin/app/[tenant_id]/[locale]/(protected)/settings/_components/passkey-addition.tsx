@@ -8,10 +8,12 @@ import type { Dispatch, ReactNode } from "react";
 import {
   registerPasskey,
   usePasskeyCeremony,
+  usePasskeyConfirmation,
 } from "#components/passkey-ceremony";
 import type { PasskeyRegistrationState } from "#lib/mfa-action-state";
 
 import {
+  beginAccountPasskeyConfirmationAction,
   beginAccountPasskeyRegistrationAction,
   finishAccountPasskeyRegistrationAction,
 } from "../_lib/mfa-actions";
@@ -46,15 +48,22 @@ const PasskeyAddition = ({
 };
 
 /**
- * Runs the registration ceremony for the signed-in account. Its answer carries
- * the recovery codes when the passkey was the account's first factor, which
- * `MfaSettingsOutcome.Report` among the children hands to the card.
+ * Runs the registration ceremony for the signed-in account, after the
+ * assertion that confirms it when an `MfaConfirmationField` among the children
+ * was left empty. Its answer carries the recovery codes when the passkey was
+ * the account's first factor, which `MfaSettingsOutcome.Report` among the
+ * children hands to the card.
  */
 const PasskeyAdditionAddForm = ({ children }: { children: ReactNode }) => {
-  const add = usePasskeyCeremony<PasskeyRegistrationState>(
+  const register = usePasskeyCeremony<PasskeyRegistrationState>(
     beginAccountPasskeyRegistrationAction,
     registerPasskey,
     finishAccountPasskeyRegistrationAction
+  );
+
+  const add = usePasskeyConfirmation<PasskeyRegistrationState>(
+    beginAccountPasskeyConfirmationAction,
+    register
   );
 
   return (

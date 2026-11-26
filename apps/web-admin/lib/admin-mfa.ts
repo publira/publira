@@ -125,6 +125,18 @@ export type AdminMfaRecoveryCodesResult =
   | { ok: true; recoveryCodes: string[] }
   | { ok: false; message: string };
 
+/**
+ * Proof that a signed-in account still holds one of its factors, which the
+ * API asks for before the account adds a factor or removes one. At most one
+ * of the two is set, and neither for an account with no factor yet.
+ */
+export interface AdminMfaConfirmation {
+  /** A code from the authenticator app, or a recovery code. */
+  code: string;
+  /** An assertion made over {@link beginAdminPasskeyConfirmation}. */
+  passkeyCredentialJson: string;
+}
+
 /** A session the API issued, or `null` when it answered an unusable one. */
 const toMfaSession = (
   token: string | undefined,
@@ -377,6 +389,38 @@ const sessionPasskeyConfirmationFailureMessage = async (
 };
 
 /**
+ * Wording for a refused confirmation, or `null` when the failure was not about
+ * the confirmation at all.
+ *
+ * A refused assertion is `unauthenticated`, as a rejected session is, so this
+ * is read before anything rethrows the error for `withAdminSessionReauth()`.
+ * A registration whose new credential did not verify carries the same reason
+ * as `invalid_argument`, which is the registration's own refusal and is left
+ * to the caller.
+ */
+const confirmationRejectionMessage = async (
+  cause: unknown,
+  locale: Locale
+): Promise<string | null> => {
+  const rejected = await mfaCodeRejectionMessage(cause, locale);
+
+  if (rejected) {
+    return rejected;
+  }
+
+  if (
+    rpcErrorHasReason(cause, RPC_ERROR_REASON.mfaPasskeyRefused) &&
+    isUnauthenticatedRpcError(cause)
+  ) {
+    const t = await getMessagesFor(locale);
+
+    return t("admin.auth.mfa.errors.passkey_refused");
+  }
+
+  return null;
+};
+
+/**
  * Tag the account screen's cached status read carries, so `updateTag` in a
  * Server Action shows the factor being turned on or off in the same session
  * instead of leaving the previous state in the private cache.
@@ -513,7 +557,8 @@ export const verifyAdminMfa = async (
 export const startAdminMfaEnrollment = async (
   tenantId: string,
   challengeToken: string,
-  locale: Locale
+  locale: Locale,
+  confirmation?: AdminMfaConfirmation
 ): Promise<AdminMfaEnrollmentStartResult> => {
   const t = await getMessagesFor(locale);
   const sessionToken = challengeToken ? "" : await getAccessToken();
@@ -525,7 +570,7 @@ export const startAdminMfaEnrollment = async (
           await withClientAddressHeaders()
         )
       : await apiClient.auth.startMfaEnrollment(
-          { challengeToken: "", tenant: { tenantId } },
+          { confirmation, challengeToken: "", tenant: { tenantId } },
           withSessionHeaders(sessionToken)
         );
 
@@ -551,7 +596,9 @@ export const startAdminMfaEnrollment = async (
 
     return {
       challengeExpired: false,
-      message: await sessionMfaFailureMessage(error, locale, "disabled"),
+      message:
+        (await confirmationRejectionMessage(error, locale)) ??
+        (await sessionMfaFailureMessage(error, locale, "disabled")),
       ok: false,
     };
   }
@@ -653,8 +700,8 @@ export const regenerateAdminMfaRecoveryCodes = async (
 };
 
 /**
- * Start confirming a recovery-code regeneration with one of the signed-in
- * account's passkeys.
+ * Start confirming a recovery-code regeneration, or a change to the account's
+ * factors, with one of the signed-in account's passkeys.
  */
 export const beginAdminPasskeyConfirmation = async (
   tenantId: string,
@@ -795,13 +842,15 @@ export const beginAdminPasskeyRegistration = async (
 
 /**
  * Store the passkey the browser created. Under an enroll challenge it finishes
- * the login the challenge was holding, as confirming an authenticator does.
+ * the login the challenge was holding, as confirming an authenticator does; a
+ * signed-in account that already holds a factor sends `confirmation`.
  */
 export const finishAdminPasskeyRegistration = async (
   tenantId: string,
   challengeToken: string,
   credentialJson: string,
-  locale: Locale
+  locale: Locale,
+  confirmation?: AdminMfaConfirmation
 ): Promise<AdminPasskeyRegistrationResult> => {
   const sessionToken = challengeToken ? "" : await getAccessToken();
 
@@ -813,6 +862,7 @@ export const finishAdminPasskeyRegistration = async (
         )
       : await apiClient.auth.finishPasskeyRegistration(
           {
+            confirmation,
             credentialJson,
             challengeToken: "",
             name: "",
@@ -831,9 +881,18 @@ export const finishAdminPasskeyRegistration = async (
       ),
     };
   } catch (error) {
+    if (challengeToken) {
+      return {
+        ...(await challengePasskeyFailure(error, locale, "registration")),
+        ok: false,
+      };
+    }
+
+    const rejected = await confirmationRejectionMessage(error, locale);
+
     return {
-      ...(challengeToken
-        ? await challengePasskeyFailure(error, locale, "registration")
+      ...(rejected
+        ? { challengeExpired: false, message: rejected }
         : await sessionPasskeyRegistrationFailure(error, locale)),
       ok: false,
     };
@@ -876,13 +935,14 @@ export const renameAdminPasskey = async (
 };
 
 /**
- * Remove one of the signed-in account's passkeys. The API refuses the last
- * second factor of an account the tenant requires one of, which is the
- * failed precondition worded here.
+ * Remove one of the signed-in account's passkeys, proved by `confirmation`.
+ * The API refuses the last second factor of an account the tenant requires
+ * one of, which is the failed precondition worded here.
  */
 export const deleteAdminPasskey = async (
   tenantId: string,
   id: string,
+  confirmation: AdminMfaConfirmation,
   locale: Locale
 ): Promise<AdminPasskeyChangeResult> => {
   const [t, sessionToken] = await Promise.all([
@@ -892,12 +952,18 @@ export const deleteAdminPasskey = async (
 
   try {
     await apiClient.auth.deletePasskey(
-      { id, tenant: { tenantId } },
+      { confirmation, id, tenant: { tenantId } },
       withSessionHeaders(sessionToken)
     );
 
     return { ok: true };
   } catch (error) {
+    const rejected = await confirmationRejectionMessage(error, locale);
+
+    if (rejected) {
+      return { message: rejected, ok: false };
+    }
+
     return {
       message: await sessionPasskeyFailureMessage(
         error,

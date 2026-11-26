@@ -547,7 +547,41 @@ func (s *adminServer) StartMfaEnrollment(
 	if err != nil {
 		return nil, err
 	}
-	enrollment, err := mfaflow.StartEnrollment(ctx, s.mfaAccount(actor))
+	acct := s.mfaAccount(actor)
+	confirmed := false
+	if !actor.FromChallenge {
+		factors, err := mfaflow.FactorsOf(ctx, acct, acct.Queries(ctx))
+		if err != nil {
+			return nil, err
+		}
+		// A confirmed authenticator is refused by StartEnrollment whatever
+		// the request proves, so no code is spent on it.
+		if !factors.TotpEnabled() {
+			if confirmed, _, err = s.confirmFactorChange(ctx, actor, mfaAuditActions.Enrolled, req.Confirmation); err != nil {
+				return nil, err
+			}
+		}
+	}
+	// A start that proved nothing was sent for an account with no factor, and
+	// a passkey registered since is seen here, where the secret is stored.
+	// One registered after that drops the unconfirmed secret itself.
+	enrollment, err := mfaflow.StartEnrollmentIf(ctx, acct, func(q dbmodels.Querier) error {
+		if actor.FromChallenge || confirmed {
+			return nil
+		}
+		factors, err := mfaflow.FactorsOf(ctx, acct, q)
+		if err != nil {
+			return err
+		}
+		if factors.Passkeys > 0 {
+			return errFactorChangeUnconfirmed
+		}
+		return nil
+	})
+	if errors.Is(err, errFactorChangeUnconfirmed) {
+		s.recordMfaAudit(ctx, actor, mfaAuditActions.Enrolled, auditlog.OutcomeFailure, "code_missing")
+		return nil, mfaflow.CodeRequiredError()
+	}
 	if err != nil {
 		return nil, err
 	}

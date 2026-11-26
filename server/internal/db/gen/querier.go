@@ -773,6 +773,9 @@ type Querier interface {
 	DeleteTenantReader(ctx context.Context, arg DeleteTenantReaderParams) (DeleteTenantReaderRow, error)
 	DeleteTenantUserRolesByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteTenantWebhookEndpoint(ctx context.Context, arg DeleteTenantWebhookEndpointParams) (int64, error)
+	// A confirmed authenticator is a factor and stays; an unconfirmed one is only
+	// an enrollment someone started.
+	DeleteUnconfirmedUserMfaTotp(ctx context.Context, userID uuid.UUID) error
 	// A replaced banner image is left behind by the banner that now points at the
 	// new upload; deleting the banner takes its images with it.
 	DeleteUnreferencedCampaignBannerImages(ctx context.Context, createdBefore time.Time) (int64, error)

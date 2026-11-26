@@ -15,9 +15,10 @@ import { addVirtualAuthenticator } from "../src/webauthn";
  * only once, so the page the router keeps for Back must not show them again.
  * The same administrator, put back to a password alone, then adds a passkey
  * there instead, from Chromium's virtual authenticator, answers the next
- * sign-in with it, and removes it. With that passkey as their only factor,
- * they replace their recovery codes with it, and an assertion the console
- * refuses replaces none.
+ * sign-in with it, and removes it. Once the passkey is a factor, setting up
+ * the authenticator app beside it and removing it are each confirmed by the
+ * passkey. With that passkey as their only factor, they replace their
+ * recovery codes with it, and an assertion the console refuses replaces none.
  *
  * Both use the one account the scenario keeps for this screen, since the
  * documentation photographs the member and reader lists with it in them, so
@@ -122,11 +123,20 @@ test.describe("admin passkey account settings", () => {
     await expect(page).toHaveURL(new RegExp(`${ACCOUNT_SETTINGS_PATH}$`, "u"));
     await expect(passkey).toContainText("Last used");
 
+    // The account holds a factor now, so adding another is confirmed with
+    // it: the confirmation field is left empty and the passkey answers.
+    await page.getByRole("button", { exact: true, name: "Set up" }).click();
+    await expect(page.getByText(/^[A-Z2-7]{16,}$/u)).toBeVisible();
+
+    // So is removing one, and the passkey being removed is proof enough.
     await passkey.getByRole("button", { exact: true, name: "Remove" }).click();
-    await page
-      .getByRole("alertdialog")
-      .getByRole("button", { exact: true, name: "Remove" })
-      .click();
+    const removal = page.getByRole("alertdialog");
+    await expect(
+      removal.getByText(
+        /leave this empty to confirm with one of your passkeys/iu
+      )
+    ).toBeVisible();
+    await removal.getByRole("button", { exact: true, name: "Remove" }).click();
 
     await expect(page.getByText("No passkeys are registered.")).toBeVisible();
     await expect(page.getByText("Two-step verification is off.")).toBeVisible();

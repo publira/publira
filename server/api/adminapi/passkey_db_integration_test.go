@@ -38,16 +38,24 @@ func newPasskeyDBEnv(t *testing.T) *adminDBEnv {
 	return newAdminDBEnv(t)
 }
 
-// registerPasskey takes a signed-in account through a whole registration on
-// the console's origin and returns the authenticator now holding the
-// credential, together with what the finish answered.
+// registerPasskey takes a signed-in account that holds no second factor yet
+// through a whole registration on the console's origin and returns the
+// authenticator now holding the credential, together with what the finish
+// answered.
 func registerPasskey(t *testing.T, env *adminDBEnv, tenant adminDBTenant, name string) (*webauthntest.Authenticator, *publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationResponse) {
 	t.Helper()
-	return registerPasskeyOn(t, env, tenant, passkeyConsoleOrigin, name)
+	return registerPasskeyOn(t, env, tenant, passkeyConsoleOrigin, name, nil)
+}
+
+// addPasskey is registerPasskey for an account that already holds a factor,
+// proved by confirmation.
+func addPasskey(t *testing.T, env *adminDBEnv, tenant adminDBTenant, name string, confirmation *publiraadminv1.MfaConfirmation) (*webauthntest.Authenticator, *publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationResponse) {
+	t.Helper()
+	return registerPasskeyOn(t, env, tenant, passkeyConsoleOrigin, name, confirmation)
 }
 
 // registerPasskeyOn is registerPasskey for a console served on origin.
-func registerPasskeyOn(t *testing.T, env *adminDBEnv, tenant adminDBTenant, origin, name string) (*webauthntest.Authenticator, *publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationResponse) {
+func registerPasskeyOn(t *testing.T, env *adminDBEnv, tenant adminDBTenant, origin, name string, confirmation *publiraadminv1.MfaConfirmation) (*webauthntest.Authenticator, *publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationResponse) {
 	t.Helper()
 
 	ctx := testutil.WithBearer(context.Background(), tenant.token())
@@ -62,6 +70,7 @@ func registerPasskeyOn(t *testing.T, env *adminDBEnv, tenant adminDBTenant, orig
 		Tenant:         tenant.tenantContext(),
 		CredentialJson: authenticator.Register(t, begun.CreationOptionsJson),
 		Name:           name,
+		Confirmation:   confirmation,
 	})
 	if err != nil {
 		t.Fatalf("FinishPasskeyRegistration: %v", err)
@@ -194,7 +203,7 @@ func TestAdminPasskeyVerificationRefusesAStorefrontPasskeyUnderTheStorefrontDoma
 		"UPDATE tenants SET admin_domain = 'admin.tenant.example.com' WHERE id = $1", tenant.Tenant.ID); err != nil {
 		t.Fatalf("move the console under the storefront's domain: %v", err)
 	}
-	_, registered := registerPasskeyOn(t, env, tenant, consoleOrigin, "Console")
+	_, registered := registerPasskeyOn(t, env, tenant, consoleOrigin, "Console", nil)
 	if got := env.countRows(t, "SELECT count(*) FROM user_webauthn_credentials WHERE user_id = $1 AND rp_id = 'admin.tenant.example.com'", tenant.User.ID); got != 1 {
 		t.Fatalf("passkeys bound to the console's host = %d, want 1", got)
 	}
@@ -326,8 +335,8 @@ func TestAdminPasskeyVerificationRefusesACounterThatWentBackwards(t *testing.T) 
 func TestAdminPasskeyFailuresCountTowardTheLockCodesDo(t *testing.T) {
 	env := newPasskeyDBEnv(t)
 	tenant := seedMfaTenant(t, env)
-	enrollMfa(t, env, tenant)
-	authenticator, _ := registerPasskey(t, env, tenant, "")
+	secret, _ := enrollMfa(t, env, tenant)
+	authenticator, _ := addPasskey(t, env, tenant, "", codeConfirmation(mfaNextCode(t, secret)))
 
 	challenge := verifyChallenge(t, env, tenant)
 	if len(challenge.Methods) != 2 {
@@ -447,7 +456,7 @@ func TestAdminPasskeyRegistrationRefusesAnotherOrigin(t *testing.T) {
 func TestAdminPasskeyShareTheRecoveryCodesOfTheAccount(t *testing.T) {
 	env := newPasskeyDBEnv(t)
 	tenant := seedMfaTenant(t, env)
-	_, registered := registerPasskey(t, env, tenant, "")
+	authenticator, registered := registerPasskey(t, env, tenant, "")
 	codes := registered.RecoveryCodes
 
 	challenge := verifyChallenge(t, env, tenant)
@@ -463,12 +472,12 @@ func TestAdminPasskeyShareTheRecoveryCodesOfTheAccount(t *testing.T) {
 		t.Fatalf("VerifyMfa = %+v, want a spent recovery code", verified)
 	}
 
-	_, second := registerPasskey(t, env, tenant, "Phone")
+	_, second := addPasskey(t, env, tenant, "Phone", passkeyConfirmation(t, env, tenant, authenticator))
 	if len(second.RecoveryCodes) != 0 {
 		t.Fatalf("recovery codes on a second passkey = %d, want none while unused ones remain", len(second.RecoveryCodes))
 	}
 
-	secret, _ := enrollMfa(t, env, tenant)
+	secret, _ := enrollMfaConfirmed(t, env, tenant, passkeyConfirmation(t, env, tenant, authenticator))
 	status, err := env.authClient().GetMfaStatus(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceGetMfaStatusRequest{Tenant: tenant.tenantContext()})
 	if err != nil {
 		t.Fatalf("GetMfaStatus: %v", err)
@@ -497,8 +506,8 @@ func TestAdminPasskeyShareTheRecoveryCodesOfTheAccount(t *testing.T) {
 func TestAdminPasskeyListRenameAndDelete(t *testing.T) {
 	env := newPasskeyDBEnv(t)
 	tenant := seedMfaTenant(t, env)
-	_, first := registerPasskey(t, env, tenant, "Laptop")
-	_, second := registerPasskey(t, env, tenant, "Phone")
+	laptop, first := registerPasskey(t, env, tenant, "Laptop")
+	phone, second := addPasskey(t, env, tenant, "Phone", passkeyConfirmation(t, env, tenant, laptop))
 	ctx := testutil.WithBearer(context.Background(), tenant.token())
 
 	listed, err := env.authClient().ListPasskeys(ctx, &publiraadminv1.AdminAuthServiceListPasskeysRequest{Tenant: tenant.tenantContext()})
@@ -528,9 +537,11 @@ func TestAdminPasskeyListRenameAndDelete(t *testing.T) {
 		t.Fatalf("RenamePasskey with a name too long = %v, want invalid_argument", err)
 	}
 
+	// A passkey's own assertion is proof enough to remove it.
 	if _, err := env.authClient().DeletePasskey(ctx, &publiraadminv1.AdminAuthServiceDeletePasskeyRequest{
-		Tenant: tenant.tenantContext(),
-		Id:     first.Passkey.Id,
+		Tenant:       tenant.tenantContext(),
+		Id:           first.Passkey.Id,
+		Confirmation: passkeyConfirmation(t, env, tenant, laptop),
 	}); err != nil {
 		t.Fatalf("DeletePasskey: %v", err)
 	}
@@ -547,8 +558,9 @@ func TestAdminPasskeyListRenameAndDelete(t *testing.T) {
 	// The last factor goes with its recovery codes, and the login takes the
 	// password alone again.
 	if _, err := env.authClient().DeletePasskey(ctx, &publiraadminv1.AdminAuthServiceDeletePasskeyRequest{
-		Tenant: tenant.tenantContext(),
-		Id:     second.Passkey.Id,
+		Tenant:       tenant.tenantContext(),
+		Id:           second.Passkey.Id,
+		Confirmation: passkeyConfirmation(t, env, tenant, phone),
 	}); err != nil {
 		t.Fatalf("DeletePasskey of the last passkey: %v", err)
 	}
@@ -570,13 +582,14 @@ func TestAdminPasskeyListRenameAndDelete(t *testing.T) {
 func TestAdminPasskeyDeleteRefusesTheLastFactorTheTenantRequires(t *testing.T) {
 	env := newPasskeyDBEnv(t)
 	tenant := seedMfaTenant(t, env)
-	_, registered := registerPasskey(t, env, tenant, "")
+	authenticator, registered := registerPasskey(t, env, tenant, "")
 	requireTenantAdminMFA(t, env)
 	ctx := testutil.WithBearer(context.Background(), tenant.token())
 
 	_, err := env.authClient().DeletePasskey(ctx, &publiraadminv1.AdminAuthServiceDeletePasskeyRequest{
-		Tenant: tenant.tenantContext(),
-		Id:     registered.Passkey.Id,
+		Tenant:       tenant.tenantContext(),
+		Id:           registered.Passkey.Id,
+		Confirmation: passkeyConfirmation(t, env, tenant, authenticator),
 	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeletePasskey of the last required factor = %v, want failed_precondition", err)
@@ -586,10 +599,11 @@ func TestAdminPasskeyDeleteRefusesTheLastFactorTheTenantRequires(t *testing.T) {
 	}
 
 	// With an authenticator beside it, the passkey is no longer the last.
-	enrollMfa(t, env, tenant)
+	enrollMfaConfirmed(t, env, tenant, passkeyConfirmation(t, env, tenant, authenticator))
 	if _, err := env.authClient().DeletePasskey(ctx, &publiraadminv1.AdminAuthServiceDeletePasskeyRequest{
-		Tenant: tenant.tenantContext(),
-		Id:     registered.Passkey.Id,
+		Tenant:       tenant.tenantContext(),
+		Id:           registered.Passkey.Id,
+		Confirmation: passkeyConfirmation(t, env, tenant, authenticator),
 	}); err != nil {
 		t.Fatalf("DeletePasskey beside an authenticator: %v", err)
 	}
@@ -633,7 +647,7 @@ func TestAdminPasskeyBelongsToItsOwner(t *testing.T) {
 func TestAdminPasskeyRegistrationWaitsForARemovalOfTheLastFactor(t *testing.T) {
 	env := newPasskeyDBEnv(t)
 	tenant := seedMfaTenant(t, env)
-	registerPasskey(t, env, tenant, "")
+	authenticator, _ := registerPasskey(t, env, tenant, "")
 	ctx := testutil.WithBearer(context.Background(), tenant.token())
 
 	begun, err := env.authClient().BeginPasskeyRegistration(ctx, &publiraadminv1.AdminAuthServiceBeginPasskeyRegistrationRequest{Tenant: tenant.tenantContext()})
@@ -641,9 +655,11 @@ func TestAdminPasskeyRegistrationWaitsForARemovalOfTheLastFactor(t *testing.T) {
 		t.Fatalf("BeginPasskeyRegistration: %v", err)
 	}
 	credential := webauthntest.New(t, passkeyConsoleOrigin).Register(t, begun.CreationOptionsJson)
+	confirmation := passkeyConfirmation(t, env, tenant, authenticator)
 
-	// The removal of the last passkey, half done: its credential and the
-	// recovery codes are deleted and not yet committed.
+	// The removal of the last passkey, under way: it holds the account's
+	// factors, and deletes the credential and the recovery codes once the
+	// registration has proved that passkey and is waiting to store its own.
 	removal, err := env.PG.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("BeginTx: %v", err)
@@ -651,14 +667,6 @@ func TestAdminPasskeyRegistrationWaitsForARemovalOfTheLastFactor(t *testing.T) {
 	defer removal.Rollback() //nolint:errcheck
 	if err := dbmodels.New(removal).LockUserMfaFactors(context.Background(), tenant.User.ID); err != nil {
 		t.Fatalf("LockUserMfaFactors: %v", err)
-	}
-	for _, statement := range []string{
-		"DELETE FROM user_webauthn_credentials WHERE user_id = $1",
-		"DELETE FROM user_mfa_recovery_codes WHERE user_id = $1",
-	} {
-		if _, err := removal.ExecContext(context.Background(), statement, tenant.User.ID); err != nil {
-			t.Fatalf("%s: %v", statement, err)
-		}
 	}
 
 	type result struct {
@@ -670,6 +678,7 @@ func TestAdminPasskeyRegistrationWaitsForARemovalOfTheLastFactor(t *testing.T) {
 		resp, err := env.authClient().FinishPasskeyRegistration(ctx, &publiraadminv1.AdminAuthServiceFinishPasskeyRegistrationRequest{
 			Tenant:         tenant.tenantContext(),
 			CredentialJson: credential,
+			Confirmation:   confirmation,
 		})
 		finished <- result{resp, err}
 	}()
@@ -677,6 +686,14 @@ func TestAdminPasskeyRegistrationWaitsForARemovalOfTheLastFactor(t *testing.T) {
 	case got := <-finished:
 		t.Fatalf("FinishPasskeyRegistration = %+v, %v before the removal committed, want it to wait", got.resp, got.err)
 	case <-time.After(500 * time.Millisecond):
+	}
+	for _, statement := range []string{
+		"DELETE FROM user_webauthn_credentials WHERE user_id = $1",
+		"DELETE FROM user_mfa_recovery_codes WHERE user_id = $1",
+	} {
+		if _, err := removal.ExecContext(context.Background(), statement, tenant.User.ID); err != nil {
+			t.Fatalf("%s: %v", statement, err)
+		}
 	}
 	if err := removal.Commit(); err != nil {
 		t.Fatalf("Commit: %v", err)
@@ -701,8 +718,8 @@ func TestAdminPasskeyRegistrationWaitsForARemovalOfTheLastFactor(t *testing.T) {
 func TestAdminPasskeyKeepsTheRecoveryCodesOfADormantPasskey(t *testing.T) {
 	env := newPasskeyDBEnv(t)
 	tenant := seedMfaTenant(t, env)
-	_, registered := registerPasskey(t, env, tenant, "")
-	secret, _ := enrollMfa(t, env, tenant)
+	authenticator, registered := registerPasskey(t, env, tenant, "")
+	secret, _ := enrollMfaConfirmed(t, env, tenant, passkeyConfirmation(t, env, tenant, authenticator))
 	if _, err := env.PG.DB.ExecContext(context.Background(), `
 		INSERT INTO user_webauthn_credentials (
 			id, public_id, tenant_id, user_id, relying_party, rp_id, credential_id, public_key, aaguid, backup_eligible, backed_up
@@ -713,8 +730,9 @@ func TestAdminPasskeyKeepsTheRecoveryCodesOfADormantPasskey(t *testing.T) {
 	ctx := testutil.WithBearer(context.Background(), tenant.token())
 
 	if _, err := env.authClient().DeletePasskey(ctx, &publiraadminv1.AdminAuthServiceDeletePasskeyRequest{
-		Tenant: tenant.tenantContext(),
-		Id:     registered.Passkey.Id,
+		Tenant:       tenant.tenantContext(),
+		Id:           registered.Passkey.Id,
+		Confirmation: passkeyConfirmation(t, env, tenant, authenticator),
 	}); err != nil {
 		t.Fatalf("DeletePasskey: %v", err)
 	}

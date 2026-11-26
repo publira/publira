@@ -3906,7 +3906,10 @@
         "passkey_removed": "已移除通行密钥。",
         "passkey_remove_failed": "无法移除通行密钥。请稍后再试。",
         "passkey_last_factor": "这是您账户上最后一个两步验证方式，而该租户要求管理员启用两步验证。请先添加其他通行密钥或设置身份验证器应用，再移除它。",
-        "passkey_not_found": "该通行密钥已不再注册到您的账户。"
+        "passkey_not_found": "该通行密钥已不再注册到您的账户。",
+        "confirmation_help_totp": "更改两步验证方式时，需要使用您已有的方式进行确认。请输入身份验证器应用显示的6位验证码，或您的某个恢复码。",
+        "confirmation_help_totp_or_passkey": "更改两步验证方式时，需要使用您已有的方式进行确认。请输入身份验证器应用显示的6位验证码或恢复码，或者留空以使用您的一个通行密钥进行确认。",
+        "confirmation_help_passkey": "更改两步验证方式时，需要使用您已有的方式进行确认。请留空以使用您的一个通行密钥进行确认；如果您已无法使用通行密钥，请输入恢复码。"
       },
       "credentials": {
         "secret_change": "变更",

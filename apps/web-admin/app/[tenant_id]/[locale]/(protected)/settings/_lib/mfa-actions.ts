@@ -18,6 +18,7 @@ import {
   renameAdminPasskey,
   startAdminMfaEnrollment,
 } from "#lib/admin-mfa";
+import type { AdminMfaConfirmation } from "#lib/admin-mfa";
 import {
   mfaCodeFormSchema,
   passkeyCredentialFormSchema,
@@ -95,6 +96,26 @@ const parsePasskeyForm = async (
   return { id: id.data, tenantId: tenant.tenantId };
 };
 
+/**
+ * What a form that adds a factor to the account or removes one proves the
+ * account with: the code typed into its confirmation field, or, when that was
+ * left empty, the assertion `FactorConfirmation` had one of the account's
+ * passkeys make in the browser. A form for an account with no factor yet
+ * carries neither, and the API asks for none.
+ */
+const parseConfirmation = (formData: FormData): AdminMfaConfirmation => {
+  const code = mfaCodeFormSchema.safeParse(formData.get("confirmation_code"));
+
+  const credential = passkeyCredentialFormSchema.safeParse(
+    formData.get("confirmation_credential")
+  );
+
+  return {
+    code: code.success ? code.data : "",
+    passkeyCredentialJson: credential.success ? credential.data : "",
+  };
+};
+
 interface MfaFormInput {
   code: string;
   tenantId: string;
@@ -135,7 +156,12 @@ export const startAccountMfaEnrollmentAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    startAdminMfaEnrollment(input.tenantId, "", locale)
+    startAdminMfaEnrollment(
+      input.tenantId,
+      "",
+      locale,
+      parseConfirmation(formData)
+    )
   );
 
   if (!result.ok) {
@@ -224,10 +250,12 @@ export const regenerateAccountMfaRecoveryCodesAction = async (
 };
 
 /**
- * The first half of regenerating the recovery codes with a passkey, for an
- * account that has no authenticator app to answer with a code. The browser
- * makes the assertion with what this answers and hands it to
- * {@link regenerateAccountMfaRecoveryCodesWithPasskeyAction}.
+ * The first half of confirming a request with a passkey: regenerating the
+ * recovery codes for an account that has no authenticator app to answer with
+ * a code, or a change to the account's factors. The browser makes the
+ * assertion with what this answers and hands it to
+ * {@link regenerateAccountMfaRecoveryCodesWithPasskeyAction}, or to the
+ * change as its confirmation.
  */
 export const beginAccountPasskeyConfirmationAction = async (
   formData: FormData
@@ -394,7 +422,13 @@ export const finishAccountPasskeyRegistrationAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    finishAdminPasskeyRegistration(input.tenantId, "", credential.data, locale)
+    finishAdminPasskeyRegistration(
+      input.tenantId,
+      "",
+      credential.data,
+      locale,
+      parseConfirmation(formData)
+    )
   );
 
   if (!result.ok) {
@@ -467,7 +501,12 @@ export const deleteAccountPasskeyAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    deleteAdminPasskey(input.tenantId, input.id, locale)
+    deleteAdminPasskey(
+      input.tenantId,
+      input.id,
+      parseConfirmation(formData),
+      locale
+    )
   );
 
   if (!result.ok) {

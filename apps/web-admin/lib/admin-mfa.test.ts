@@ -453,6 +453,32 @@ describe("passkey registration from the account settings", () => {
     );
   });
 
+  it("sends the confirmation of a factor the account already holds", async () => {
+    mockFinishPasskeyRegistration.mockResolvedValueOnce({
+      passkey: { id: "PASSKEY00002" },
+      recoveryCodes: [],
+    });
+
+    const { finishAdminPasskeyRegistration } = await import("./admin-mfa");
+
+    await finishAdminPasskeyRegistration("TENANT001", "", "{}", "en", {
+      code: "",
+      passkeyCredentialJson: '{"id":"assertion"}',
+    });
+    expect(mockFinishPasskeyRegistration).toHaveBeenCalledWith(
+      {
+        challengeToken: "",
+        confirmation: { code: "", passkeyCredentialJson: '{"id":"assertion"}' },
+        credentialJson: "{}",
+        name: "",
+        tenant: { tenantId: "TENANT001" },
+      },
+      { headers: { Authorization: "Bearer session-token" } }
+    );
+  });
+
+  // A refused confirmation is `unauthenticated`, as a rejected session is, and
+  // must stay a message beside the form rather than sign the operator out.
   it.each([
     [
       "a credential the API could not verify",
@@ -463,6 +489,16 @@ describe("passkey registration from the account settings", () => {
       "a credential the account already holds",
       new ConnectError("passkey is already registered", Code.AlreadyExists),
       "This passkey is already registered to your account.",
+    ],
+    [
+      "a confirming passkey the API did not accept",
+      reasonError(Code.Unauthenticated, "MFA_PASSKEY_REFUSED"),
+      "That passkey was not accepted. Use a passkey registered to this account.",
+    ],
+    [
+      "a confirming code the API did not accept",
+      reasonError(Code.Unauthenticated, "MFA_INVALID_CODE"),
+      "The code is incorrect. Check your authenticator app and try again.",
     ],
   ])("words %s", async (_case, error, message) => {
     mockFinishPasskeyRegistration.mockRejectedValueOnce(error);
@@ -541,26 +577,50 @@ describe("renaming and removing a passkey", () => {
       new ConnectError("passkey not found", Code.NotFound),
       "That passkey is no longer registered to your account.",
     ],
+    [
+      "a confirming passkey the API did not accept",
+      reasonError(Code.Unauthenticated, "MFA_PASSKEY_REFUSED"),
+      "That passkey was not accepted. Use a passkey registered to this account.",
+    ],
+    [
+      "a lock the refused confirmations started",
+      reasonError(Code.ResourceExhausted, "MFA_LOCKED"),
+      "Too many failed attempts. Wait a while before trying again.",
+    ],
   ])("words a removal refused for %s", async (_case, error, message) => {
     mockDeletePasskey.mockRejectedValueOnce(error);
 
     const { deleteAdminPasskey } = await import("./admin-mfa");
 
     await expect(
-      deleteAdminPasskey("TENANT001", "PASSKEY00001", "en")
+      deleteAdminPasskey(
+        "TENANT001",
+        "PASSKEY00001",
+        { code: "123456", passkeyCredentialJson: "" },
+        "en"
+      )
     ).resolves.toEqual({ message, ok: false });
   });
 
-  it("removes the passkey the row stands for", async () => {
+  it("removes the passkey the row stands for, with its confirmation", async () => {
     mockDeletePasskey.mockResolvedValueOnce({});
 
     const { deleteAdminPasskey } = await import("./admin-mfa");
 
     await expect(
-      deleteAdminPasskey("TENANT001", "PASSKEY00001", "en")
+      deleteAdminPasskey(
+        "TENANT001",
+        "PASSKEY00001",
+        { code: "123456", passkeyCredentialJson: "" },
+        "en"
+      )
     ).resolves.toEqual({ ok: true });
     expect(mockDeletePasskey).toHaveBeenCalledWith(
-      { id: "PASSKEY00001", tenant: { tenantId: "TENANT001" } },
+      {
+        confirmation: { code: "123456", passkeyCredentialJson: "" },
+        id: "PASSKEY00001",
+        tenant: { tenantId: "TENANT001" },
+      },
       { headers: { Authorization: "Bearer session-token" } }
     );
   });

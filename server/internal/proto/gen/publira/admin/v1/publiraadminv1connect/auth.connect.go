@@ -341,9 +341,10 @@ type AdminAuthServiceClient interface {
 	// assertion counts toward the same lock a wrong code does.
 	FinishPasskeyVerification(context.Context, *v1.AdminAuthServiceFinishPasskeyVerificationRequest) (*v1.AdminAuthServiceFinishPasskeyVerificationResponse, error)
 	// Begins the fresh assertion a signed-in account confirms
-	// RegenerateMfaRecoveryCodes with in place of a code, allowing its own
-	// passkeys for the console's relying party ID alone. failed_precondition for
-	// an account that holds none.
+	// RegenerateMfaRecoveryCodes, or a request carrying an MfaConfirmation,
+	// with in place of a code, allowing its own passkeys for the console's
+	// relying party ID alone. failed_precondition for an account that holds
+	// none.
 	BeginPasskeyConfirmation(context.Context, *v1.AdminAuthServiceBeginPasskeyConfirmationRequest) (*v1.AdminAuthServiceBeginPasskeyConfirmationResponse, error)
 	ListPasskeys(context.Context, *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error)
 	RenamePasskey(context.Context, *v1.AdminAuthServiceRenamePasskeyRequest) (*v1.AdminAuthServiceRenamePasskeyResponse, error)
@@ -405,9 +406,10 @@ type AdminAuthServiceHandler interface {
 	// assertion counts toward the same lock a wrong code does.
 	FinishPasskeyVerification(context.Context, *v1.AdminAuthServiceFinishPasskeyVerificationRequest) (*v1.AdminAuthServiceFinishPasskeyVerificationResponse, error)
 	// Begins the fresh assertion a signed-in account confirms
-	// RegenerateMfaRecoveryCodes with in place of a code, allowing its own
-	// passkeys for the console's relying party ID alone. failed_precondition for
-	// an account that holds none.
+	// RegenerateMfaRecoveryCodes, or a request carrying an MfaConfirmation,
+	// with in place of a code, allowing its own passkeys for the console's
+	// relying party ID alone. failed_precondition for an account that holds
+	// none.
 	BeginPasskeyConfirmation(context.Context, *v1.AdminAuthServiceBeginPasskeyConfirmationRequest) (*v1.AdminAuthServiceBeginPasskeyConfirmationResponse, error)
 	ListPasskeys(context.Context, *v1.AdminAuthServiceListPasskeysRequest) (*v1.AdminAuthServiceListPasskeysResponse, error)
 	RenamePasskey(context.Context, *v1.AdminAuthServiceRenamePasskeyRequest) (*v1.AdminAuthServiceRenamePasskeyResponse, error)
