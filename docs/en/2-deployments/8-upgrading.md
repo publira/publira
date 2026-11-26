@@ -2,7 +2,7 @@
 title: Upgrading
 description: Bring a running install to a new release, from the backup before it to the processes of the new release serving.
 published: 2026-10-06
-updated: 2026-10-24
+updated: 2026-11-26
 ---
 
 A release can change the database schema its processes expect, so upgrading an install is more than restarting it on new images. The database goes first: the `publiractl` image of the new release brings the schema and the database roles forward, and only then do the processes of the new release start on it. This page goes through that order, how to check each step, and what to do when a migration fails.
@@ -21,6 +21,7 @@ The notes of a release open with **Upgrade notes**, which names every change in 
 - **A new database role.** `db roles` needs a password for a role that does not exist yet: generate one as you did at install, and pass it with that role's flag.
 - **A change to what the edge has to do**, such as a path routed to another process. Make the same change at your edge, as [Edge](./4-edge/index.md#what-the-edge-has-to-do) states it for the new release. If your edge is adapted from one of the [sample configurations](./4-edge/1-sample-configurations.md), `git diff <current tag> <new tag> -- infra/proxy/` shows the change in the samples, for you to carry into your copy.
 - **A process or a service the install has to run** that it did not run before.
+- **A process whose copies cannot run beside those of the release you run**, such as a web app that seals its cookies with a new key. Replace every copy of it at once rather than one at a time; the notes say what goes wrong while the two run together.
 - **A migration that runs long or locks a busy table**, so that you can choose when to run it.
 
 Only a major release names any of these, and before `1.0.0` a minor release. A patch release before `1.0.0` still runs every step on this page: it can carry a migration, and its processes fail on a schema `db migrate` has not brought forward, so `db migrate` and `db roles` run before its processes are replaced. [Releases](./10-releases.md) says what each kind of release may change and which releases receive fixes.
