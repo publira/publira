@@ -241,6 +241,30 @@
       "preview": "新しいパスワードを設定してください。",
       "subject": "{$tenant_name}パスワード再設定"
     },
+    "reader_sign_in_method_changed_notice": {
+      "action": "セキュリティ設定を開く",
+      "email": "対象のメールアドレスは{$email}です。",
+      "fallback_link": "ボタンが使えない場合は、次のURLをブラウザに貼り付けてください。",
+      "identity_unlinked": {
+        "body": "{$provider_name}アカウントの連携が解除され、サインインに使えなくなりました。",
+        "heading": "{$provider_name}の連携解除",
+        "preview": "{$provider_name}アカウントの連携が解除されました。",
+        "subject": "{$tenant_name}{$provider_name}連携解除"
+      },
+      "passkey_added": {
+        "body": "アカウントにパスキーが追加され、サインインに使えるようになりました。",
+        "heading": "パスキーの追加",
+        "preview": "アカウントにパスキーが追加されました。",
+        "subject": "{$tenant_name}パスキー追加"
+      },
+      "passkey_removed": {
+        "body": "アカウントからパスキーが削除され、サインインに使えなくなりました。",
+        "heading": "パスキーの削除",
+        "preview": "アカウントからパスキーが削除されました。",
+        "subject": "{$tenant_name}パスキー削除"
+      },
+      "warning": "この変更に心当たりがない場合は、すぐにサインインして、セキュリティのパスキーと連携アカウントを確認してください。"
+    },
     "reader_signup_attempt_notice": {
       "action_confirmed": "パスワードを再設定する",
       "action_unconfirmed": "確認メールを再送する",

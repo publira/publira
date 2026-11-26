@@ -139,6 +139,48 @@ var emailCopyCases = []struct {
 		},
 	},
 	{
+		name:     "reader_sign_in_method_changed_notice for passkey_added",
+		subjects: map[string]string{"en": "Aoto Press passkey added", "ja": "Aoto Pressパスキー追加"},
+		request: emailrenderer.Request{
+			Template: "reader_sign_in_method_changed_notice",
+			Data: map[string]any{
+				"change":        "passkey_added",
+				"email":         "reader@example.com",
+				"provider_name": "",
+				"settings_url":  "https://reader.example.test/settings/security",
+				"tenant_name":   "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "reader_sign_in_method_changed_notice for passkey_removed",
+		subjects: map[string]string{"en": "Aoto Press passkey removed", "ja": "Aoto Pressパスキー削除"},
+		request: emailrenderer.Request{
+			Template: "reader_sign_in_method_changed_notice",
+			Data: map[string]any{
+				"change":        "passkey_removed",
+				"email":         "reader@example.com",
+				"provider_name": "",
+				"settings_url":  "https://reader.example.test/settings/security",
+				"tenant_name":   "Aoto Press",
+			},
+		},
+	},
+	{
+		name:     "reader_sign_in_method_changed_notice for identity_unlinked",
+		subjects: map[string]string{"en": "Aoto Press Google account unlinked", "ja": "Aoto PressGoogle連携解除"},
+		request: emailrenderer.Request{
+			Template: "reader_sign_in_method_changed_notice",
+			Data: map[string]any{
+				"change":        "identity_unlinked",
+				"email":         "reader@example.com",
+				"provider_name": "Google",
+				"settings_url":  "https://reader.example.test/settings/security",
+				"tenant_name":   "Aoto Press",
+			},
+		},
+	},
+	{
 		name:     "reader_signup_attempt_notice for a confirmed account",
 		subjects: map[string]string{"en": "Aoto Press sign-up attempt", "ja": "Aoto Pressアカウント登録の試行"},
 		request: emailrenderer.Request{

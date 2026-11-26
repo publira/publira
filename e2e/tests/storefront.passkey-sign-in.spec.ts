@@ -96,7 +96,7 @@ const registerPasskey = async (page: Page): Promise<void> => {
       const { creationOptionsJson } =
         await call<BeginPasskeyRegistrationAnswer>(
           "BeginPasskeyRegistration",
-          {},
+          { password },
           token
         );
 

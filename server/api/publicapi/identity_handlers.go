@@ -509,6 +509,9 @@ func (s *apiServer) ListMyIdentities(
 	}, nil
 }
 
+// UnlinkIdentity removes the link to one provider account, once the request
+// has confirmed the account, unless it is the last way an account without a
+// password or a passkey signs in.
 func (s *apiServer) UnlinkIdentity(
 	ctx context.Context,
 	req *publirav1.UnlinkIdentityRequest,
@@ -526,6 +529,16 @@ func (s *apiServer) UnlinkIdentity(
 	provider, err := identityProviderFromProto(req.Provider)
 	if err != nil {
 		return fail("invalid_provider", err)
+	}
+	confirmation := accountConfirmation{
+		password:    req.Password,
+		provider:    req.ConfirmationProvider,
+		idToken:     req.IdToken,
+		nonce:       req.Nonce,
+		passkeyJSON: req.PasskeyCredentialJson,
+	}
+	if !confirmation.single() {
+		return fail("invalid_input", accountConfirmationRequiredError())
 	}
 
 	tx, err := s.beginTenantTx(ctx)
@@ -571,6 +584,13 @@ func (s *apiServer) UnlinkIdentity(
 			return fail("last_sign_in_method", connect.NewError(connect.CodeFailedPrecondition, "the account has no password or passkey, so it keeps its last linked provider"))
 		}
 	}
+	// Checked against the locked row and spent on the transaction, after every
+	// refusal above, so an unlink that does not happen spends nothing. A
+	// sign-in to the provider being unlinked confirms it as well as any other:
+	// the link is still there to check it against.
+	if reason, err := s.confirmAccount(ctx, txq, tenant, locked, confirmation); err != nil {
+		return fail(reason, err)
+	}
 	if err := outbox.QueueAppleSignInTokenRevocation(ctx, txq, *target); err != nil {
 		return fail("revocation_enqueue_failed", s.internalError(ctx, "failed to queue the apple token revocation", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
 	}
@@ -580,6 +600,9 @@ func (s *apiServer) UnlinkIdentity(
 		Provider: provider,
 	}); err != nil {
 		return fail("unlink_failed", s.internalDBError(ctx, "failed to unlink the identity", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
+	}
+	if err := enqueueReaderSignInMethodChangedNoticeEmail(ctx, txq, tenant.ID, user.ID, outbox.SignInMethodIdentityUnlinked, provider, target.ID); err != nil {
+		return fail("notice_enqueue_failed", s.internalDBError(ctx, "failed to enqueue the provider unlinked notice email", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))
 	}
 	if err := tx.Commit(); err != nil {
 		return fail("transaction_commit_failed", s.internalDBError(ctx, "failed to commit unlink", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))

@@ -178,6 +178,7 @@ var emailTemplates = map[string]func(*emailComposer){
 	"reader_episode_published":                   readerEpisodePublishedCopy,
 	"reader_password_changed_notice":             readerPasswordChangedNoticeCopy,
 	"reader_password_reset":                      readerPasswordResetCopy,
+	"reader_sign_in_method_changed_notice":       readerSignInMethodChangedNoticeCopy,
 	"reader_signup_attempt_notice":               readerSignupAttemptNoticeCopy,
 	"staff_contact_message_notice":               staffContactMessageNoticeCopy,
 	"staff_contact_reply":                        staffContactReplyCopy,
@@ -675,6 +676,24 @@ func readerPasswordChangedNoticeCopy(c *emailComposer) {
 	c.line("email.reader_password_changed_notice.warning", nil)
 	c.linkLine("email.reader_password_changed_notice.action", nil, resetURL)
 	c.linkLine("email.reader_password_changed_notice.fallback_link", nil, resetURL)
+}
+
+// readerSignInMethodChangedNoticeCopy reads the subject, heading and body of the
+// change the mail reports, under its change value, around the lines every
+// change shares.
+func readerSignInMethodChangedNoticeCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	settingsURL := c.value("settings_url")
+	provider := map[string]any{"provider_name": c.value("provider_name")}
+	key := "email.reader_sign_in_method_changed_notice." + c.value("change")
+	c.setSubject(key+".subject", map[string]any{"tenant_name": brand, "provider_name": provider["provider_name"]})
+	c.from(brand)
+	c.line(key+".heading", provider)
+	c.line(key+".body", provider)
+	c.line("email.reader_sign_in_method_changed_notice.email", map[string]any{"email": c.value("email")})
+	c.line("email.reader_sign_in_method_changed_notice.warning", nil)
+	c.linkLine("email.reader_sign_in_method_changed_notice.action", nil, settingsURL)
+	c.linkLine("email.reader_sign_in_method_changed_notice.fallback_link", nil, settingsURL)
 }
 
 func readerSignupAttemptNoticeCopy(c *emailComposer) {

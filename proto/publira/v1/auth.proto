@@ -119,11 +119,13 @@ message ListMyIdentitiesRequest {
 message ListMyIdentitiesResponse {
   repeated LinkedIdentity identities = 1;
   // False for an account a provider sign-in created, which confirms DeleteMe
-  // with a fresh sign-in and keeps its last linked provider.
+  // and the other steps that ask for the password with a fresh sign-in, and
+  // keeps its last linked provider.
   bool has_password = 2;
   // True when the reader holds a passkey the storefront signs them in with,
-  // which ListMyPasskeys lists and which confirms DeleteMe and an email change
-  // through BeginPasskeyConfirmation.
+  // which ListMyPasskeys lists and which confirms DeleteMe, an email change,
+  // and the steps that add or take away a way to sign in through
+  // BeginPasskeyConfirmation.
   bool has_passkey = 3;
 }
 
@@ -134,6 +136,18 @@ message UnlinkIdentityRequest {
   // account without a password and without a passkey keeps one linked
   // provider.
   IdentityProvider provider = 2;
+  // The confirmation RequestEmailChangeRequest takes, exactly one of the
+  // three: the account's password, wrong being invalid_argument on password;
+  // an ID token and its nonce from a provider linked to the account, the one
+  // being unlinked included, named by confirmation_provider; or an assertion
+  // made with one of the account's passkeys over a challenge
+  // BeginPasskeyConfirmation issued. It is checked once the refusals above
+  // have passed, and spent only by an unlink that succeeds.
+  string password = 3;
+  IdentityProvider confirmation_provider = 4;
+  string id_token = 5;
+  string nonce = 6;
+  string passkey_credential_json = 7;
 }
 
 message UnlinkIdentityResponse {}
@@ -227,6 +241,17 @@ message FinishPasskeyLoginResponse {
 
 message BeginPasskeyRegistrationRequest {
   publira.types.v1.TenantContext tenant = 1;
+  // The confirmation DeleteMeRequest takes, exactly one of the three: the
+  // account's password, wrong being invalid_argument on password; an ID token
+  // and its nonce from a provider linked to the account; or an assertion made
+  // with one of its passkeys over a challenge BeginPasskeyConfirmation
+  // issued. It is spent here, and the ceremony it begins is what
+  // FinishPasskeyRegistration finishes, so the finish takes none of its own.
+  string password = 2;
+  IdentityProvider provider = 3;
+  string id_token = 4;
+  string nonce = 5;
+  string passkey_credential_json = 6;
 }
 
 message BeginPasskeyRegistrationResponse {
@@ -282,12 +307,21 @@ message DeletePasskeyRequest {
   // account without a password and without a linked provider keeps one
   // passkey.
   string id = 2;
+  // The confirmation DeleteMeRequest takes, exactly one of the three, checked
+  // once the refusals above have passed and spent only by a removal that
+  // succeeds. An assertion may be made with the passkey being removed.
+  string password = 3;
+  IdentityProvider provider = 4;
+  string id_token = 5;
+  string nonce = 6;
+  string passkey_credential_json = 7;
 }
 
 message DeletePasskeyResponse {}
 
-// Begins the fresh assertion that confirms DeleteMe, RequestEmailChange, or
-// DisableMfa in place of a password, allowing the caller's own passkeys alone.
+// Begins the fresh assertion that confirms DeleteMe, RequestEmailChange,
+// DisableMfa, BeginPasskeyRegistration, DeletePasskey, or UnlinkIdentity in
+// place of a password, allowing the caller's own passkeys alone.
 // failed_precondition for a reader who holds none.
 message BeginPasskeyConfirmationRequest {
   publira.types.v1.TenantContext tenant = 1;

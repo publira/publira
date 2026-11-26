@@ -21,6 +21,7 @@ import (
 	"github.com/publira/publira/server/internal/signin"
 	"github.com/publira/publira/server/internal/signin/signintest"
 	"github.com/publira/publira/server/internal/tenantorigin"
+	"github.com/publira/publira/server/internal/tenantwebauthn/webauthntest"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -454,10 +455,20 @@ func TestDBUnlinkIdentityKeepsTheLastWayIn(t *testing.T) {
 	token := signedIn.AccessToken.Token
 	client := env.authClient()
 
-	_, err := client.UnlinkIdentity(testutil.WithBearer(context.Background(), token), &publirav1.UnlinkIdentityRequest{
-		Tenant:   tenantContext(env.tenant),
-		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
-	})
+	// Confirmed by a fresh sign-in to the provider being unlinked, which an
+	// account without a password confirms with.
+	unlink := func(nonce string) error {
+		_, err := client.UnlinkIdentity(testutil.WithBearer(context.Background(), token), &publirav1.UnlinkIdentityRequest{
+			Tenant:               tenantContext(env.tenant),
+			Provider:             publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+			ConfirmationProvider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+			IdToken:              env.googleToken(t, "google-subject", "reader@example.com", nonce),
+			Nonce:                nonce,
+		})
+		return err
+	}
+
+	err := unlink("confirm-1")
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("unlinking the only way in code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -475,16 +486,11 @@ func TestDBUnlinkIdentityKeepsTheLastWayIn(t *testing.T) {
 	if listed.HasPassword {
 		t.Fatal("has_password = true for an account a sign-in created, want false")
 	}
-	if _, err := client.UnlinkIdentity(testutil.WithBearer(context.Background(), token), &publirav1.UnlinkIdentityRequest{
-		Tenant:   tenantContext(env.tenant),
-		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
-	}); err != nil {
+	// The refused unlink above spent nothing, so its sign-in still confirms.
+	if err := unlink("confirm-1"); err != nil {
 		t.Fatalf("UnlinkIdentity with another way in: %v", err)
 	}
-	_, err = client.UnlinkIdentity(testutil.WithBearer(context.Background(), token), &publirav1.UnlinkIdentityRequest{
-		Tenant:   tenantContext(env.tenant),
-		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
-	})
+	err = unlink("confirm-2")
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("unlinking a provider not linked code = %v, want not_found", connect.CodeOf(err))
 	}
@@ -510,7 +516,15 @@ func TestDBUnlinkIdentityLeavesAnAccountItsPasskey(t *testing.T) {
 		t.Fatal("has_passkey = true before any passkey was registered")
 	}
 	passkeys := &passkeyDBEnv{publicDBEnv: env.publicDBEnv, tenant: env.tenant}
-	_, registered := passkeys.register(t, ctx, passkeySiteOrigin, "")
+	authenticator := webauthntest.New(t, passkeySiteOrigin)
+	registered, err := passkeys.finishRegistrationConfirmedBy(t, ctx, authenticator, "", &publirav1.BeginPasskeyRegistrationRequest{
+		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		IdToken:  env.googleToken(t, "google-subject", "reader@example.com", "confirm-1"),
+		Nonce:    "confirm-1",
+	})
+	if err != nil {
+		t.Fatalf("FinishPasskeyRegistration confirmed by a sign-in: %v", err)
+	}
 	listed, err = client.ListMyIdentities(ctx, &publirav1.ListMyIdentitiesRequest{Tenant: tenantContext(env.tenant)})
 	if err != nil {
 		t.Fatalf("ListMyIdentities: %v", err)
@@ -520,12 +534,17 @@ func TestDBUnlinkIdentityLeavesAnAccountItsPasskey(t *testing.T) {
 	}
 
 	if _, err := client.UnlinkIdentity(ctx, &publirav1.UnlinkIdentityRequest{
-		Tenant:   tenantContext(env.tenant),
-		Provider: publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		Tenant:                tenantContext(env.tenant),
+		Provider:              publirav1.IdentityProvider_IDENTITY_PROVIDER_GOOGLE,
+		PasskeyCredentialJson: authenticator.Assert(t, passkeys.beginConfirmation(t, ctx)),
 	}); err != nil {
 		t.Fatalf("UnlinkIdentity beside a passkey: %v", err)
 	}
-	_, err = client.DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: registered.Id})
+	_, err = client.DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{
+		Tenant:                tenantContext(env.tenant),
+		Id:                    registered.Id,
+		PasskeyCredentialJson: authenticator.Assert(t, passkeys.beginConfirmation(t, ctx)),
+	})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("removing the last way in code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}

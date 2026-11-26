@@ -315,6 +315,24 @@ const UnlinkIdentityRequest$json = {
       '6': '.publira.v1.IdentityProvider',
       '10': 'provider'
     },
+    {'1': 'password', '3': 3, '4': 1, '5': 9, '10': 'password'},
+    {
+      '1': 'confirmation_provider',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.IdentityProvider',
+      '10': 'confirmationProvider'
+    },
+    {'1': 'id_token', '3': 5, '4': 1, '5': 9, '10': 'idToken'},
+    {'1': 'nonce', '3': 6, '4': 1, '5': 9, '10': 'nonce'},
+    {
+      '1': 'passkey_credential_json',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'passkeyCredentialJson'
+    },
   ],
 };
 
@@ -322,7 +340,11 @@ const UnlinkIdentityRequest$json = {
 final $typed_data.Uint8List unlinkIdentityRequestDescriptor = $convert.base64Decode(
     'ChVVbmxpbmtJZGVudGl0eVJlcXVlc3QSNwoGdGVuYW50GAEgASgLMh8ucHVibGlyYS50eXBlcy'
     '52MS5UZW5hbnRDb250ZXh0UgZ0ZW5hbnQSOAoIcHJvdmlkZXIYAiABKA4yHC5wdWJsaXJhLnYx'
-    'LklkZW50aXR5UHJvdmlkZXJSCHByb3ZpZGVy');
+    'LklkZW50aXR5UHJvdmlkZXJSCHByb3ZpZGVyEhoKCHBhc3N3b3JkGAMgASgJUghwYXNzd29yZB'
+    'JRChVjb25maXJtYXRpb25fcHJvdmlkZXIYBCABKA4yHC5wdWJsaXJhLnYxLklkZW50aXR5UHJv'
+    'dmlkZXJSFGNvbmZpcm1hdGlvblByb3ZpZGVyEhkKCGlkX3Rva2VuGAUgASgJUgdpZFRva2VuEh'
+    'QKBW5vbmNlGAYgASgJUgVub25jZRI2ChdwYXNza2V5X2NyZWRlbnRpYWxfanNvbhgHIAEoCVIV'
+    'cGFzc2tleUNyZWRlbnRpYWxKc29u');
 
 @$core.Deprecated('Use unlinkIdentityResponseDescriptor instead')
 const UnlinkIdentityResponse$json = {
@@ -517,14 +539,35 @@ const BeginPasskeyRegistrationRequest$json = {
       '6': '.publira.types.v1.TenantContext',
       '10': 'tenant'
     },
+    {'1': 'password', '3': 2, '4': 1, '5': 9, '10': 'password'},
+    {
+      '1': 'provider',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.IdentityProvider',
+      '10': 'provider'
+    },
+    {'1': 'id_token', '3': 4, '4': 1, '5': 9, '10': 'idToken'},
+    {'1': 'nonce', '3': 5, '4': 1, '5': 9, '10': 'nonce'},
+    {
+      '1': 'passkey_credential_json',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '10': 'passkeyCredentialJson'
+    },
   ],
 };
 
 /// Descriptor for `BeginPasskeyRegistrationRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List beginPasskeyRegistrationRequestDescriptor =
-    $convert.base64Decode(
-        'Ch9CZWdpblBhc3NrZXlSZWdpc3RyYXRpb25SZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ym'
-        'xpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50');
+final $typed_data.Uint8List beginPasskeyRegistrationRequestDescriptor = $convert.base64Decode(
+    'Ch9CZWdpblBhc3NrZXlSZWdpc3RyYXRpb25SZXF1ZXN0EjcKBnRlbmFudBgBIAEoCzIfLnB1Ym'
+    'xpcmEudHlwZXMudjEuVGVuYW50Q29udGV4dFIGdGVuYW50EhoKCHBhc3N3b3JkGAIgASgJUghw'
+    'YXNzd29yZBI4Cghwcm92aWRlchgDIAEoDjIcLnB1YmxpcmEudjEuSWRlbnRpdHlQcm92aWRlcl'
+    'IIcHJvdmlkZXISGQoIaWRfdG9rZW4YBCABKAlSB2lkVG9rZW4SFAoFbm9uY2UYBSABKAlSBW5v'
+    'bmNlEjYKF3Bhc3NrZXlfY3JlZGVudGlhbF9qc29uGAYgASgJUhVwYXNza2V5Q3JlZGVudGlhbE'
+    'pzb24=');
 
 @$core.Deprecated('Use beginPasskeyRegistrationResponseDescriptor instead')
 const BeginPasskeyRegistrationResponse$json = {
@@ -688,13 +731,35 @@ const DeletePasskeyRequest$json = {
       '10': 'tenant'
     },
     {'1': 'id', '3': 2, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'password', '3': 3, '4': 1, '5': 9, '10': 'password'},
+    {
+      '1': 'provider',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.publira.v1.IdentityProvider',
+      '10': 'provider'
+    },
+    {'1': 'id_token', '3': 5, '4': 1, '5': 9, '10': 'idToken'},
+    {'1': 'nonce', '3': 6, '4': 1, '5': 9, '10': 'nonce'},
+    {
+      '1': 'passkey_credential_json',
+      '3': 7,
+      '4': 1,
+      '5': 9,
+      '10': 'passkeyCredentialJson'
+    },
   ],
 };
 
 /// Descriptor for `DeletePasskeyRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List deletePasskeyRequestDescriptor = $convert.base64Decode(
     'ChREZWxldGVQYXNza2V5UmVxdWVzdBI3CgZ0ZW5hbnQYASABKAsyHy5wdWJsaXJhLnR5cGVzLn'
-    'YxLlRlbmFudENvbnRleHRSBnRlbmFudBIOCgJpZBgCIAEoCVICaWQ=');
+    'YxLlRlbmFudENvbnRleHRSBnRlbmFudBIOCgJpZBgCIAEoCVICaWQSGgoIcGFzc3dvcmQYAyAB'
+    'KAlSCHBhc3N3b3JkEjgKCHByb3ZpZGVyGAQgASgOMhwucHVibGlyYS52MS5JZGVudGl0eVByb3'
+    'ZpZGVyUghwcm92aWRlchIZCghpZF90b2tlbhgFIAEoCVIHaWRUb2tlbhIUCgVub25jZRgGIAEo'
+    'CVIFbm9uY2USNgoXcGFzc2tleV9jcmVkZW50aWFsX2pzb24YByABKAlSFXBhc3NrZXlDcmVkZW'
+    '50aWFsSnNvbg==');
 
 @$core.Deprecated('Use deletePasskeyResponseDescriptor instead')
 const DeletePasskeyResponse$json = {

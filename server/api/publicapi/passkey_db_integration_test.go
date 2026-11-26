@@ -61,9 +61,18 @@ func (e *passkeyDBEnv) register(t *testing.T, ctx context.Context, origin, name 
 	return authenticator, passkey
 }
 
+// finishRegistration registers a passkey confirmed by the seeded password.
 func (e *passkeyDBEnv) finishRegistration(t *testing.T, ctx context.Context, authenticator *webauthntest.Authenticator, name string) (*publirav1.Passkey, error) {
 	t.Helper()
-	begun, err := e.authClient().BeginPasskeyRegistration(ctx, &publirav1.BeginPasskeyRegistrationRequest{Tenant: tenantContext(e.tenant)})
+	return e.finishRegistrationConfirmedBy(t, ctx, authenticator, name, &publirav1.BeginPasskeyRegistrationRequest{Password: testutil.SeededPassword})
+}
+
+// finishRegistrationConfirmedBy registers a passkey with the confirmation begin
+// carries, for an account the seeded password does not open.
+func (e *passkeyDBEnv) finishRegistrationConfirmedBy(t *testing.T, ctx context.Context, authenticator *webauthntest.Authenticator, name string, begin *publirav1.BeginPasskeyRegistrationRequest) (*publirav1.Passkey, error) {
+	t.Helper()
+	begin.Tenant = tenantContext(e.tenant)
+	begun, err := e.authClient().BeginPasskeyRegistration(ctx, begin)
 	if err != nil {
 		t.Fatalf("BeginPasskeyRegistration: %v", err)
 	}
@@ -438,7 +447,7 @@ func TestDBPasskeyRegistrationRefusesWhatDoesNotVerify(t *testing.T) {
 		t.Fatalf("the same credential again code = %v, want already_exists (err=%v)", connect.CodeOf(err), err)
 	}
 
-	_, err = env.authClient().BeginPasskeyRegistration(context.Background(), &publirav1.BeginPasskeyRegistrationRequest{Tenant: tenantContext(env.tenant)})
+	_, err = env.authClient().BeginPasskeyRegistration(context.Background(), &publirav1.BeginPasskeyRegistrationRequest{Tenant: tenantContext(env.tenant), Password: testutil.SeededPassword})
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("a registration with no session code = %v, want unauthenticated (err=%v)", connect.CodeOf(err), err)
 	}
@@ -455,7 +464,7 @@ func TestDBPasskeyRegistrationStopsAtTheAccountsLimit(t *testing.T) {
 			t.Fatalf("seed passkey %d: %v", i, err)
 		}
 	}
-	_, err := env.authClient().BeginPasskeyRegistration(env.session(t), &publirav1.BeginPasskeyRegistrationRequest{Tenant: tenantContext(env.tenant)})
+	_, err := env.authClient().BeginPasskeyRegistration(env.session(t), &publirav1.BeginPasskeyRegistrationRequest{Tenant: tenantContext(env.tenant), Password: testutil.SeededPassword})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("a registration past the limit code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -493,12 +502,12 @@ func TestDBPasskeyIsRenamedAndRemovedByItsOwnerAlone(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("renaming another reader's passkey code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
-	_, err = env.authClient().DeletePasskey(strangerCtx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: first.Id})
+	_, err = env.authClient().DeletePasskey(strangerCtx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: first.Id, Password: testutil.SeededPassword})
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("removing another reader's passkey code = %v, want not_found (err=%v)", connect.CodeOf(err), err)
 	}
 
-	if _, err := env.authClient().DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: first.Id}); err != nil {
+	if _, err := env.authClient().DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: first.Id, Password: testutil.SeededPassword}); err != nil {
 		t.Fatalf("DeletePasskey: %v", err)
 	}
 	listed, err := env.authClient().ListMyPasskeys(ctx, &publirav1.ListMyPasskeysRequest{Tenant: tenantContext(env.tenant)})
@@ -516,13 +525,20 @@ func TestDBDeletePasskeyKeepsTheLastWayIn(t *testing.T) {
 	env := newPasskeyDBEnv(t)
 	ctx := env.session(t)
 	_, first := env.register(t, ctx, passkeySiteOrigin, "")
-	_, second := env.register(t, ctx, passkeySiteOrigin, "")
+	authenticator, second := env.register(t, ctx, passkeySiteOrigin, "")
 	env.dropPassword(t)
+	confirmed := func(id string) *publirav1.DeletePasskeyRequest {
+		return &publirav1.DeletePasskeyRequest{
+			Tenant:                tenantContext(env.tenant),
+			Id:                    id,
+			PasskeyCredentialJson: authenticator.Assert(t, env.beginConfirmation(t, ctx)),
+		}
+	}
 
-	if _, err := env.authClient().DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: first.Id}); err != nil {
+	if _, err := env.authClient().DeletePasskey(ctx, confirmed(first.Id)); err != nil {
 		t.Fatalf("DeletePasskey with another passkey left: %v", err)
 	}
-	_, err := env.authClient().DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: second.Id})
+	_, err := env.authClient().DeletePasskey(ctx, confirmed(second.Id))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("removing the last way in code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -536,7 +552,7 @@ func TestDBDeletePasskeyKeepsTheLastWayIn(t *testing.T) {
 	`, uuid.Must(uuid.NewV7()), env.tenant.ID, env.reader.ID); err != nil {
 		t.Fatalf("seed a dormant passkey: %v", err)
 	}
-	_, err = env.authClient().DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: second.Id})
+	_, err = env.authClient().DeletePasskey(ctx, confirmed(second.Id))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("removing the last passkey beside a dormant one code = %v, want failed_precondition (err=%v)", connect.CodeOf(err), err)
 	}
@@ -673,7 +689,7 @@ func TestDBPasskeyChangesChargeThePasskeyLimit(t *testing.T) {
 
 	for name, call := range map[string]func() error{
 		"BeginPasskeyRegistration": func() error {
-			_, err := env.authClient().BeginPasskeyRegistration(ctx, &publirav1.BeginPasskeyRegistrationRequest{Tenant: tenantContext(env.tenant)})
+			_, err := env.authClient().BeginPasskeyRegistration(ctx, &publirav1.BeginPasskeyRegistrationRequest{Tenant: tenantContext(env.tenant), Password: testutil.SeededPassword})
 			return err
 		},
 		"RenamePasskey": func() error {
@@ -681,7 +697,7 @@ func TestDBPasskeyChangesChargeThePasskeyLimit(t *testing.T) {
 			return err
 		},
 		"DeletePasskey": func() error {
-			_, err := env.authClient().DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: passkey.Id})
+			_, err := env.authClient().DeletePasskey(ctx, &publirav1.DeletePasskeyRequest{Tenant: tenantContext(env.tenant), Id: passkey.Id, Password: testutil.SeededPassword})
 			return err
 		},
 		"BeginPasskeyConfirmation": func() error {
