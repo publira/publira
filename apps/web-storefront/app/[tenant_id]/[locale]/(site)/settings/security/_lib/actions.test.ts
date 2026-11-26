@@ -378,6 +378,18 @@ describe("unlinkIdentityWithProviderAction", () => {
     mockRequirePublicSession.mockResolvedValue(accessToken);
   });
 
+  it("turns a form that names no tenant away without looking one up", async () => {
+    const { unlinkIdentityWithProviderAction } = await import("./actions");
+    const data = providerForm("google");
+    data.set("tenantId", "not-a-tenant");
+
+    await expect(
+      unlinkIdentityWithProviderAction(data)
+    ).resolves.toBeUndefined();
+    expect(mockRedirect).not.toHaveBeenCalled();
+    expect(mockSendToProvider).not.toHaveBeenCalled();
+  });
+
   it("sends the reader to the provider they confirm with, with the one to unlink waiting", async () => {
     const { unlinkIdentityWithProviderAction } = await import("./actions");
     const data = providerForm("google");

@@ -21,6 +21,7 @@ import {
   passkeyCredentialFormSchema,
   passwordFormSchema,
   tenantIdFormSchema,
+  tenantIdSchema,
 } from "#lib/auth-input";
 import {
   requirePublicSession,
@@ -632,6 +633,16 @@ export const unlinkIdentityWithProviderAction = async (
     unlinkWithProviderFormSchema(submittedLocale),
   ]);
 
+  // A form that names no tenant did not come from the page, and nothing can be
+  // built for it to go back to without one: it is turned away as it is.
+  const tenant = tenantIdSchema.safeParse(
+    toFormDataInput(formData, { tenantId: "value" }).tenantId
+  );
+
+  if (!tenant.success) {
+    return;
+  }
+
   const parsed = schema.safeParse(
     toFormDataInput(formData, {
       confirmationProvider: "value",
@@ -645,7 +656,7 @@ export const unlinkIdentityWithProviderAction = async (
     redirect(
       await buildSecuritySettingsPath(
         submittedLocale,
-        String(formData.get("tenantId") ?? ""),
+        tenant.data,
         "error",
         t("storefront.settings.linked_account_unlink_failed")
       )

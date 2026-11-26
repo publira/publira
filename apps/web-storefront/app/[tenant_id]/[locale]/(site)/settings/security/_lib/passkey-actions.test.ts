@@ -470,6 +470,22 @@ describe("confirmPasskeyChangeWithProviderAction", () => {
     );
   });
 
+  it("turns a form that names no tenant away without looking one up", async () => {
+    const { confirmPasskeyChangeWithProviderAction } = await importActions();
+
+    await expect(
+      confirmPasskeyChangeWithProviderAction(
+        form({
+          intent: "passkey_add",
+          provider: "google",
+          tenantId: "not-a-tenant",
+        })
+      )
+    ).resolves.toBeUndefined();
+    expect(mockRedirect).not.toHaveBeenCalled();
+    expect(mockSendToProvider).not.toHaveBeenCalled();
+  });
+
   it("refuses a removal that names no passkey", async () => {
     const { confirmPasskeyChangeWithProviderAction } = await importActions();
 

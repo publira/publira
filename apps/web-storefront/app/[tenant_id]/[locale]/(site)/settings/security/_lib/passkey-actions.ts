@@ -537,6 +537,16 @@ export const confirmPasskeyChangeWithProviderAction = async (
   const submittedLocale = requireFormLocale(formData.get("locale"));
   const t = await getMessagesFor(submittedLocale);
 
+  // A form that names no tenant did not come from the page, and nothing can be
+  // built for it to go back to without one: it is turned away as it is.
+  const tenant = tenantIdSchema.safeParse(
+    toFormDataInput(formData, { tenantId: "value" }).tenantId
+  );
+
+  if (!tenant.success) {
+    return;
+  }
+
   const parsed = passkeyChangeWithProviderFormSchema.safeParse(
     toFormDataInput(formData, {
       intent: "value",
@@ -554,7 +564,7 @@ export const confirmPasskeyChangeWithProviderAction = async (
     redirect(
       await buildSecuritySettingsPath(
         submittedLocale,
-        String(formData.get("tenantId") ?? ""),
+        tenant.data,
         "error",
         formData.get("intent") === "passkey_add"
           ? t("storefront.settings.passkey_add_failed")
