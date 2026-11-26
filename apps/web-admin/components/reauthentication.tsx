@@ -207,6 +207,8 @@ export const ReauthenticationRequest = () => {
   const ask = use(ReauthenticationContext);
   const fieldRef = useRef<HTMLInputElement>(null);
 
+  // Outside a Root, as a form rendered on its own is, the refusal is left to
+  // the form's own message: there is no dialog to ask in.
   ActionForm.useSettled((state) => {
     const form = fieldRef.current?.form;
 
@@ -214,12 +216,6 @@ export const ReauthenticationRequest = () => {
       ask(form, state.reauthentication);
     }
   });
-
-  if (!ask) {
-    throw new Error(
-      "Reauthentication.Request must be rendered inside a Reauthentication.Root."
-    );
-  }
 
   // An unnamed field submits nothing; it is here for the form it sits in.
   return <input ref={fieldRef} type="hidden" />;
