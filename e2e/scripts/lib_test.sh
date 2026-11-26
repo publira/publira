@@ -487,8 +487,15 @@ cat > "${stub_dir}/docker" << 'STUB'
 # PUBLIRA_STUB_STACK_PRESENT=1 gives the compose project containers, whose
 # run-directory label is PUBLIRA_STUB_STACK_RUN_DIR — empty for containers these
 # scripts did not create. PUBLIRA_STUB_PORT_PROJECT is the compose project
-# publishing the queried port.
+# publishing the queried port. Any other command, such as the `compose down`
+# and `rm` of a teardown, is appended to PUBLIRA_STUB_LOG and does nothing.
 set -euo pipefail
+if [[ "${1:-}" != "ps" ]]; then
+  if [[ -n "${PUBLIRA_STUB_LOG:-}" ]]; then
+    printf '%s\n' "$*" >> "${PUBLIRA_STUB_LOG}"
+  fi
+  exit 0
+fi
 for arg in "$@"; do
   if [[ "${arg}" == publish=* ]]; then
     if [[ -n "${PUBLIRA_STUB_PORT_PROJECT:-}" ]]; then
@@ -799,6 +806,72 @@ if acquire_with_stub "${lease_a}" > "${lock_err}" 2>&1; then
 else
   fail "acquire was refused with no stack up: $(cat "${lock_err}")"
 fi
+
+# Teardown reads the containers as acquire does, because a lease holder that
+# is gone leaves another worktree's stack up and in use.
+teardown_log="$(mktemp)"
+
+# A teardown script as `task e2e:down` and `task e2e:stop-apps` run it, with the
+# stub describing what is up and recording what the script tries to remove.
+teardown_with_stub() {
+  local script="$1" run_dir="$2"
+  shift 2
+  : > "${teardown_log}"
+  stack_env \
+    PUBLIRA_E2E_RUN_DIR="${run_dir}" \
+    COMPOSE_PROJECT_NAME="${stack_project}" \
+    PUBLIRA_STUB_LOG="${teardown_log}" \
+    "$@" \
+    bash "${PUBLIRA_E2E_SCRIPTS_DIR}/${script}"
+}
+
+if teardown_with_stub down.sh "${lease_b}" PUBLIRA_STUB_STACK_PRESENT=1 PUBLIRA_STUB_STACK_RUN_DIR="${lease_a}" \
+  > "${lock_err}" 2>&1; then
+  fail "down from another run directory tore down a stack with no lease holder"
+elif [[ -s "${teardown_log}" ]]; then
+  fail "a refused down still ran: $(cat "${teardown_log}")"
+elif grep -q "stack of ${lease_a}" "${lock_err}"; then
+  pass "down from another run directory leaves a stack with no lease holder in place"
+else
+  fail "foreign down refusal does not name the owner: $(cat "${lock_err}")"
+fi
+
+if teardown_with_stub stop-apps.sh "${lease_b}" PUBLIRA_STUB_STACK_PRESENT=1 PUBLIRA_STUB_STACK_RUN_DIR="${lease_a}" \
+  > "${lock_err}" 2>&1; then
+  fail "stop-apps from another run directory ran against a stack with no lease holder"
+elif [[ -s "${teardown_log}" ]]; then
+  fail "a refused stop-apps still removed containers: $(cat "${teardown_log}")"
+elif grep -q "stack of ${lease_a}" "${lock_err}"; then
+  pass "stop-apps from another run directory leaves the stack's server container in place"
+else
+  fail "foreign stop-apps refusal does not name the owner: $(cat "${lock_err}")"
+fi
+
+if teardown_with_stub down.sh "${lease_b}" PUBLIRA_STUB_STACK_PRESENT=1 PUBLIRA_STUB_STACK_RUN_DIR=$'\n'"${lease_a}" \
+  > "${lock_err}" 2>&1; then
+  fail "down removed another run's container because an unlabelled one sat beside it"
+elif [[ -s "${teardown_log}" ]]; then
+  fail "a refused down still ran: $(cat "${teardown_log}")"
+elif grep -q "stack of ${lease_a}" "${lock_err}"; then
+  pass "an unlabelled container beside another run's stack does not let down remove it"
+else
+  fail "mixed-stack down refusal does not name the owner: $(cat "${lock_err}")"
+fi
+
+if teardown_with_stub down.sh "${lease_a}" PUBLIRA_STUB_STACK_PRESENT=1 PUBLIRA_STUB_STACK_RUN_DIR="${lease_a}" \
+  > "${lock_err}" 2>&1 && grep -q "compose .* down -v" "${teardown_log}"; then
+  pass "down from the run that owns the stack tears it down"
+else
+  fail "owner down did not remove its stack: $(cat "${lock_err}") $(cat "${teardown_log}")"
+fi
+
+if teardown_with_stub down.sh "${lease_b}" PUBLIRA_STUB_STACK_PRESENT=1 \
+  > "${lock_err}" 2>&1 && grep -q "compose .* down -v" "${teardown_log}"; then
+  pass "down removes containers with no run-directory label"
+else
+  fail "down refused containers these scripts did not create: $(cat "${lock_err}") $(cat "${teardown_log}")"
+fi
+rm -f "${teardown_log}"
 
 trap - EXIT
 cleanup_stack_checks
