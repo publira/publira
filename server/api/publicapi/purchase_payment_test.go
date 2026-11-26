@@ -29,6 +29,7 @@ import (
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	publirav1connect "github.com/publira/publira/server/internal/proto/gen/publira/v1/publirav1connect"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 	"github.com/publira/publira/server/internal/tenantorigin"
 	"github.com/publira/publira/server/internal/testutil"
@@ -214,7 +215,7 @@ func encryptedStripeProviderRow(t *testing.T, tenantID uuid.UUID, encryptor *sec
 		t.Fatalf("EncryptString webhook: %v", err)
 	}
 	return stripeProviderRow(t, tenantID, secretEnc, webhookEnc,
-		paymentsettings.MaskSecret(secretKey), paymentsettings.MaskSecret(webhookSecret), now)
+		secrethint.Mask(secretKey), secrethint.Mask(webhookSecret), now)
 }
 
 type publicPaymentServer struct {

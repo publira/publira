@@ -18,7 +18,7 @@ import (
 
 var dbGroup = commandGroup{
 	name:    "db",
-	summary: "Apply the database migrations, create the login roles, report the schema version, and reseal stored secrets",
+	summary: "Apply the database migrations, create the login roles, report the schema version, reseal stored secrets, and derive their hints again",
 	note:    "The db commands connect with PUBLIRA_DB_URL and nothing else.",
 	commands: []command{
 		{
@@ -33,6 +33,7 @@ var dbGroup = commandGroup{
 		},
 		dbRolesCommand,
 		dbResealCommand,
+		dbRehintCommand,
 	},
 }
 

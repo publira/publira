@@ -55,8 +55,10 @@ message ListPaymentProvidersResponse {
 message PaymentCredentialFieldState {
   string name = 1;
   bool configured = 2;
-  // Display hint derived at write time: prefix + bullets + last four for a
-  // secret field, and the value itself for one that is not secret. Empty when
+  // Display hint derived at write time, and the value itself for a field that
+  // is not secret. For a secret field it is the provider's key type prefix
+  // when the value starts with one (sk_live_, whsec_), a run of bullets, and
+  // the last four characters of a value long enough to spare them. Empty when
   // the field is not stored.
   string hint = 3;
   // The stored value of a field the provider declares public, which the
@@ -222,7 +224,8 @@ message TenantAppStorePaymentSettings {
   string issuer_id = 2;
   string key_id = 3;
   bool private_key_configured = 4;
-  // Display hint derived at write time. Empty when no key is stored.
+  // The SHA-256 fingerprint of the stored key's public key, as OpenSSH prints
+  // one (SHA256:...). Empty when no key is stored.
   string private_key_hint = 5;
   // The app the store sells in: the bundle identifier the tenant's iOS app
   // association names. Empty where it names none, and edited there, not here.

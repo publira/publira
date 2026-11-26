@@ -16,8 +16,8 @@ import (
 	"github.com/publira/publira/server/internal/auditlog"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/inboundprovider"
-	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
@@ -334,7 +334,7 @@ func missingRequired(declaration inboundprovider.Declaration, stored storedField
 // hintFor answers what the console shows for a stored value of field.
 func hintFor(field inboundprovider.Field, value string) string {
 	if field.Secret {
-		return paymentsettings.MaskSecret(value)
+		return secrethint.Mask(value)
 	}
 	return value
 }

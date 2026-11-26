@@ -13,7 +13,6 @@ import (
 	"crypto/elliptic"
 	"crypto/x509"
 	"database/sql"
-	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"regexp"
@@ -22,8 +21,8 @@ import (
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
-	"github.com/publira/publira/server/internal/paymentsettings"
 	"github.com/publira/publira/server/internal/secretcrypto"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
 
@@ -268,7 +267,7 @@ func (s *Settings) appleParams(tenantID uuid.UUID, existing dbmodels.TenantApple
 		if err != nil {
 			return dbmodels.UpsertTenantAppleSignInConfigParams{}, err
 		}
-		hint = paymentsettings.MaskSecret(pemBody(update.PrivateKey))
+		hint = secrethint.PrivateKey(update.PrivateKey)
 	case secretupdate.Clear:
 		encrypted, hint = "", ""
 	}
@@ -371,16 +370,6 @@ func ParsePrivateKey(value string) (*ecdsa.PrivateKey, error) {
 		return nil, ErrInvalidPrivateKey
 	}
 	return ecKey, nil
-}
-
-// pemBody is the base64 of a PEM block without its armor, so a hint of a .p8
-// file shows key material rather than its END line.
-func pemBody(value string) string {
-	block, _ := pem.Decode([]byte(strings.TrimSpace(value)))
-	if block == nil {
-		return ""
-	}
-	return base64.StdEncoding.EncodeToString(block.Bytes)
 }
 
 func nullable(value string) sql.NullString {

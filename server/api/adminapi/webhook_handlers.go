@@ -12,11 +12,11 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/pagination"
-	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/rpcmiddleware"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
@@ -132,7 +132,7 @@ func (s *adminServer) sealWebhookSecret(ctx context.Context, tenantID uuid.UUID)
 	if sealed, err = s.encryptor.EncryptString(secret); err != nil {
 		return "", "", "", s.internalError(ctx, "failed to seal a webhook secret", err, "tenant_id", tenantID.String())
 	}
-	return secret, sealed, paymentsettings.MaskSecret(secret), nil
+	return secret, sealed, secrethint.Mask(secret), nil
 }
 
 func (s *adminServer) ListWebhookEndpoints(

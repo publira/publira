@@ -11,37 +11,9 @@ import (
 
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/secretupdate"
 )
-
-func TestMaskSecret(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{name: "empty", input: "", want: ""},
-		{name: "whitespace", input: "  ", want: ""},
-		{name: "stripe secret key", input: "sk_test_51ABCDEFGHIJKLMN", want: "sk_test_••••••••KLMN"},
-		{name: "webhook secret", input: "whsec_abcdefghijklmnopqrstuv", want: "whsec_••••••••stuv"},
-		{name: "short rest", input: "sk_test_ab", want: "sk_test_••••"},
-		{name: "no prefix", input: "supersecretvalue", want: "••••••••alue"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			got := MaskSecret(tt.input)
-			if got != tt.want {
-				t.Fatalf("MaskSecret(%q) = %q, want %q", tt.input, got, tt.want)
-			}
-			if tt.input != "" && strings.TrimSpace(tt.input) != "" && strings.Contains(got, strings.TrimSpace(tt.input)) {
-				t.Fatalf("hint %q contains plaintext", got)
-			}
-		})
-	}
-}
 
 func TestLoadedCredentialsRedactPlaintext(t *testing.T) {
 	t.Parallel()
@@ -84,8 +56,8 @@ func TestPublicConfigJSONOmitsSecrets(t *testing.T) {
 		Provider: stripe.ID,
 		Enabled:  true,
 		Fields: []FieldState{
-			{Name: stripe.FieldSecretKey, Configured: true, Hint: MaskSecret("sk_test_51ABCDEFGHIJKLMN")},
-			{Name: stripe.FieldWebhookSecret, Configured: true, Hint: MaskSecret("whsec_abcdefghijklmnopqrstuv")},
+			{Name: stripe.FieldSecretKey, Configured: true, Hint: secrethint.Mask("sk_test_51ABCDEFGHIJKLMN")},
+			{Name: stripe.FieldWebhookSecret, Configured: true, Hint: secrethint.Mask("whsec_abcdefghijklmnopqrstuv")},
 		},
 		Ready: true,
 	}
@@ -133,7 +105,7 @@ func TestApplySecretUpdateModes(t *testing.T) {
 	t.Parallel()
 
 	mgr := testEncryptor(t)
-	encrypted, hint, err := encryptSecret("sk_test_originalXXXX", mgr)
+	encrypted, hint, err := encryptSecret("sk_test_original0123456789XXXX", mgr)
 	if err != nil {
 		t.Fatalf("encrypt original: %v", err)
 	}
@@ -146,7 +118,7 @@ func TestApplySecretUpdateModes(t *testing.T) {
 		t.Fatalf("unchanged mutated secret")
 	}
 
-	rotated, rotatedHint, err := applySecretUpdate(encrypted, hint, secretupdate.Replace, "sk_test_rotatedYYYY", mgr)
+	rotated, rotatedHint, err := applySecretUpdate(encrypted, hint, secretupdate.Replace, "sk_test_rotated0123456789YYYY", mgr)
 	if err != nil {
 		t.Fatalf("replace: %v", err)
 	}
@@ -156,7 +128,7 @@ func TestApplySecretUpdateModes(t *testing.T) {
 	if rotatedHint == hint {
 		t.Fatal("replace reused hint")
 	}
-	if strings.Contains(rotated, "sk_test_rotatedYYYY") {
+	if strings.Contains(rotated, "sk_test_rotated0123456789YYYY") {
 		t.Fatal("ciphertext contains plaintext")
 	}
 

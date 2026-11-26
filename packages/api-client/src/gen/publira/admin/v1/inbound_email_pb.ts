@@ -146,8 +146,10 @@ export type InboundEmailCredentialFieldState = Message<"publira.admin.v1.Inbound
   configured: boolean;
 
   /**
-   * Display hint derived at write time: prefix + bullets + last four for a
-   * secret field, and the value itself for one that is not secret. Empty when
+   * Display hint derived at write time, and the value itself for a field that
+   * is not secret. For a secret field it is the provider's key type prefix
+   * when the value starts with one (sk_live_, whsec_), a run of bullets, and
+   * the last four characters of a value long enough to spare them. Empty when
    * the field is not stored.
    *
    * @generated from field: string hint = 3;

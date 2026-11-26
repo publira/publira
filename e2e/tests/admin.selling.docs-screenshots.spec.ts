@@ -700,16 +700,28 @@ interface ProviderCredentials {
 
 const STRIPE_CREDENTIALS: ProviderCredentials = {
   fields: [
-    ["admin.settings.payment.fields.stripe.secret_key", "sk_test_docs1234"],
-    ["admin.settings.payment.fields.stripe.webhook_secret", "whsec_docs1234"],
+    [
+      "admin.settings.payment.fields.stripe.secret_key",
+      "sk_test_51Docs00000000001234",
+    ],
+    [
+      "admin.settings.payment.fields.stripe.webhook_secret",
+      "whsec_docs00000000000001234",
+    ],
   ],
   name: "Stripe",
 };
 
 const PAYJP_CREDENTIALS: ProviderCredentials = {
   fields: [
-    ["admin.settings.payment.fields.payjp.secret_key", "sk_test_docs5678"],
-    ["admin.settings.payment.fields.payjp.webhook_token", "whook_docs5678"],
+    [
+      "admin.settings.payment.fields.payjp.secret_key",
+      "sk_test_docs00000000005678",
+    ],
+    [
+      "admin.settings.payment.fields.payjp.webhook_token",
+      "whook_docs00000000005678",
+    ],
   ],
   name: "PAY.JP",
 };

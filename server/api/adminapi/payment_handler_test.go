@@ -21,10 +21,10 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/paymentprovider/payjp"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe"
-	"github.com/publira/publira/server/internal/paymentsettings"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
 	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
+	"github.com/publira/publira/server/internal/secrethint"
 	"github.com/publira/publira/server/internal/testutil"
 )
 
@@ -270,8 +270,8 @@ func TestGetTenantPaymentSettingsOmitsPlaintextSecrets(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
-	secretHint := paymentsettings.MaskSecret(testPaymentSecretKey)
-	webhookHint := paymentsettings.MaskSecret(testPaymentWebhookSecret)
+	secretHint := secrethint.Mask(testPaymentSecretKey)
+	webhookHint := secrethint.Mask(testPaymentWebhookSecret)
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetTenantPaymentConfigByTenantID)).
@@ -404,8 +404,8 @@ func TestUpdateTenantPaymentSettingsEncryptsAndReturnsPublicView(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	sessionToken := issueTestAdminToken(tenantID.String(), testUserPublicID, "editor")
-	secretHint := paymentsettings.MaskSecret(testPaymentSecretKey)
-	webhookHint := paymentsettings.MaskSecret(testPaymentWebhookSecret)
+	secretHint := secrethint.Mask(testPaymentSecretKey)
+	webhookHint := secrethint.Mask(testPaymentWebhookSecret)
 	expectTenantLookup(mock, tenantID, "TENANT001", now)
 	expectActiveSessionLookupWithRole(mock, tenantID, userID, sessionToken, now, "tenant_admin")
 	mock.ExpectBegin()
