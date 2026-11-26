@@ -456,6 +456,8 @@ A tenant admin saves up to five HTTPS endpoints through `AdminWebhookService`, e
 
 The worker sends a delivery from the network it runs in to a URL the tenant chose, so it dials a public address only, checked after the name resolves, and follows no redirect.
 
+A delivery keeps its body only while it may still be sent: the body of a delivered one is emptied, a dead one keeps it for a resend, and [`maintenance.purge_webhook_deliveries`](cmd/publira/README.md) deletes each delivery 30 days after it was delivered or given up. A delivery whose event names a reader records the account in `webhook_deliveries.reader_id`, whose foreign key deletes the delivery with the account.
+
 ## Email renderer
 
 - `PUBLIRA_EMAIL_RENDERER_URL`
@@ -777,7 +779,7 @@ Each namespace connects with its own dedicated PostgreSQL login user, which keep
 | publiractl job close-royalty-statements | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | publiractl job sync-google-play-voided-purchases | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | publiractl job build-search-index | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
-| publiractl job build-data-exports, purge-data-exports | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
+| publiractl job build-data-exports, purge-data-exports, purge-webhook-deliveries | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 | publiractl job erase-tenants | `publira_content_stats` | `PUBLIRA_CONTENT_STATS_DB_URL`, falling back to `PUBLIRA_DB_URL` | `postgres://publira_content_stats:contentstatspass@db:5432/publira?sslmode=disable` |
 
 `publira_platform`, `publira_content_stats`, `publira_outbox`, and `publira_ticker` access data across every tenant; `publira_admin` and `publira_public` have RLS enabled and are scoped by tenant ID. The first four are members of `publira_rls_bypass`, and the baseline seed puts a policy of that name on every table under row-level security that lets its members read and write every row, and none of them carries the `BYPASSRLS` attribute. The grants still decide which tables each of them reaches.

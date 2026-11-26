@@ -309,8 +309,9 @@ type Tip struct {
 // a purchase just recorded. A purchase is completed once, so the event is
 // owed once however often the writer runs.
 func QueuePurchaseCompleted(ctx context.Context, q Queries, tenantID, purchaseID uuid.UUID) error {
-	return queue(ctx, q, tenantID, EventPurchaseCompleted, EventPurchaseCompleted+":"+purchaseID.String(), func() (any, error) {
-		return purchaseData(ctx, q, tenantID, purchaseID)
+	return queue(ctx, q, tenantID, EventPurchaseCompleted, EventPurchaseCompleted+":"+purchaseID.String(), func() (eventData, error) {
+		data, reader, err := purchaseData(ctx, q, tenantID, purchaseID)
+		return eventData{body: data, reader: reader}, err
 	})
 }
 
@@ -323,14 +324,14 @@ func QueuePurchaseCompleted(ctx context.Context, q Queries, tenantID, purchaseID
 // to say what its own refund left.
 func QueuePurchaseRefunded(ctx context.Context, q Queries, purchase dbmodels.Purchase) error {
 	key := fmt.Sprintf("%s:%s:%d:%t", EventPurchaseRefunded, purchase.ID, purchase.RefundedAmount.Int32, purchase.RefundedAt.Valid)
-	return queue(ctx, q, purchase.TenantID, EventPurchaseRefunded, key, func() (any, error) {
-		data, err := purchaseData(ctx, q, purchase.TenantID, purchase.ID)
+	return queue(ctx, q, purchase.TenantID, EventPurchaseRefunded, key, func() (eventData, error) {
+		data, reader, err := purchaseData(ctx, q, purchase.TenantID, purchase.ID)
 		if err != nil {
-			return nil, err
+			return eventData{}, err
 		}
 		data.RefundedAmount = purchase.RefundedAmount.Int32
 		data.RefundedAt = formatNullTime(purchase.RefundedAt)
-		return data, nil
+		return eventData{body: data, reader: reader}, nil
 	})
 }
 
@@ -339,12 +340,12 @@ func QueuePurchaseRefunded(ctx context.Context, q Queries, purchase dbmodels.Pur
 // recorded. A purchase is recorded once, so the event is owed once however
 // often the payment is confirmed.
 func QueueCoinPackPurchased(ctx context.Context, q Queries, tenantID, purchaseID uuid.UUID) error {
-	return queue(ctx, q, tenantID, EventCoinPackPurchased, EventCoinPackPurchased+":"+purchaseID.String(), func() (any, error) {
+	return queue(ctx, q, tenantID, EventCoinPackPurchased, EventCoinPackPurchased+":"+purchaseID.String(), func() (eventData, error) {
 		row, err := q.GetWebhookCoinPackPurchase(ctx, dbmodels.GetWebhookCoinPackPurchaseParams{TenantID: tenantID, ID: purchaseID})
 		if err != nil {
-			return nil, fmt.Errorf("read the coin pack purchase of a webhook event: %w", err)
+			return eventData{}, fmt.Errorf("read the coin pack purchase of a webhook event: %w", err)
 		}
-		return CoinPackPurchase{
+		return eventData{body: CoinPackPurchase{
 			PurchaseID:       row.ID.String(),
 			CoinPackPublicID: row.CoinPackPublicID,
 			Coins:            row.Coins,
@@ -356,7 +357,7 @@ func QueueCoinPackPurchased(ctx context.Context, q Queries, tenantID, purchaseID
 			Provider:         row.Provider.String,
 			Store:            row.Store.String,
 			Test:             row.IsTest,
-		}, nil
+		}, reader: row.ReaderID}, nil
 	})
 }
 
@@ -364,16 +365,16 @@ func QueueCoinPackPurchased(ctx context.Context, q Queries, tenantID, purchaseID
 // transaction that records it. A tip is recorded once, so the event is owed
 // once however often the payment is confirmed.
 func QueueTipReceived(ctx context.Context, q Queries, tenantID, purchaseID uuid.UUID) error {
-	return queue(ctx, q, tenantID, EventTipReceived, EventTipReceived+":"+purchaseID.String(), func() (any, error) {
+	return queue(ctx, q, tenantID, EventTipReceived, EventTipReceived+":"+purchaseID.String(), func() (eventData, error) {
 		row, err := q.GetWebhookTip(ctx, dbmodels.GetWebhookTipParams{TenantID: tenantID, ID: purchaseID})
 		if err != nil {
-			return nil, fmt.Errorf("read the tip of a webhook event: %w", err)
+			return eventData{}, fmt.Errorf("read the tip of a webhook event: %w", err)
 		}
 		creators := row.CreatorPublicIds
 		if creators == nil {
 			creators = []string{}
 		}
-		return Tip{
+		return eventData{body: Tip{
 			PurchaseID:       row.ID.String(),
 			EpisodePublicID:  row.EpisodePublicID,
 			SeriesPublicID:   row.SeriesPublicID,
@@ -385,24 +386,24 @@ func QueueTipReceived(ctx context.Context, q Queries, tenantID, purchaseID uuid.
 			Provider:         row.Provider.String,
 			Store:            row.Store.String,
 			Test:             row.IsTest,
-		}, nil
+		}, reader: row.ReaderID}, nil
 	})
 }
 
 // QueueReaderSignedUp owes the event of a reader's account just opened.
 func QueueReaderSignedUp(ctx context.Context, q Queries, tenantID, userID uuid.UUID) error {
-	return queue(ctx, q, tenantID, EventReaderSignedUp, EventReaderSignedUp+":"+userID.String(), func() (any, error) {
+	return queue(ctx, q, tenantID, EventReaderSignedUp, EventReaderSignedUp+":"+userID.String(), func() (eventData, error) {
 		row, err := q.GetWebhookReader(ctx, dbmodels.GetWebhookReaderParams{TenantID: uuid.NullUUID{UUID: tenantID, Valid: true}, ID: userID})
 		if err != nil {
-			return nil, fmt.Errorf("read the reader of a webhook event: %w", err)
+			return eventData{}, fmt.Errorf("read the reader of a webhook event: %w", err)
 		}
-		return Reader{
+		return eventData{body: Reader{
 			ReaderPublicID: row.PublicID,
 			Email:          row.Email,
 			Name:           row.Name,
 			EmailVerified:  row.EmailVerifiedAt.Valid,
 			SignedUpAt:     formatTime(row.CreatedAt),
-		}, nil
+		}, reader: uuid.NullUUID{UUID: userID, Valid: true}}, nil
 	})
 }
 
@@ -425,12 +426,12 @@ func QueueSubscriptionChange(ctx context.Context, q Queries, tenantID, subscript
 	// A subscription may stop and start again, a store's especially, so the key
 	// names this change rather than the subscription alone.
 	key := eventType + ":" + subscriptionID.String() + ":" + uuid.Must(uuid.NewV7()).String()
-	return queue(ctx, q, tenantID, eventType, key, func() (any, error) {
+	return queue(ctx, q, tenantID, eventType, key, func() (eventData, error) {
 		row, err := q.GetWebhookSubscription(ctx, dbmodels.GetWebhookSubscriptionParams{TenantID: tenantID, ID: subscriptionID})
 		if err != nil {
-			return nil, fmt.Errorf("read the subscription of a webhook event: %w", err)
+			return eventData{}, fmt.Errorf("read the subscription of a webhook event: %w", err)
 		}
-		return Subscription{
+		return eventData{body: Subscription{
 			PlanPublicID:      row.PlanPublicID,
 			PlanName:          row.PlanName,
 			ReaderPublicID:    row.ReaderPublicID.String,
@@ -441,7 +442,7 @@ func QueueSubscriptionChange(ctx context.Context, q Queries, tenantID, subscript
 			CancelAtPeriodEnd: row.CancelAtPeriodEnd,
 			StartedAt:         formatTime(row.CreatedAt),
 			Test:              row.IsTest,
-		}, nil
+		}, reader: row.ReaderID}, nil
 	})
 }
 
@@ -493,16 +494,16 @@ func QueueEpisodeUnpublished(ctx context.Context, q Queries, tenantID, episodeID
 // key names the episode alone.
 func QueueEpisodeDeleted(ctx context.Context, q Queries, tenantID, episodeID uuid.UUID) error {
 	key := EventEpisodeUnpublished + ":" + episodeID.String() + ":deleted"
-	return queue(ctx, q, tenantID, EventEpisodeUnpublished, key, func() (any, error) {
+	return queue(ctx, q, tenantID, EventEpisodeUnpublished, key, func() (eventData, error) {
 		row, err := q.GetWebhookUnpublishedEpisode(ctx, dbmodels.GetWebhookUnpublishedEpisodeParams{TenantID: tenantID, ID: episodeID})
 		if err != nil {
-			return nil, fmt.Errorf("read the episode of a webhook event: %w", err)
+			return eventData{}, fmt.Errorf("read the episode of a webhook event: %w", err)
 		}
-		return EpisodeWithdrawal{
+		return eventData{body: EpisodeWithdrawal{
 			EpisodePublicID: row.EpisodePublicID,
 			SeriesPublicID:  row.SeriesPublicID,
 			Withdrawn:       WithdrawnDeleted,
-		}, nil
+		}}, nil
 	})
 }
 
@@ -571,12 +572,12 @@ func QueueSeriesPublished(ctx context.Context, q Queries, tenantID, seriesID uui
 // once, so the key names the comment alone: restoring one staff hid shows
 // again a comment already announced, and does not call this.
 func QueueCommentPosted(ctx context.Context, q Queries, tenantID, commentID uuid.UUID) error {
-	return queue(ctx, q, tenantID, EventCommentPosted, EventCommentPosted+":"+commentID.String(), func() (any, error) {
+	return queue(ctx, q, tenantID, EventCommentPosted, EventCommentPosted+":"+commentID.String(), func() (eventData, error) {
 		row, err := q.GetWebhookComment(ctx, dbmodels.GetWebhookCommentParams{TenantID: tenantID, ID: commentID})
 		if err != nil {
-			return nil, fmt.Errorf("read the comment of a webhook event: %w", err)
+			return eventData{}, fmt.Errorf("read the comment of a webhook event: %w", err)
 		}
-		return Comment{
+		return eventData{body: Comment{
 			CommentPublicID: row.CommentPublicID,
 			EpisodePublicID: row.EpisodePublicID,
 			SeriesPublicID:  row.SeriesPublicID,
@@ -584,26 +585,26 @@ func QueueCommentPosted(ctx context.Context, q Queries, tenantID, commentID uuid
 			AuthorPublicID:  row.AuthorPublicID,
 			AuthorName:      row.AuthorName,
 			PublishedAt:     formatTime(row.PublishedAt),
-		}, nil
+		}, reader: uuid.NullUUID{UUID: row.AuthorID, Valid: true}}, nil
 	})
 }
 
 // QueueContactMessageReceived owes the event of a contact message just
 // stored, called in the transaction that stores it.
 func QueueContactMessageReceived(ctx context.Context, q Queries, tenantID, messageID uuid.UUID) error {
-	return queue(ctx, q, tenantID, EventContactMessageReceived, EventContactMessageReceived+":"+messageID.String(), func() (any, error) {
+	return queue(ctx, q, tenantID, EventContactMessageReceived, EventContactMessageReceived+":"+messageID.String(), func() (eventData, error) {
 		row, err := q.GetWebhookContactMessage(ctx, dbmodels.GetWebhookContactMessageParams{TenantID: tenantID, ID: messageID})
 		if err != nil {
-			return nil, fmt.Errorf("read the contact message of a webhook event: %w", err)
+			return eventData{}, fmt.Errorf("read the contact message of a webhook event: %w", err)
 		}
-		return ContactMessage{
+		return eventData{body: ContactMessage{
 			MessagePublicID: row.MessagePublicID,
 			Subject:         row.Subject.String,
 			Body:            row.Body,
 			ReaderPublicID:  row.ReaderPublicID.String,
 			ReaderName:      row.ReaderName.String,
 			ReceivedAt:      formatTime(row.CreatedAt),
-		}, nil
+		}, reader: row.ReaderID}, nil
 	})
 }
 
@@ -612,12 +613,12 @@ func QueueContactMessageReceived(ctx context.Context, q Queries, tenantID, messa
 // The key names the entry, so each reply is an event of its own and a mail
 // delivered twice, which stores no second entry, owes none.
 func QueueContactMessageReplyReceived(ctx context.Context, q Queries, tenantID, entryID uuid.UUID) error {
-	return queue(ctx, q, tenantID, EventContactMessageReceived, EventContactMessageReceived+":reply:"+entryID.String(), func() (any, error) {
+	return queue(ctx, q, tenantID, EventContactMessageReceived, EventContactMessageReceived+":reply:"+entryID.String(), func() (eventData, error) {
 		row, err := q.GetWebhookContactMessageReply(ctx, dbmodels.GetWebhookContactMessageReplyParams{TenantID: tenantID, ID: entryID})
 		if err != nil {
-			return nil, fmt.Errorf("read the contact message reply of a webhook event: %w", err)
+			return eventData{}, fmt.Errorf("read the contact message reply of a webhook event: %w", err)
 		}
-		return ContactMessage{
+		return eventData{body: ContactMessage{
 			MessagePublicID: row.MessagePublicID,
 			Subject:         row.Subject.String,
 			Body:            row.Body,
@@ -625,7 +626,7 @@ func QueueContactMessageReplyReceived(ctx context.Context, q Queries, tenantID, 
 			ReaderPublicID:  row.ReaderPublicID.String,
 			ReaderName:      row.ReaderName.String,
 			ReceivedAt:      formatTime(row.CreatedAt),
-		}, nil
+		}, reader: row.ReaderID}, nil
 	})
 }
 
@@ -641,7 +642,7 @@ func QueueTest(ctx context.Context, q Queries, tenantID, endpointID uuid.UUID) (
 	if err != nil {
 		return uuid.Nil, err
 	}
-	id, owed, err := owe(ctx, q, tenantID, endpointID, envelope, payload)
+	id, owed, err := owe(ctx, q, tenantID, endpointID, envelope, payload, uuid.NullUUID{})
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -657,17 +658,29 @@ func QueueResend(ctx context.Context, q Queries, tenantID, deliveryID uuid.UUID)
 	return insertOutboxEvent(ctx, q, tenantID, deliveryID, OutboxEventType+":"+deliveryID.String()+":resend:"+uuid.Must(uuid.NewV7()).String())
 }
 
+// eventData is the data of one event, with the reader it names: the account
+// whose address, display name, or words it carries. The delivery records the
+// reader, so it is deleted with their account.
+type eventData struct {
+	body   any
+	reader uuid.NullUUID
+}
+
 // queue owes eventType to every endpoint of the tenant's that subscribed to it.
 // data is read only when one has, so a tenant without webhooks pays one indexed
 // read for every change it records.
-func queue(ctx context.Context, q Queries, tenantID uuid.UUID, eventType, key string, data func() (any, error)) error {
-	return queueKeyed(ctx, q, tenantID, eventType, func() (string, any, error) {
-		body, err := data()
-		return key, body, err
+func queue(ctx context.Context, q Queries, tenantID uuid.UUID, eventType, key string, data func() (eventData, error)) error {
+	return queueAll(ctx, q, tenantID, eventType, func() ([]keyedEvent, error) {
+		event, err := data()
+		if err != nil {
+			return nil, err
+		}
+		return []keyedEvent{{key: key, data: event.body, reader: event.reader}}, nil
 	})
 }
 
-// queueKeyed is [queue] for an event whose key is read with its data.
+// queueKeyed is [queue] for an event whose key is read with its data, and
+// which names no reader.
 func queueKeyed(ctx context.Context, q Queries, tenantID uuid.UUID, eventType string, data func() (string, any, error)) error {
 	return queueAll(ctx, q, tenantID, eventType, func() ([]keyedEvent, error) {
 		key, body, err := data()
@@ -678,10 +691,12 @@ func queueKeyed(ctx context.Context, q Queries, tenantID uuid.UUID, eventType st
 	})
 }
 
-// keyedEvent is one event [queueAll] owes, with the key that names it.
+// keyedEvent is one event [queueAll] owes, with the key that names it and the
+// reader it names.
 type keyedEvent struct {
-	key  string
-	data any
+	key    string
+	data   any
+	reader uuid.NullUUID
 }
 
 // queueAll is [queue] for a change that owes several events of one type, read
@@ -711,7 +726,7 @@ func queueAll(ctx context.Context, q Queries, tenantID uuid.UUID, eventType stri
 			return err
 		}
 		for _, endpointID := range endpoints {
-			if _, _, err := owe(ctx, q, tenantID, endpointID, envelope, payload); err != nil {
+			if _, _, err := owe(ctx, q, tenantID, endpointID, envelope, payload, event.reader); err != nil {
 				return err
 			}
 		}
@@ -737,8 +752,8 @@ func envelopeFor(tenant dbmodels.Tenant, eventType, key string, data any) (Envel
 // owe writes the delivery of envelope to one endpoint and the outbox event
 // that sends it, in one statement so that a writer outside a transaction
 // cannot leave one without the other, and reports false for an event already
-// owed to the endpoint.
-func owe(ctx context.Context, q Queries, tenantID, endpointID uuid.UUID, envelope Envelope, payload []byte) (uuid.UUID, bool, error) {
+// owed to the endpoint. reader is the reader the event names, if any.
+func owe(ctx context.Context, q Queries, tenantID, endpointID uuid.UUID, envelope Envelope, payload []byte, reader uuid.NullUUID) (uuid.UUID, bool, error) {
 	id, err := q.InsertWebhookDelivery(ctx, dbmodels.InsertWebhookDeliveryParams{
 		OutboxEventID: uuid.Must(uuid.NewV7()),
 		ID:            uuid.Must(uuid.NewV7()),
@@ -747,6 +762,7 @@ func owe(ctx context.Context, q Queries, tenantID, endpointID uuid.UUID, envelop
 		EventType:     envelope.Type,
 		EventID:       envelope.ID,
 		Payload:       payload,
+		ReaderID:      reader,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return uuid.Nil, false, nil
@@ -778,10 +794,12 @@ func insertOutboxEvent(ctx context.Context, q Queries, tenantID, deliveryID uuid
 	return nil
 }
 
-func purchaseData(ctx context.Context, q Queries, tenantID, purchaseID uuid.UUID) (Purchase, error) {
+// purchaseData reads the data of a purchase's events and the buyer they name,
+// none once the buyer has deleted their account.
+func purchaseData(ctx context.Context, q Queries, tenantID, purchaseID uuid.UUID) (Purchase, uuid.NullUUID, error) {
 	row, err := q.GetWebhookPurchase(ctx, dbmodels.GetWebhookPurchaseParams{TenantID: tenantID, ID: purchaseID})
 	if err != nil {
-		return Purchase{}, fmt.Errorf("read the purchase of a webhook event: %w", err)
+		return Purchase{}, uuid.NullUUID{}, fmt.Errorf("read the purchase of a webhook event: %w", err)
 	}
 	item := "episode"
 	switch {
@@ -811,7 +829,7 @@ func purchaseData(ctx context.Context, q Queries, tenantID, purchaseID uuid.UUID
 		Provider:        row.Provider.String,
 		Store:           row.Store.String,
 		Test:            row.IsTest,
-	}, nil
+	}, row.ReaderID, nil
 }
 
 // EventID is the id a receiver sees for the event key names: the same for

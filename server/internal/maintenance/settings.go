@@ -13,6 +13,7 @@ import (
 	"github.com/publira/publira/server/internal/mfachallenges"
 	"github.com/publira/publira/server/internal/orphanimages"
 	"github.com/publira/publira/server/internal/recommendfeatures"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 // Each Load function below reads the tunables of one job — the sizes, limits,
@@ -149,6 +150,22 @@ func LoadWithdrawnCommentPurge() (WithdrawnCommentPurge, error) {
 		return WithdrawnCommentPurge{}, err
 	}
 	return WithdrawnCommentPurge{ChunkSize: size}, nil
+}
+
+// WebhookDeliveryPurge deletes the webhook deliveries settled longer ago than
+// [tenantwebhooks.DeliveryRetention].
+type WebhookDeliveryPurge struct {
+	ChunkSize int32
+	DryRun    bool
+}
+
+// LoadWebhookDeliveryPurge reads the job's tunables from the environment.
+func LoadWebhookDeliveryPurge() (WebhookDeliveryPurge, error) {
+	size, err := positiveInt32("PUBLIRA_WEBHOOK_DELIVERY_PURGE_CHUNK_SIZE", tenantwebhooks.DefaultPurgeChunkSize)
+	if err != nil {
+		return WebhookDeliveryPurge{}, err
+	}
+	return WebhookDeliveryPurge{ChunkSize: size}, nil
 }
 
 // OrphanImagePurge deletes the image rows and storage objects nothing

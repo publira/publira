@@ -95,6 +95,16 @@ func (PurgeOrphanImagesArgs) InsertOpts() river.InsertOpts {
 	return purgeInsertOpts(orphanImagePurgeInterval)
 }
 
+// PurgeWebhookDeliveriesArgs deletes the webhook deliveries settled longer ago
+// than the retention window.
+type PurgeWebhookDeliveriesArgs struct{}
+
+func (PurgeWebhookDeliveriesArgs) Kind() string { return kindPurgeWebhookDeliveries }
+
+func (PurgeWebhookDeliveriesArgs) InsertOpts() river.InsertOpts {
+	return purgeInsertOpts(webhookDeliveryPurgeInterval)
+}
+
 // CloseRoyaltyStatementsArgs closes the royalty statement of every month a
 // tenant that chose automatic closing is owed. Like the rebuild chain it keeps
 // no completed run as a reason to skip one: a pass closes only what is owed,
@@ -234,6 +244,21 @@ func (w *purgeWithdrawnCommentsWorker) Timeout(*river.Job[PurgeWithdrawnComments
 func (w *purgeWithdrawnCommentsWorker) Work(ctx context.Context, job *river.Job[PurgeWithdrawnCommentsArgs]) error {
 	return w.jobs.run(ctx, job.JobRow, ServiceNamePurgeWithdrawnComments, func(ctx context.Context, deps maintenance.Deps) error {
 		return w.jobs.withdrawnComments.Run(ctx, deps)
+	})
+}
+
+type purgeWebhookDeliveriesWorker struct {
+	river.WorkerDefaults[PurgeWebhookDeliveriesArgs]
+	jobs *Jobs
+}
+
+func (w *purgeWebhookDeliveriesWorker) Timeout(*river.Job[PurgeWebhookDeliveriesArgs]) time.Duration {
+	return jobTimeout
+}
+
+func (w *purgeWebhookDeliveriesWorker) Work(ctx context.Context, job *river.Job[PurgeWebhookDeliveriesArgs]) error {
+	return w.jobs.run(ctx, job.JobRow, ServiceNamePurgeWebhookDeliveries, func(ctx context.Context, deps maintenance.Deps) error {
+		return w.jobs.webhookDeliveries.Run(ctx, deps)
 	})
 }
 

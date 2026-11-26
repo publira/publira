@@ -110,6 +110,7 @@ func TestEveryPurgeRunsOncePerInterval(t *testing.T) {
 		PurgeMfaChallengesArgs{}:            mfaChallengePurgeInterval,
 		PurgeWithdrawnCommentsArgs{}:        withdrawnCommentPurgeInterval,
 		PurgeOrphanImagesArgs{}:             orphanImagePurgeInterval,
+		PurgeWebhookDeliveriesArgs{}:        webhookDeliveryPurgeInterval,
 		PurgeDataExportsArgs{}:              dataExportPurgeInterval,
 		SyncGooglePlayVoidedPurchasesArgs{}: googlePlayVoidedPurchaseInterval,
 	} {
@@ -161,8 +162,8 @@ func TestJobsRunOnTheirOwnQueue(t *testing.T) {
 func TestTheChainHeadAndEveryOtherJobAreScheduled(t *testing.T) {
 	jobs := newJobs(t, Config{DB: &sql.DB{}})
 
-	if got, want := len(jobs.PeriodicJobs()), 13; got != want {
-		t.Fatalf("periodic jobs = %d, want %d: the chain head, six purges, the royalty close, the voided purchase sync, the search index build, the payment reconciliations, the readers' archives, and the tenant erasure", got, want)
+	if got, want := len(jobs.PeriodicJobs()), 14; got != want {
+		t.Fatalf("periodic jobs = %d, want %d: the chain head, seven purges, the royalty close, the voided purchase sync, the search index build, the payment reconciliations, the readers' archives, and the tenant erasure", got, want)
 	}
 }
 
@@ -175,7 +176,7 @@ func TestUnhostedNeedsNoPool(t *testing.T) {
 	if err := jobs.Register(river.NewWorkers()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
-	if got, want := len(jobs.PeriodicJobs()), 13; got != want {
+	if got, want := len(jobs.PeriodicJobs()), 14; got != want {
 		t.Fatalf("periodic jobs = %d, want the same %d a hosted set schedules", got, want)
 	}
 }
@@ -344,6 +345,7 @@ func everyArgs() []river.JobArgs {
 		PurgeMfaChallengesArgs{},
 		PurgeWithdrawnCommentsArgs{},
 		PurgeOrphanImagesArgs{},
+		PurgeWebhookDeliveriesArgs{},
 		CloseRoyaltyStatementsArgs{},
 		SyncGooglePlayVoidedPurchasesArgs{},
 		BuildSearchIndexArgs{},
@@ -385,6 +387,9 @@ func probes() map[string]func(*river.Workers) error {
 		},
 		kindPurgeOrphanImages: func(w *river.Workers) error {
 			return river.AddWorkerSafely(w, &purgeOrphanImagesWorker{})
+		},
+		kindPurgeWebhookDeliveries: func(w *river.Workers) error {
+			return river.AddWorkerSafely(w, &purgeWebhookDeliveriesWorker{})
 		},
 		kindCloseRoyaltyStatements: func(w *river.Workers) error {
 			return river.AddWorkerSafely(w, &closeRoyaltyStatementsWorker{})

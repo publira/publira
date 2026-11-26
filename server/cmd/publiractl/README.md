@@ -556,6 +556,7 @@ The worker's ticker jobs — publishing due episodes, applying free window bound
 | `purge-mfa-challenges` | Deletes the spent MFA challenges and the signed-out sessions of a tenant's accounts, on the site and in the console, and of platform operators whose tokens have expired, and the passkey ceremonies left unfinished past their expiry |
 | `purge-withdrawn-comments` | Deletes the comments their authors withdrew past the retention window |
 | `purge-orphan-images` | Deletes the image rows and storage objects nothing references |
+| `purge-webhook-deliveries` | Deletes the webhook deliveries delivered or given up more than 30 days ago |
 | `build-recommend-features` | Rebuilds the daily user and item recommend feature snapshots |
 | `close-royalty-statements` | Closes the royalty statements the tenants on automatic closing are owed |
 | `sync-google-play-voided-purchases` | Takes back the purchases Google Play refunded in the last 30 days |
@@ -805,6 +806,23 @@ Environment variables:
 - `PUBLIRA_ORPHAN_IMAGES_PURGE_DRY_RUN`: `true` deletes nothing and reports the objects the sweep would remove. The row deletes are skipped too, so the count covers the objects already unreferenced rather than the ones this run would have stranded first.
 
 The structured log records the cutoff, the minimum age, the page size, the bucket, the image rows deleted, the objects scanned and deleted, the page count, and the elapsed time.
+
+## purge-webhook-deliveries
+
+Deletes the `webhook_deliveries` rows that were delivered or given up more than 30 days before the run, across every tenant, in chunked `DELETE`s. A delivery still owed — pending, or failed with another attempt due — is kept whatever its age, and so is one a Tenant admin is resending at that moment. There is no retention setting: the cutoff is the run's UTC timestamp less 30 days, compared against the delivery's `updated_at`, which is when it was delivered or given up.
+
+```bash
+eval "$(task --silent dev-env:env)"
+PUBLIRA_WEBHOOK_DELIVERY_PURGE_DRY_RUN=true go -C server run ./cmd/publiractl job purge-webhook-deliveries
+```
+
+Environment variables:
+
+- `PUBLIRA_CONTENT_STATS_DB_URL`: dedicated connection URL, of a role that reaches every tenant. Falls back to `PUBLIRA_DB_URL`.
+- `PUBLIRA_WEBHOOK_DELIVERY_PURGE_CHUNK_SIZE`: row limit per `DELETE`. Defaults to `1000`, since a delivery given up still carries the body it was to send.
+- `PUBLIRA_WEBHOOK_DELIVERY_PURGE_DRY_RUN`: `true` counts the rows that would be deleted, logs the total, and exits without deleting anything.
+
+The structured log records the cutoff, the chunk size, the rows deleted, the chunk count, and the elapsed time.
 
 ## build-recommend-features
 

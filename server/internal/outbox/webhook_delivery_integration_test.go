@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -140,6 +141,10 @@ func TestWebhookDeliveryIsRetriedUntilDeadAndCanBeResent(t *testing.T) {
 	if got := calls.Load(); got != tenantwebhooks.MaxAttempts {
 		t.Fatalf("the endpoint was called %d times, want %d", got, tenantwebhooks.MaxAttempts)
 	}
+	// A dead delivery can be resent, so it keeps the body it is to send.
+	if !strings.Contains(string(delivery.Payload), tenantwebhooks.EventTest) {
+		t.Fatalf("dead delivery payload = %s, want the test event it was to send", delivery.Payload)
+	}
 
 	healthy.Store(true)
 	if err := env.queries.ResendWebhookDelivery(ctx, dbmodels.ResendWebhookDeliveryParams{TenantID: env.tenantID, ID: deliveryID}); err != nil {
@@ -156,6 +161,10 @@ func TestWebhookDeliveryIsRetriedUntilDeadAndCanBeResent(t *testing.T) {
 	delivery = env.delivery(t, ctx, deliveryID)
 	if delivery.Status != tenantwebhooks.StatusDelivered || !delivery.DeliveredAt.Valid || delivery.Attempts != tenantwebhooks.MaxAttempts+1 {
 		t.Fatalf("resent delivery = %s after %d attempts, want delivered after %d", delivery.Status, delivery.Attempts, tenantwebhooks.MaxAttempts+1)
+	}
+	// Nothing sends a delivered delivery again, so the body is not kept.
+	if string(delivery.Payload) != "{}" {
+		t.Fatalf("delivered delivery payload = %s, want {}", delivery.Payload)
 	}
 }
 

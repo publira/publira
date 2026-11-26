@@ -242,6 +242,9 @@ type Querier interface {
 	// How many of the series a plan is saved with belong to the tenant.
 	CountSeriesForSubscriptionPlan(ctx context.Context, arg CountSeriesForSubscriptionPlanParams) (int32, error)
 	CountSeriesTranslations(ctx context.Context, arg CountSeriesTranslationsParams) (int32, error)
+	// How many deliveries DeleteSettledWebhookDeliveries would take: those
+	// delivered or given up before the cutoff, across every tenant.
+	CountSettledWebhookDeliveries(ctx context.Context, cutoff time.Time) (int64, error)
 	CountSubscriptionPlansForTenant(ctx context.Context, tenantID uuid.UUID) (int32, error)
 	// Every subscription the plan bills or billed, whatever its state, every
 	// reader whose latest checkout was of it, and every intent a reader opened to
@@ -750,6 +753,12 @@ type Querier interface {
 	DeleteSeriesPromotionCodes(ctx context.Context, arg DeleteSeriesPromotionCodesParams) error
 	DeleteSeriesTagsBySeriesID(ctx context.Context, seriesID uuid.UUID) error
 	DeleteSeriesTranslation(ctx context.Context, arg DeleteSeriesTranslationParams) (int64, error)
+	// Deletes at most chunk_size of the deliveries delivered or given up before
+	// the cutoff, across every tenant, oldest first. The ordered subquery reads
+	// them from idx_webhook_deliveries_settled_updated_at rather than scanning the
+	// table, and SKIP LOCKED leaves a delivery being resent to the resend, whose
+	// update makes it pending and takes it out of the purge's reach.
+	DeleteSettledWebhookDeliveries(ctx context.Context, arg DeleteSettledWebhookDeliveriesParams) (int64, error)
 	DeleteSubscriptionPlan(ctx context.Context, arg DeleteSubscriptionPlanParams) (int64, error)
 	DeleteSubscriptionPlanTargets(ctx context.Context, arg DeleteSubscriptionPlanTargetsParams) error
 	// Deletes the mark and its consent record, answering the image it held so the
@@ -2073,7 +2082,8 @@ type Querier interface {
 	// that sends it, in one statement, so neither is written without the other
 	// even on a connection outside a transaction. An event already owed to the
 	// endpoint — the same change recorded twice — writes nothing and returns no
-	// row.
+	// row. reader_id is the reader the payload names, so the delivery goes with
+	// their account.
 	InsertWebhookDelivery(ctx context.Context, arg InsertWebhookDeliveryParams) (uuid.UUID, error)
 	// Whether the tenant's documents are written at all: a tenant marked for
 	// deletion has its documents deleted by the erasure, and one already deleted
@@ -4767,7 +4777,9 @@ type Querier interface {
 	RecordUserMfaFailure(ctx context.Context, arg RecordUserMfaFailureParams) (UserMfaLockout, error)
 	// Signing out twice with the same token records it once.
 	RecordUserSessionSignedOut(ctx context.Context, arg RecordUserSessionSignedOutParams) error
-	// Records one attempt at a delivery and what it came to.
+	// Records one attempt at a delivery and what it came to. A delivered one is
+	// never sent again — only a dead one can be resent — so its payload, which may
+	// carry a reader's address or what they wrote, is dropped once it has arrived.
 	RecordWebhookDeliveryAttempt(ctx context.Context, arg RecordWebhookDeliveryAttemptParams) error
 	// The same reclaim for the events whose payload holds a secret. A crash
 	// records no failure, so an event whose worker dies on every attempt would

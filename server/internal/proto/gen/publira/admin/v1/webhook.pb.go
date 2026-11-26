@@ -1111,6 +1111,9 @@ func (x *SendTestWebhookResponse) GetDelivery() *WebhookDelivery {
 
 // Cursor pagination, newest delivery first. Field shape and token rules:
 // proto/README.md. Changing the filter starts again from the first page.
+//
+// A delivery is listed until 30 days after it was delivered or given up, and
+// one whose event names a reader is deleted with the reader's account.
 type ListWebhookDeliveriesRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
