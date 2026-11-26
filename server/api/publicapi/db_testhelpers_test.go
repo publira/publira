@@ -146,6 +146,7 @@ func openPolicy() platformpolicy.Policy {
 	policy.PurchaseCheckout = open
 	policy.PromotionCodeAttempt = open
 	policy.ContentViewPerClient = open
+	policy.PushDevice = open
 	policy.DataExport = platformpolicy.HourDay{PerHour: 1000, PerDay: 1000}
 	return policy
 }

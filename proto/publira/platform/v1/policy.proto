@@ -208,6 +208,13 @@ message PlatformPolicy {
   // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
   // when a request leaves it unset.
   MinuteDayLimit content_view_per_client = 25;
+  // How often one reader may ask NotificationService.RegisterPushDevice or
+  // UnregisterPushDevice to add or remove a device notifications are pushed
+  // to, counted together.
+  //
+  // Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+  // when a request leaves it unset.
+  MinuteDayLimit push_device = 26;
 }
 
 // The reads one client may make of a storefront in 10 seconds, counted per

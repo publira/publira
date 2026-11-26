@@ -247,6 +247,14 @@ export const securityPolicyFormFields = {
     kind: "value",
     name: "purchase_checkout_per_minute",
   },
+  pushDevicePerDay: {
+    kind: "value",
+    name: "push_device_per_day",
+  },
+  pushDevicePerMinute: {
+    kind: "value",
+    name: "push_device_per_minute",
+  },
   revision: "value",
   seriesRemainderCheckoutPerDay: {
     kind: "value",
@@ -314,6 +322,8 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
   const iconChange = t("platform.policy.security.icon_change_title");
 
   const passkey = t("platform.policy.security.passkey_title");
+
+  const pushDevice = t("platform.policy.security.push_device_title");
 
   const seriesRemainderCheckout = t(
     "platform.policy.security.series_remainder_checkout_title"
@@ -406,6 +416,8 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
       promotionCodeAttemptPerMinute: limitSchema(t, promotionCodeAttempt),
       purchaseCheckoutPerDay: limitSchema(t, purchaseCheckout),
       purchaseCheckoutPerMinute: limitSchema(t, purchaseCheckout),
+      pushDevicePerDay: limitSchema(t, pushDevice),
+      pushDevicePerMinute: limitSchema(t, pushDevice),
       revision: revisionFormSchema(t("platform.policy.revision_invalid")),
       seriesRemainderCheckoutPerDay: limitSchema(t, seriesRemainderCheckout),
       seriesRemainderCheckoutPerMinute: limitSchema(t, seriesRemainderCheckout),
@@ -489,6 +501,13 @@ export const securityPolicyFormSchema = async (locale: Locale) => {
             setting: passkey,
           }),
           short: "passkeyPerMinute",
+        },
+        {
+          day: "pushDevicePerDay",
+          message: t("platform.policy.day_below_minute", {
+            setting: pushDevice,
+          }),
+          short: "pushDevicePerMinute",
         },
         {
           day: "seriesRemainderCheckoutPerDay",

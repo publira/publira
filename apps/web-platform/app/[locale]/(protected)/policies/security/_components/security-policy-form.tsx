@@ -210,6 +210,24 @@ export const SecurityPolicyForm = ({
             </Suspense>
           </PolicyLimitField>
           <PolicyLimitField
+            defaultValue={values.pushDevice.perMinute}
+            disabled={Boolean(loadErrorMessage)}
+            name="push_device_per_minute"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.push_device_per_minute" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
+            defaultValue={values.pushDevice.perDay}
+            disabled={Boolean(loadErrorMessage)}
+            name="push_device_per_day"
+          >
+            <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
+              <Message message="platform.policy.security.push_device_per_day" />
+            </Suspense>
+          </PolicyLimitField>
+          <PolicyLimitField
             defaultValue={values.seriesRemainderCheckout.perMinute}
             disabled={Boolean(loadErrorMessage)}
             name="series_remainder_checkout_per_minute"

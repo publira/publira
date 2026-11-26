@@ -120,6 +120,12 @@ const (
 	// rankings. It is the platform's limit alone: a tenant has no setting of
 	// its own for it.
 	actionRecordContentViewFromClient readerAction = "content_view.record.client"
+	// A push device registered or removed. A registration is a destination the
+	// worker sends every notification for the reader to, and one past the
+	// account's cap replaces the oldest, so the cap bounds how many there are
+	// and this bounds how fast an account can replace them. A removal shares
+	// it, so alternating the two is no way around it.
+	actionPushDevice readerAction = "push_device"
 )
 
 // readerGuards is the flood control the reader-writable RPCs charge against.
@@ -166,6 +172,7 @@ func readerRules(policy platformpolicy.Policy) map[readerAction][]ratelimit.Rule
 		actionPreviewPromotionCode:           minuteDayRules(policy.PromotionCodeAttempt),
 		actionRequestDataExport:              hourDayRules(policy.DataExport),
 		actionRecordContentViewFromClient:    minuteDayRules(policy.ContentViewPerClient),
+		actionPushDevice:                     minuteDayRules(policy.PushDevice),
 	}
 }
 

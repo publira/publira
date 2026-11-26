@@ -33,18 +33,48 @@ func expectPublishedWebPushPublicKey(mock sqlmock.Sqlmock, publicKey string) {
 	expectation.WillReturnRows(sqlmock.NewRows([]string{"vapid_public_key"}).AddRow(publicKey))
 }
 
+// expectPushDeviceCharge answers the reads the reader flood control makes to
+// charge a registration or a removal: no policy saved and no tenant override,
+// so the built-in limits stand.
+func expectPushDeviceCharge(mock sqlmock.Sqlmock, tenantID uuid.UUID) {
+	expectNoSavedPlatformPolicy(mock)
+	expectNoTenantCommunityLimitOverrides(mock, tenantID)
+}
+
+// expectPushDeviceAccountLocked answers the transaction a registration opens
+// and the lock on the reader's account it takes before writing.
+func expectPushDeviceAccountLocked(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, now time.Time) {
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.GetUserByIDForUpdate)).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "public_id", "email", "password_hash", "name", "created_at", "status", "tenant_id", "email_verified_at", "credentials_version", "birth_date", "icon_image_id", "icon_preset_id", "last_locale", "password_proven_at"}).
+			AddRow(userID, testPublicUserPublicID, "member@example.com", "", "Member User", now, "active", uuid.NullUUID{UUID: tenantID, Valid: true}, now, int32(1), nil, nil, nil, nil, nil))
+}
+
+// expectPushDevicesTrimmed answers the removal of what the reader holds past
+// the cap, keeping token, and the commit that follows it.
+func expectPushDevicesTrimmed(mock sqlmock.Sqlmock, tenantID, userID uuid.UUID, token string) {
+	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteUserPushDevicesBeyondNewest)).
+		WithArgs(tenantID, userID, token, int32(maxPushDevicesPerAccount-1)).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+}
+
 func TestRegisterPushDeviceStoresTheTokenForTheSignedInReader(t *testing.T) {
 	tenantID := uuid.Must(uuid.NewV7())
 	userID := uuid.Must(uuid.NewV7())
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 	expectLegalPagesAgreed(mock, tenantID, userID)
+	expectPushDeviceCharge(mock, tenantID)
 
+	expectPushDeviceAccountLocked(mock, tenantID, userID, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertUserPushDevice)).
 		WithArgs(tenantID, userID, "device-token", "android", "registration_token", sql.NullString{}, sql.NullString{}, sql.NullString{}).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth", "token_type",
 		}).AddRow(tenantID, userID, "device-token", "android", now, now, nil, nil, nil, "registration_token"))
+	expectPushDevicesTrimmed(mock, tenantID, userID, "device-token")
 
 	resp, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -78,12 +108,15 @@ func TestRegisterPushDeviceStoresWhatTheTokenIs(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock := newNotificationClient(t, tenantID, userID, now)
 			expectLegalPagesAgreed(mock, tenantID, userID)
+			expectPushDeviceCharge(mock, tenantID)
 
+			expectPushDeviceAccountLocked(mock, tenantID, userID, now)
 			mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertUserPushDevice)).
 				WithArgs(tenantID, userID, "device-registration", "ios", tt.want, sql.NullString{}, sql.NullString{}, sql.NullString{}).
 				WillReturnRows(sqlmock.NewRows([]string{
 					"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth", "token_type",
 				}).AddRow(tenantID, userID, "device-registration", "ios", now, now, nil, nil, nil, tt.want))
+			expectPushDevicesTrimmed(mock, tenantID, userID, "device-registration")
 
 			_, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
 				Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -105,6 +138,7 @@ func TestRegisterWebPushDeviceRequiresVAPIDConfiguration(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	client, mock := newNotificationClient(t, tenantID, userID, time.Now().UTC())
 	expectLegalPagesAgreed(mock, tenantID, userID)
+	expectPushDeviceCharge(mock, tenantID)
 	expectPublishedWebPushPublicKey(mock, "")
 
 	_, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
@@ -130,13 +164,16 @@ func TestRegisterWebPushDeviceStoresSubscription(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 	expectLegalPagesAgreed(mock, tenantID, userID)
+	expectPushDeviceCharge(mock, tenantID)
 	expectPublishedWebPushPublicKey(mock, publicKey)
 
+	expectPushDeviceAccountLocked(mock, tenantID, userID, now)
 	mock.ExpectQuery(regexp.QuoteMeta(dbmodels.UpsertUserPushDevice)).
 		WithArgs(tenantID, userID, "https://push.example.test/subscription", "web", "registration_token", sql.NullString{String: "https://push.example.test/subscription", Valid: true}, sql.NullString{String: "p256dh", Valid: true}, sql.NullString{String: "auth", Valid: true}).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"tenant_id", "user_id", "token", "platform", "created_at", "updated_at", "endpoint", "p256dh", "auth", "token_type",
 		}).AddRow(tenantID, userID, "https://push.example.test/subscription", "web", now, now, "https://push.example.test/subscription", "p256dh", "auth", "registration_token"))
+	expectPushDevicesTrimmed(mock, tenantID, userID, "https://push.example.test/subscription")
 
 	_, err = client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
 		Tenant:   &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -195,6 +232,7 @@ func TestRegisterPushDeviceRejectsAnUnusableRequest(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock := newNotificationClient(t, tenantID, userID, now)
 			expectLegalPagesAgreed(mock, tenantID, userID)
+			expectPushDeviceCharge(mock, tenantID)
 
 			_, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), issueTestPublicToken(tenantID.String())), &publirav1.RegisterPushDeviceRequest{
 				Tenant:    &publirattypesv1.TenantContext{TenantId: tenantID.String()},
@@ -245,6 +283,7 @@ func TestUnregisterPushDeviceReportsWhetherARowWasRemoved(t *testing.T) {
 			userID := uuid.Must(uuid.NewV7())
 			now := time.Now().UTC().Truncate(time.Microsecond)
 			client, mock := newNotificationClient(t, tenantID, userID, now)
+			expectPushDeviceCharge(mock, tenantID)
 
 			mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteUserPushDeviceForUser)).
 				WithArgs(tenantID, userID, "device-token").
@@ -272,6 +311,7 @@ func TestUnregisterPushDeviceUsesWebPushEndpoint(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	client, mock := newNotificationClient(t, tenantID, userID, now)
 	endpoint := "https://push.example.test/subscription"
+	expectPushDeviceCharge(mock, tenantID)
 	mock.ExpectExec(regexp.QuoteMeta(dbmodels.DeleteUserPushDeviceForUser)).
 		WithArgs(tenantID, userID, endpoint).
 		WillReturnResult(sqlmock.NewResult(0, 1))

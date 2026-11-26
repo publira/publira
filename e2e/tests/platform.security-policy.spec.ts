@@ -97,6 +97,12 @@ const SAVED_LIMITS = [
     window: "minute",
   },
   {
+    column: "push_device_limit",
+    label: "Push notification registrations and removals per reader",
+    shorter: 9,
+    window: "minute",
+  },
+  {
     column: "series_remainder_checkout_limit",
     label: "Checkouts of the rest of a series per reader",
     shorter: 13,

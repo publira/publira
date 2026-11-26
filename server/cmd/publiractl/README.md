@@ -266,6 +266,7 @@ go -C server run ./cmd/publiractl policy show
 | `--promotion-code-attempt-per-minute`, `--promotion-code-attempt-per-day` | How many promotion codes one reader may have looked up, by a quote or by a purchase started with one, all counted together | 5, 30 |
 | `--api-key-request-per-minute`, `--api-key-request-per-day` | How many requests one of a tenant's API keys may make to the tenant console's API | 600, 100000 |
 | `--content-view-per-client-per-minute`, `--content-view-per-client-per-day` | How many page views one client address may have recorded, signed in or not | 60, 3000 |
+| `--push-device-per-minute`, `--push-device-per-day` | How many times one reader may register or remove a device notifications are pushed to, both counted together | 10, 50 |
 | `--login-attempts-per-account-per-minute`, `--login-attempts-per-account-per-day` | How many passwords may be tried at sign-in for one address, per tenant or for the Platform Console, from one origin, or from one device the address signed in from before. Every device it never signed in from shares ten times as many between them. A sign-in whose password is right clears the count of its origin or device | 5, 50 |
 | `--login-attempts-per-source-per-hour`, `--login-attempts-per-source-per-day` | How many sign-ins one origin may fail, across every address, tenant and console | 60, 300 |
 | `--data-export-per-hour`, `--data-export-per-day` | How many archives of what the install keeps about them one reader may ask for | 1, 1 |

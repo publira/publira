@@ -117,6 +117,10 @@ export const updatePlatformSecurityPolicyAction = async (
           perDay: data.purchaseCheckoutPerDay,
           perMinute: data.purchaseCheckoutPerMinute,
         },
+        pushDevice: {
+          perDay: data.pushDevicePerDay,
+          perMinute: data.pushDevicePerMinute,
+        },
         seriesRemainderCheckout: {
           perDay: data.seriesRemainderCheckoutPerDay,
           perMinute: data.seriesRemainderCheckoutPerMinute,

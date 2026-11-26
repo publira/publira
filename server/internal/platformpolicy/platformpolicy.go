@@ -190,6 +190,11 @@ type Policy struct {
 	// content_events and a point in a tenant's rankings, so what this bounds
 	// is how far one client can move those rankings and grow that table.
 	ContentViewPerClient MinuteDay
+	// PushDevice bounds the push devices one reader may register or remove.
+	// Each registration is a destination the worker sends every notification
+	// for that reader to, and one past the account's cap replaces the oldest,
+	// so what this bounds is how fast one account can churn those rows.
+	PushDevice MinuteDay
 	// LoginAttemptsPerAccount bounds the passwords tried at sign-in for one
 	// address within its tenant, or within the platform console, at one client
 	// source or from one device the address signed in from before. The devices
@@ -275,6 +280,7 @@ func Defaults() Policy {
 		PromotionCodeAttempt:      MinuteDay{PerMinute: 5, PerDay: 30},
 		APIKeyRequest:             MinuteDay{PerMinute: 600, PerDay: 100000},
 		ContentViewPerClient:      MinuteDay{PerMinute: 60, PerDay: 3000},
+		PushDevice:                MinuteDay{PerMinute: 10, PerDay: 50},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: 5, PerDay: 50},
 		LoginAttemptsPerSource:    HourDay{PerHour: 60, PerDay: 300},
 		DataExport:                HourDay{PerHour: 1, PerDay: 1},
@@ -321,6 +327,7 @@ func (p Policy) Validate() error {
 		{"promotion_code_attempt", "per_minute", p.PromotionCodeAttempt.PerMinute, p.PromotionCodeAttempt.PerDay},
 		{"api_key_request", "per_minute", p.APIKeyRequest.PerMinute, p.APIKeyRequest.PerDay},
 		{"content_view_per_client", "per_minute", p.ContentViewPerClient.PerMinute, p.ContentViewPerClient.PerDay},
+		{"push_device", "per_minute", p.PushDevice.PerMinute, p.PushDevice.PerDay},
 		{"login_attempts_per_account", "per_minute", p.LoginAttemptsPerAccount.PerMinute, p.LoginAttemptsPerAccount.PerDay},
 		{"login_attempts_per_source", "per_hour", p.LoginAttemptsPerSource.PerHour, p.LoginAttemptsPerSource.PerDay},
 		{"data_export", "per_hour", p.DataExport.PerHour, p.DataExport.PerDay},
@@ -418,6 +425,7 @@ func FromConfig(config dbmodels.PlatformPolicyConfig) Policy {
 		PromotionCodeAttempt:      MinuteDay{PerMinute: int(config.PromotionCodeAttemptLimitPerMinute), PerDay: int(config.PromotionCodeAttemptLimitPerDay)},
 		APIKeyRequest:             MinuteDay{PerMinute: int(config.ApiKeyRequestLimitPerMinute), PerDay: int(config.ApiKeyRequestLimitPerDay)},
 		ContentViewPerClient:      MinuteDay{PerMinute: int(config.ContentViewLimitPerClientPerMinute), PerDay: int(config.ContentViewLimitPerClientPerDay)},
+		PushDevice:                MinuteDay{PerMinute: int(config.PushDeviceLimitPerMinute), PerDay: int(config.PushDeviceLimitPerDay)},
 		LoginAttemptsPerAccount:   MinuteDay{PerMinute: int(config.LoginAccountLimitPerMinute), PerDay: int(config.LoginAccountLimitPerDay)},
 		LoginAttemptsPerSource:    HourDay{PerHour: int(config.LoginSourceLimitPerHour), PerDay: int(config.LoginSourceLimitPerDay)},
 		DataExport:                HourDay{PerHour: int(config.DataExportLimitPerHour), PerDay: int(config.DataExportLimitPerDay)},
@@ -486,6 +494,8 @@ func (p Policy) ConfigParams() dbmodels.UpdatePlatformPolicyConfigParams {
 		ApiKeyRequestLimitPerDay:                int32(policy.APIKeyRequest.PerDay),
 		ContentViewLimitPerClientPerMinute:      int32(policy.ContentViewPerClient.PerMinute),
 		ContentViewLimitPerClientPerDay:         int32(policy.ContentViewPerClient.PerDay),
+		PushDeviceLimitPerMinute:                int32(policy.PushDevice.PerMinute),
+		PushDeviceLimitPerDay:                   int32(policy.PushDevice.PerDay),
 		AnonymousReadPublicApiLimitPer10Seconds: int32(policy.AnonymousReads.PublicAPI),
 		AnonymousReadSearchLimitPer10Seconds:    int32(policy.AnonymousReads.Search),
 		AnonymousReadImagesLimitPer10Seconds:    int32(policy.AnonymousReads.Images),

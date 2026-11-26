@@ -286,6 +286,9 @@ func (s *apiServer) RegisterPushDevice(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.chargeReaderAction(ctx, actionPushDevice, tenant.ID, user.ID); err != nil {
+		return nil, err
+	}
 
 	platform, err := pushDevicePlatform(req.Platform)
 	if err != nil {
@@ -296,10 +299,25 @@ func (s *apiServer) RegisterPushDevice(
 		return nil, err
 	}
 
+	tx, err := s.beginTenantTx(ctx)
+	if err != nil {
+		return nil, s.internalDBError(ctx, "failed to begin push device registration transaction", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	defer tx.Rollback() //nolint:errcheck
+	txq := dbmodels.New(tx)
+	// Locked so that two registrations at once each trim against the other's
+	// row rather than both keeping the cap's worth they saw before either
+	// wrote.
+	if _, err := txq.GetUserByIDForUpdate(ctx, user.ID); errors.Is(err, sql.ErrNoRows) {
+		return nil, invalidSessionError()
+	} else if err != nil {
+		return nil, s.internalDBError(ctx, "failed to lock the account for a push device registration", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+
 	// The token is the primary key, so this moves a token another reader left
 	// on the same phone to whoever is signed in now rather than adding a
 	// second row that would push their episodes to this reader.
-	_, err = s.queriesFor(ctx).UpsertUserPushDevice(ctx, dbmodels.UpsertUserPushDeviceParams{
+	_, err = txq.UpsertUserPushDevice(ctx, dbmodels.UpsertUserPushDeviceParams{
 		TenantID:  tenant.ID,
 		UserID:    user.ID,
 		Token:     registration.token,
@@ -312,6 +330,21 @@ func (s *apiServer) RegisterPushDevice(
 	if err != nil {
 		return nil, s.internalDBError(ctx, "failed to register push device", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
 	}
+	// Replacing the oldest rather than refusing, because a reader never sees
+	// the registrations they hold: a phone replaced or a browser reset leaves
+	// its row behind until a send finds it dead, and refusing would leave the
+	// device in their hand with no notifications and nothing to remove.
+	if _, err := txq.DeleteUserPushDevicesBeyondNewest(ctx, dbmodels.DeleteUserPushDevicesBeyondNewestParams{
+		TenantID:   tenant.ID,
+		UserID:     user.ID,
+		KeptToken:  registration.token,
+		KeepOthers: maxPushDevicesPerAccount - 1,
+	}); err != nil {
+		return nil, s.internalDBError(ctx, "failed to remove the oldest push devices", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, s.internalDBError(ctx, "failed to commit push device registration", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String())
+	}
 
 	return &publirav1.RegisterPushDeviceResponse{Registered: true}, nil
 }
@@ -322,6 +355,10 @@ func (s *apiServer) UnregisterPushDevice(
 ) (*publirav1.UnregisterPushDeviceResponse, error) {
 	tenant, user, _, err := s.currentUserFromSession(ctx, req.Tenant, rpcmiddleware.RequestHeader(ctx))
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.chargeReaderAction(ctx, actionPushDevice, tenant.ID, user.ID); err != nil {
 		return nil, err
 	}
 
@@ -343,6 +380,12 @@ func (s *apiServer) UnregisterPushDevice(
 	}
 	return &publirav1.UnregisterPushDeviceResponse{Unregistered: removed > 0}, nil
 }
+
+// maxPushDevicesPerAccount bounds the push devices one reader may hold. A
+// person signs in on a phone, a tablet and a browser or two; the bound is
+// there for a script registering destinations one after another, every one of
+// which the worker sends each of the reader's notifications to.
+const maxPushDevicesPerAccount = 20
 
 // maxPushDeviceTokenBytes bounds what one device can store. An FCM
 // registration token is a few hundred bytes and a Firebase Installation ID far

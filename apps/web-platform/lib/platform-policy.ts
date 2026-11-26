@@ -66,6 +66,8 @@ export interface PlatformSecurityPolicy {
   passwordVerification: MinuteDay;
   promotionCodeAttempt: MinuteDay;
   purchaseCheckout: MinuteDay;
+  /** Push devices one reader may register or remove, counted together. */
+  pushDevice: MinuteDay;
   seriesRemainderCheckout: MinuteDay;
   storePurchaseConfirmation: MinuteDay;
   subscriptionCheckout: MinuteDay;
@@ -160,6 +162,7 @@ type RawPlatformPolicy = Pick<
   | "passwordVerification"
   | "promotionCodeAttempt"
   | "purchaseCheckout"
+  | "pushDevice"
   | "seriesRemainderCheckout"
   | "storePurchaseConfirmation"
   | "subscriptionCheckout"
@@ -213,6 +216,7 @@ const toReaderLimits = (policy: RawPlatformPolicy | undefined) => ({
   passkey: toMinuteDay(policy?.passkey),
   promotionCodeAttempt: toMinuteDay(policy?.promotionCodeAttempt),
   purchaseCheckout: toMinuteDay(policy?.purchaseCheckout),
+  pushDevice: toMinuteDay(policy?.pushDevice),
   seriesRemainderCheckout: toMinuteDay(policy?.seriesRemainderCheckout),
   subscriptionCheckout: toMinuteDay(policy?.subscriptionCheckout),
 });

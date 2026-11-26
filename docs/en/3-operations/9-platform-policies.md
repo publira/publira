@@ -93,6 +93,7 @@ Each limit is a count per minute or per hour, with a second count per day, and t
 | **Account link requests per reader per minute** and **per day** | One reader's requests to link an Apple or Google account to their account |
 | **Icon changes per reader per minute** and **per day** | The times one reader uploads, picks, or removes their icon |
 | **Passkey actions per reader per minute** and **per day** | The times one reader begins registering a passkey or confirming a request with one, or renames or removes one |
+| **Push notification registrations and removals per reader per minute** and **per day** | The times one reader turns notifications on or off in a browser or in the tenant's app, or signs out of the app, counted together. A reader keeps at most 20 browsers and devices registered, and one more replaces the one registered longest ago, so this bounds how fast one account can replace them |
 | **Checkouts of the rest of a series per reader per minute** and **per day** | The checkouts of the rest of a series one reader starts |
 | **Subscriptions started per reader per minute** and **per day** | The subscriptions one reader starts, through a checkout on the site or through the store in the tenant's app, counted together |
 | **Coin payments per reader per minute** and **per day** | The episodes one reader pays for with coins |

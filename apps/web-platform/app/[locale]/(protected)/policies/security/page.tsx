@@ -38,6 +38,7 @@ const emptyValues: PlatformSecurityPolicy = {
   passwordVerification: { perDay: 1, perMinute: 1 },
   promotionCodeAttempt: { perDay: 1, perMinute: 1 },
   purchaseCheckout: { perDay: 1, perMinute: 1 },
+  pushDevice: { perDay: 1, perMinute: 1 },
   seriesRemainderCheckout: { perDay: 1, perMinute: 1 },
   storePurchaseConfirmation: { perDay: 1, perMinute: 1 },
   subscriptionCheckout: { perDay: 1, perMinute: 1 },

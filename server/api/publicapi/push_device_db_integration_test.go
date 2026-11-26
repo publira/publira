@@ -2,12 +2,15 @@ package publicapi
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
+	"github.com/publira/publira/server/internal/platformpolicy"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -155,6 +158,101 @@ func TestDBUnregisterPushDeviceLeavesAnotherReadersToken(t *testing.T) {
 	}
 	if devices := listPushDeviceRows(t, env); len(devices) != 1 {
 		t.Fatalf("user_push_devices = %d, want the other reader's row to survive", len(devices))
+	}
+}
+
+// A registration past the cap replaces whichever device was updated longest
+// ago, so a device the reader registers again counts as new and another
+// reader's devices are not counted at all.
+func TestDBRegisterPushDeviceReplacesTheOldestPastTheCap(t *testing.T) {
+	t.Parallel()
+
+	env := newPublicDBEnv(t)
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	other := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0002", "other@tenant-a.example.com", "Other")
+
+	client := env.notificationClient()
+	register := func(t *testing.T, reader testutil.TenantUser, token string) {
+		t.Helper()
+		if _, err := client.RegisterPushDevice(testutil.WithBearer(context.Background(), tokenFor(t, tenant, reader)), &publirav1.RegisterPushDeviceRequest{
+			Tenant:   tenantContext(tenant),
+			Token:    token,
+			Platform: publirav1.PushPlatform_PUSH_PLATFORM_ANDROID,
+		}); err != nil {
+			t.Fatalf("RegisterPushDevice %s: %v", token, err)
+		}
+	}
+	register(t, other, "other-device")
+	for i := range maxPushDevicesPerAccount {
+		register(t, member, fmt.Sprintf("member-device-%02d", i))
+	}
+	register(t, member, "member-device-00")
+	register(t, member, "member-device-new")
+
+	held := map[string]bool{}
+	var othersHeld int
+	for _, device := range listPushDeviceRows(t, env) {
+		switch device.UserID {
+		case member.ID:
+			held[device.Token] = true
+		case other.ID:
+			othersHeld++
+		}
+	}
+	if len(held) != maxPushDevicesPerAccount {
+		t.Fatalf("member devices = %d, want the cap of %d", len(held), maxPushDevicesPerAccount)
+	}
+	if held["member-device-01"] {
+		t.Fatal("member-device-01 is still held, want the device updated longest ago replaced")
+	}
+	if !held["member-device-00"] || !held["member-device-new"] {
+		t.Fatalf("member devices = %v, want the one registered again and the newest kept", held)
+	}
+	if othersHeld != 1 {
+		t.Fatalf("other reader's devices = %d, want 1 left alone", othersHeld)
+	}
+}
+
+// Registering and removing share one allowance, and a call past it writes
+// nothing.
+func TestDBPushDeviceRefusesAReaderPastTheAllowance(t *testing.T) {
+	t.Parallel()
+
+	env := newPublicDBEnvWithGuards(t, guardsWith(func(p *platformpolicy.Policy) {
+		p.PushDevice = platformpolicy.MinuteDay{PerMinute: 1, PerDay: 1}
+	}))
+	tenant := env.seedTenant(t, "TENANTA", "tenant-a.example.com", "Tenant A")
+	member := env.PG.SeedEndUser(t, tenant.ID, "ENDUSERA0001", "member@tenant-a.example.com", "Member")
+	ctx := testutil.WithBearer(context.Background(), tokenFor(t, tenant, member))
+
+	client := env.notificationClient()
+	if _, err := client.RegisterPushDevice(ctx, &publirav1.RegisterPushDeviceRequest{
+		Tenant:   tenantContext(tenant),
+		Token:    "first-device",
+		Platform: publirav1.PushPlatform_PUSH_PLATFORM_ANDROID,
+	}); err != nil {
+		t.Fatalf("the first RegisterPushDevice: %v", err)
+	}
+	_, err := client.RegisterPushDevice(ctx, &publirav1.RegisterPushDeviceRequest{
+		Tenant:   tenantContext(tenant),
+		Token:    "second-device",
+		Platform: publirav1.PushPlatform_PUSH_PLATFORM_ANDROID,
+	})
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("the second RegisterPushDevice = %v, want resource_exhausted", err)
+	}
+	_, err = client.UnregisterPushDevice(ctx, &publirav1.UnregisterPushDeviceRequest{
+		Tenant: tenantContext(tenant),
+		Token:  "first-device",
+	})
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("UnregisterPushDevice = %v, want resource_exhausted from the same allowance", err)
+	}
+
+	devices := listPushDeviceRows(t, env)
+	if len(devices) != 1 || devices[0].Token != "first-device" {
+		t.Fatalf("user_push_devices = %+v, want only first-device", devices)
 	}
 }
 

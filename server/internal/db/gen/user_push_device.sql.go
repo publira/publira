@@ -51,6 +51,47 @@ func (q *Queries) DeleteUserPushDeviceForUser(ctx context.Context, arg DeleteUse
 	return result.RowsAffected()
 }
 
+const DeleteUserPushDevicesBeyondNewest = `-- name: DeleteUserPushDevicesBeyondNewest :execrows
+DELETE FROM user_push_devices d
+WHERE d.tenant_id = $1
+    AND d.user_id = $2
+    AND d.token <> $3
+    AND d.token NOT IN (
+        SELECT newest.token
+        FROM user_push_devices newest
+        WHERE newest.tenant_id = $1
+            AND newest.user_id = $2
+            AND newest.token <> $3
+        ORDER BY newest.updated_at DESC, newest.token DESC
+        LIMIT $4
+    )
+`
+
+type DeleteUserPushDevicesBeyondNewestParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	UserID     uuid.UUID `json:"user_id"`
+	KeptToken  string    `json:"kept_token"`
+	KeepOthers int32     `json:"keep_others"`
+}
+
+// Holds the reader to the device just registered and the newest keep_others
+// besides it, removing whichever were updated longest ago. The kept token is
+// named rather than found by its updated_at, which is when its transaction
+// began, so a registration that began later and committed first can carry a
+// later one.
+func (q *Queries) DeleteUserPushDevicesBeyondNewest(ctx context.Context, arg DeleteUserPushDevicesBeyondNewestParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteUserPushDevicesBeyondNewest,
+		arg.TenantID,
+		arg.UserID,
+		arg.KeptToken,
+		arg.KeepOthers,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const ListPushDevicesForNotification = `-- name: ListPushDevicesForNotification :many
 SELECT
     n.id AS notification_id,

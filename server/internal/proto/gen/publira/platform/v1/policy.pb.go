@@ -408,8 +408,15 @@ type PlatformPolicy struct {
 	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
 	// when a request leaves it unset.
 	ContentViewPerClient *MinuteDayLimit `protobuf:"bytes,25,opt,name=content_view_per_client,json=contentViewPerClient,proto3" json:"content_view_per_client,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// How often one reader may ask NotificationService.RegisterPushDevice or
+	// UnregisterPushDevice to add or remove a device notifications are pushed
+	// to, counted together.
+	//
+	// Like wait_free_ticket_use, UpdatePlatformPolicy keeps the saved value
+	// when a request leaves it unset.
+	PushDevice    *MinuteDayLimit `protobuf:"bytes,26,opt,name=push_device,json=pushDevice,proto3" json:"push_device,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PlatformPolicy) Reset() {
@@ -613,6 +620,13 @@ func (x *PlatformPolicy) GetApiKeyRequest() *MinuteDayLimit {
 func (x *PlatformPolicy) GetContentViewPerClient() *MinuteDayLimit {
 	if x != nil {
 		return x.ContentViewPerClient
+	}
+	return nil
+}
+
+func (x *PlatformPolicy) GetPushDevice() *MinuteDayLimit {
+	if x != nil {
+		return x.PushDevice
 	}
 	return nil
 }
@@ -1113,7 +1127,7 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"\x1bcontact_message_per_account\x18\x05 \x01(\v2!.publira.platform.v1.HourDayLimitR\x18contactMessagePerAccount\x12^\n" +
 	"\x1acontact_message_per_client\x18\x06 \x01(\v2!.publira.platform.v1.HourDayLimitR\x17contactMessagePerClient\x12R\n" +
 	"\x12viewer_preferences\x18\a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x11viewerPreferences\x12X\n" +
-	"\x15notification_settings\x18\b \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14notificationSettings\"\xf2\x10\n" +
+	"\x15notification_settings\x18\b \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14notificationSettings\"\xb8\x11\n" +
 	"\x0ePlatformPolicy\x12@\n" +
 	"\x1dmfa_required_for_tenant_admin\x18\x01 \x01(\bR\x19mfaRequiredForTenantAdmin\x12X\n" +
 	"\x15password_verification\x18\x02 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14passwordVerification\x12\\\n" +
@@ -1142,7 +1156,9 @@ const file_publira_platform_v1_policy_proto_rawDesc = "" +
 	"dataExport\x12Y\n" +
 	"\x16promotion_code_attempt\x18\x17 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14promotionCodeAttempt\x12K\n" +
 	"\x0fapi_key_request\x18\x18 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\rapiKeyRequest\x12Z\n" +
-	"\x17content_view_per_client\x18\x19 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14contentViewPerClientB%\n" +
+	"\x17content_view_per_client\x18\x19 \x01(\v2#.publira.platform.v1.MinuteDayLimitR\x14contentViewPerClient\x12D\n" +
+	"\vpush_device\x18\x1a \x01(\v2#.publira.platform.v1.MinuteDayLimitR\n" +
+	"pushDeviceB%\n" +
 	"#_mfa_required_for_platform_operatorB\x17\n" +
 	"\x15_tenant_coins_allowed\"d\n" +
 	"\x13AnonymousReadLimits\x12\x1d\n" +
@@ -1234,25 +1250,26 @@ var file_publira_platform_v1_policy_proto_depIdxs = []int32{
 	0,  // 25: publira.platform.v1.PlatformPolicy.promotion_code_attempt:type_name -> publira.platform.v1.MinuteDayLimit
 	0,  // 26: publira.platform.v1.PlatformPolicy.api_key_request:type_name -> publira.platform.v1.MinuteDayLimit
 	0,  // 27: publira.platform.v1.PlatformPolicy.content_view_per_client:type_name -> publira.platform.v1.MinuteDayLimit
-	3,  // 28: publira.platform.v1.GetPlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
-	3,  // 29: publira.platform.v1.UpdatePlatformPolicyRequest.policy:type_name -> publira.platform.v1.PlatformPolicy
-	3,  // 30: publira.platform.v1.UpdatePlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
-	13, // 31: publira.platform.v1.GetPlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
-	13, // 32: publira.platform.v1.UpdatePlatformRetentionDefaultsRequest.defaults:type_name -> publira.types.v1.RetentionPeriods
-	13, // 33: publira.platform.v1.UpdatePlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
-	5,  // 34: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:input_type -> publira.platform.v1.GetPlatformPolicyRequest
-	7,  // 35: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:input_type -> publira.platform.v1.UpdatePlatformPolicyRequest
-	9,  // 36: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:input_type -> publira.platform.v1.GetPlatformRetentionDefaultsRequest
-	11, // 37: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:input_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
-	6,  // 38: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:output_type -> publira.platform.v1.GetPlatformPolicyResponse
-	8,  // 39: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:output_type -> publira.platform.v1.UpdatePlatformPolicyResponse
-	10, // 40: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:output_type -> publira.platform.v1.GetPlatformRetentionDefaultsResponse
-	12, // 41: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:output_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
-	38, // [38:42] is the sub-list for method output_type
-	34, // [34:38] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	0,  // 28: publira.platform.v1.PlatformPolicy.push_device:type_name -> publira.platform.v1.MinuteDayLimit
+	3,  // 29: publira.platform.v1.GetPlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
+	3,  // 30: publira.platform.v1.UpdatePlatformPolicyRequest.policy:type_name -> publira.platform.v1.PlatformPolicy
+	3,  // 31: publira.platform.v1.UpdatePlatformPolicyResponse.policy:type_name -> publira.platform.v1.PlatformPolicy
+	13, // 32: publira.platform.v1.GetPlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
+	13, // 33: publira.platform.v1.UpdatePlatformRetentionDefaultsRequest.defaults:type_name -> publira.types.v1.RetentionPeriods
+	13, // 34: publira.platform.v1.UpdatePlatformRetentionDefaultsResponse.defaults:type_name -> publira.types.v1.RetentionPeriods
+	5,  // 35: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:input_type -> publira.platform.v1.GetPlatformPolicyRequest
+	7,  // 36: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:input_type -> publira.platform.v1.UpdatePlatformPolicyRequest
+	9,  // 37: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:input_type -> publira.platform.v1.GetPlatformRetentionDefaultsRequest
+	11, // 38: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:input_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsRequest
+	6,  // 39: publira.platform.v1.PlatformPolicyService.GetPlatformPolicy:output_type -> publira.platform.v1.GetPlatformPolicyResponse
+	8,  // 40: publira.platform.v1.PlatformPolicyService.UpdatePlatformPolicy:output_type -> publira.platform.v1.UpdatePlatformPolicyResponse
+	10, // 41: publira.platform.v1.PlatformPolicyService.GetPlatformRetentionDefaults:output_type -> publira.platform.v1.GetPlatformRetentionDefaultsResponse
+	12, // 42: publira.platform.v1.PlatformPolicyService.UpdatePlatformRetentionDefaults:output_type -> publira.platform.v1.UpdatePlatformRetentionDefaultsResponse
+	39, // [39:43] is the sub-list for method output_type
+	35, // [35:39] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_publira_platform_v1_policy_proto_init() }

@@ -100,6 +100,8 @@ var policyFlags = slices.Concat(
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.APIKeyRequest }),
 	minuteDayFlags("content_view_per_client", "content-view-per-client", "page views recorded from one client", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.ContentViewPerClient }),
+	minuteDayFlags("push_device", "push-device", "push device registrations and removals by one reader", false,
+		func(p *policySettings) *platformpolicy.MinuteDay { return &p.PushDevice }),
 	minuteDayFlags("login_attempts_per_account", "login-attempts-per-account", "sign-in attempts for one address", false,
 		func(p *policySettings) *platformpolicy.MinuteDay { return &p.LoginAttemptsPerAccount }),
 	hourDayFlags("login_attempts_per_source", "login-attempts-per-source", "failed sign-ins from one source", false,
@@ -235,6 +237,7 @@ func setupPolicyShow(_ *commandFlags) func(context.Context, *commandEnv) error {
 		fmt.Fprintf(&b, "Promotion code attempts per reader:\t%s\n", perMinute(p.PromotionCodeAttempt))
 		fmt.Fprintf(&b, "API key requests per key:\t%s\n", perMinute(p.APIKeyRequest))
 		fmt.Fprintf(&b, "Page views recorded per client:\t%s\n", perMinute(p.ContentViewPerClient))
+		fmt.Fprintf(&b, "Push device changes per reader:\t%s\n", perMinute(p.PushDevice))
 		fmt.Fprintf(&b, "Sign-in attempts per address:\t%s\n", perMinute(p.LoginAttemptsPerAccount))
 		fmt.Fprintf(&b, "Failed sign-ins per source:\t%s\n", perHour(p.LoginAttemptsPerSource))
 		fmt.Fprintf(&b, "Data exports per reader:\t%s\n", perHour(p.DataExport))

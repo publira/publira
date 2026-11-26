@@ -814,6 +814,12 @@ type Querier interface {
 	// Sign-out and the account switch both unregister, and both name the reader
 	// who holds the session, so a token cannot be dropped from another account.
 	DeleteUserPushDeviceForUser(ctx context.Context, arg DeleteUserPushDeviceForUserParams) (int64, error)
+	// Holds the reader to the device just registered and the newest keep_others
+	// besides it, removing whichever were updated longest ago. The kept token is
+	// named rather than found by its updated_at, which is when its transaction
+	// began, so a registration that began later and committed first can carry a
+	// later one.
+	DeleteUserPushDevicesBeyondNewest(ctx context.Context, arg DeleteUserPushDevicesBeyondNewestParams) (int64, error)
 	DeleteUserWebauthnCredential(ctx context.Context, id uuid.UUID) (int64, error)
 	// Every RP ID of the relying party, not only the one the console derives now:
 	// a credential registered while the console was served on another host is

@@ -44,6 +44,8 @@ const securityValues = {
   promotion_code_attempt_per_minute: "5",
   purchase_checkout_per_day: "100",
   purchase_checkout_per_minute: "10",
+  push_device_per_day: "50",
+  push_device_per_minute: "10",
   revision: "3",
   series_remainder_checkout_per_day: "50",
   series_remainder_checkout_per_minute: "10",
@@ -155,6 +157,12 @@ describe("securityPolicyFormSchema", () => {
       field: "passkey",
       name: "passkey",
       setting: "Passkey actions",
+      window: "Minute",
+    },
+    {
+      field: "pushDevice",
+      name: "push_device",
+      setting: "Push notification registrations and removals",
       window: "Minute",
     },
     {

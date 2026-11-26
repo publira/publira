@@ -46,6 +46,26 @@ SET
     updated_at = NOW()
 RETURNING *;
 
+-- Holds the reader to the device just registered and the newest keep_others
+-- besides it, removing whichever were updated longest ago. The kept token is
+-- named rather than found by its updated_at, which is when its transaction
+-- began, so a registration that began later and committed first can carry a
+-- later one.
+-- name: DeleteUserPushDevicesBeyondNewest :execrows
+DELETE FROM user_push_devices d
+WHERE d.tenant_id = sqlc.arg('tenant_id')
+    AND d.user_id = sqlc.arg('user_id')
+    AND d.token <> sqlc.arg('kept_token')
+    AND d.token NOT IN (
+        SELECT newest.token
+        FROM user_push_devices newest
+        WHERE newest.tenant_id = sqlc.arg('tenant_id')
+            AND newest.user_id = sqlc.arg('user_id')
+            AND newest.token <> sqlc.arg('kept_token')
+        ORDER BY newest.updated_at DESC, newest.token DESC
+        LIMIT sqlc.arg('keep_others')
+    );
+
 -- Sign-out and the account switch both unregister, and both name the reader
 -- who holds the session, so a token cannot be dropped from another account.
 -- name: DeleteUserPushDeviceForUser :execrows
