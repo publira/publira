@@ -23,6 +23,18 @@
       "subject": "{$tenant_name}管理画面メールアドレス変更完了",
       "warning": "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"
     },
+    "admin_console_mfa_changed_notice": {
+      "change_passkey_registered": "管理画面アカウントにパスキーが追加されました。",
+      "change_passkey_removed": "管理画面アカウントからパスキーが削除されました。",
+      "change_recovery_codes_regenerated": "管理画面アカウントのリカバリーコードが再発行されました。以前のコードは使えなくなりました。",
+      "change_totp_disabled": "管理画面アカウントの認証アプリが解除されました。",
+      "change_totp_enabled": "管理画面アカウントに認証アプリが設定されました。",
+      "changed_at": "変更日時は{$changed_at}です。",
+      "heading": "管理画面2段階認証の変更",
+      "preview": "管理画面アカウントの2段階認証が変更されました。",
+      "subject": "{$tenant_name}管理画面2段階認証の変更",
+      "warning": "この変更に心当たりがない場合は、すぐにパスワードを変更し、2段階認証の設定を確認してください。"
+    },
     "admin_console_password_reset": {
       "action": "パスワードを再設定する",
       "body": "以下のボタンから新しいパスワードを設定してください。",
@@ -60,6 +72,16 @@
       "previous_email": "変更前は{$previous_email}でした。",
       "subject": "Publiraプラットフォーム管理画面メールアドレス変更完了",
       "warning": "この変更に心当たりがない場合は、すぐにパスワードの変更などの対応を行ってください。"
+    },
+    "platform_console_mfa_changed_notice": {
+      "change_recovery_codes_regenerated": "プラットフォーム管理画面アカウントのリカバリーコードが再発行されました。以前のコードは使えなくなりました。",
+      "change_totp_disabled": "プラットフォーム管理画面アカウントの認証アプリが解除されました。",
+      "change_totp_enabled": "プラットフォーム管理画面アカウントに認証アプリが設定されました。",
+      "changed_at": "変更日時は{$changed_at}です。",
+      "heading": "プラットフォーム管理画面2段階認証の変更",
+      "preview": "プラットフォーム管理画面アカウントの2段階認証が変更されました。",
+      "subject": "Publiraプラットフォーム管理画面2段階認証の変更",
+      "warning": "この変更に心当たりがない場合は、すぐにパスワードを変更し、2段階認証の設定を確認してください。"
     },
     "platform_console_operator_added": {
       "action": "パスワードを設定する",

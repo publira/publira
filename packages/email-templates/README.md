@@ -25,9 +25,11 @@ A template is reached by ID rather than imported; `TEMPLATE_IDS` is the whole li
 | `reader_signup_attempt_notice` | to an address a sign-up tried to reuse | `tenant_name`, `email`, `account_state`, `action_url` |
 | `admin_console_email_change_confirmation` | admin console address change | `tenant_name`, `confirm_url`, `recipient_kind`, `current_email`, `new_email`, `expires_at` |
 | `admin_console_email_changed_notice` | admin console, to the previous address | `tenant_name`, `previous_email`, `new_email` |
+| `admin_console_mfa_changed_notice` | admin console, when the account's authenticator app is turned on or off, a passkey is added or removed, or its recovery codes are regenerated | `tenant_name`, `change`, `changed_at` |
 | `admin_console_password_reset` | admin console password reset | `tenant_name`, `reset_url`, `expires_at` |
 | `platform_console_email_change_confirmation` | platform console address change | `confirm_url`, `recipient_kind`, `current_email`, `new_email`, `expires_at` |
 | `platform_console_email_changed_notice` | platform console, to the previous address | `previous_email`, `new_email` |
+| `platform_console_mfa_changed_notice` | platform console, when the account's authenticator app is turned on or off or its recovery codes are regenerated | `change`, `changed_at` |
 | `platform_console_operator_added` | to an operator a Super admin added, with the link that sets the new account's first password | `set_password_url`, `expires_at` |
 | `platform_console_operator_role_granted` | to an existing platform account a Super admin gave a role, with no password link | `sign_in_url` |
 | `platform_console_password_reset` | platform console password reset | `reset_url`, `expires_at` |
@@ -49,6 +51,8 @@ Template IDs and variable names are snake_case. The copy lives under `email.*` i
 `tenant_name` is who the mail is from. `EmailLayout` shows it as the sender above the card and repeats it in the footer: a reader signed up on the tenant's site and never met the platform, so a mail a tenant owns is branded with the tenant throughout. The platform console's mails take no `tenant_name` because they belong to no tenant, and are the only ones that say Publira.
 
 `role` is the console role the invitation grants — `tenant_admin`, `tenant_editor`, or `tenant_auditor` — and the copy names it.
+
+`change` names what changed among a console account's second factors: `totp_enabled`, `totp_disabled`, `passkey_registered`, `passkey_removed`, or `recovery_codes_regenerated`, the platform console taking all but the two passkey ones. `changed_at` (RFC3339) is when, displayed in the `timeZone` zone.
 
 `recipient_kind` is `current_email` or `new_email` — both sides of an address change confirm, and the sender says which side it is addressing.
 

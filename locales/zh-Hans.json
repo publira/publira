@@ -23,6 +23,18 @@
       "subject": "{$tenant_name}管理控制台邮箱地址已变更",
       "warning": "如果这不是您本人的操作，请立即重设密码。"
     },
+    "admin_console_mfa_changed_notice": {
+      "change_passkey_registered": "您的管理控制台账户已添加一个通行密钥。",
+      "change_passkey_removed": "您的管理控制台账户已移除一个通行密钥。",
+      "change_recovery_codes_regenerated": "您管理控制台账户的恢复码已重新生成。之前的恢复码已无法使用。",
+      "change_totp_disabled": "您管理控制台账户的身份验证器应用已移除。",
+      "change_totp_enabled": "您的管理控制台账户已设置身份验证器应用。",
+      "changed_at": "变更时间：{$changed_at}",
+      "heading": "管理控制台两步验证已变更",
+      "preview": "您管理控制台账户的两步验证已变更。",
+      "subject": "{$tenant_name}管理控制台两步验证已变更",
+      "warning": "如果这不是您本人的操作，请立即重设密码，并检查两步验证的设置。"
+    },
     "admin_console_password_reset": {
       "action": "重设密码",
       "body": "请打开下方按钮设置新密码。",
@@ -60,6 +72,16 @@
       "previous_email": "变更前：{$previous_email}",
       "subject": "Publira平台控制台邮箱地址已变更",
       "warning": "如果这不是您本人的操作，请立即重设密码。"
+    },
+    "platform_console_mfa_changed_notice": {
+      "change_recovery_codes_regenerated": "您平台控制台账户的恢复码已重新生成。之前的恢复码已无法使用。",
+      "change_totp_disabled": "您平台控制台账户的身份验证器应用已移除。",
+      "change_totp_enabled": "您的平台控制台账户已设置身份验证器应用。",
+      "changed_at": "变更时间：{$changed_at}",
+      "heading": "平台控制台两步验证已变更",
+      "preview": "您平台控制台账户的两步验证已变更。",
+      "subject": "Publira平台控制台两步验证已变更",
+      "warning": "如果这不是您本人的操作，请立即重设密码，并检查两步验证的设置。"
     },
     "platform_console_operator_added": {
       "action": "设置密码",

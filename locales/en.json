@@ -23,6 +23,18 @@
       "subject": "{$tenant_name} admin console email address changed",
       "warning": "If you did not make this change, reset your password right away."
     },
+    "admin_console_mfa_changed_notice": {
+      "change_passkey_registered": "A passkey was added to your admin console account.",
+      "change_passkey_removed": "A passkey was removed from your admin console account.",
+      "change_recovery_codes_regenerated": "The recovery codes on your admin console account were regenerated. The previous codes no longer work.",
+      "change_totp_disabled": "The authenticator app on your admin console account was turned off.",
+      "change_totp_enabled": "An authenticator app was set up on your admin console account.",
+      "changed_at": "Changed at: {$changed_at}",
+      "heading": "Your admin console two-step verification was changed",
+      "preview": "The two-step verification on your admin console account was changed.",
+      "subject": "{$tenant_name} admin console two-step verification changed",
+      "warning": "If you did not make this change, reset your password right away and review your two-step verification settings."
+    },
     "admin_console_password_reset": {
       "action": "Reset password",
       "body": "Open the button below to set a new password.",
@@ -60,6 +72,16 @@
       "previous_email": "Before: {$previous_email}",
       "subject": "Publira Platform Console email address changed",
       "warning": "If you did not make this change, reset your password right away."
+    },
+    "platform_console_mfa_changed_notice": {
+      "change_recovery_codes_regenerated": "The recovery codes on your Platform Console account were regenerated. The previous codes no longer work.",
+      "change_totp_disabled": "The authenticator app on your Platform Console account was turned off.",
+      "change_totp_enabled": "An authenticator app was set up on your Platform Console account.",
+      "changed_at": "Changed at: {$changed_at}",
+      "heading": "Your Platform Console two-step verification was changed",
+      "preview": "The two-step verification on your Platform Console account was changed.",
+      "subject": "Publira Platform Console two-step verification changed",
+      "warning": "If you did not make this change, reset your password right away and review your two-step verification settings."
     },
     "platform_console_operator_added": {
       "action": "Set password",

@@ -17,6 +17,11 @@ import {
   adminConsoleEmailChangedNoticePreview,
 } from "./templates/admin-console-email-changed-notice";
 import {
+  AdminConsoleMfaChangedNoticeEmail,
+  adminConsoleMfaChangedNoticeDataSchema,
+  adminConsoleMfaChangedNoticePreview,
+} from "./templates/admin-console-mfa-changed-notice";
+import {
   AdminConsolePasswordResetEmail,
   adminConsolePasswordResetDataSchema,
   adminConsolePasswordResetPreview,
@@ -31,6 +36,11 @@ import {
   platformConsoleEmailChangedNoticeDataSchema,
   platformConsoleEmailChangedNoticePreview,
 } from "./templates/platform-console-email-changed-notice";
+import {
+  PlatformConsoleMfaChangedNoticeEmail,
+  platformConsoleMfaChangedNoticeDataSchema,
+  platformConsoleMfaChangedNoticePreview,
+} from "./templates/platform-console-mfa-changed-notice";
 import {
   PlatformConsoleOperatorAddedEmail,
   platformConsoleOperatorAddedDataSchema,
@@ -156,9 +166,11 @@ export const TEMPLATE_IDS = [
   "reader_signup_attempt_notice",
   "admin_console_email_change_confirmation",
   "admin_console_email_changed_notice",
+  "admin_console_mfa_changed_notice",
   "admin_console_password_reset",
   "platform_console_email_change_confirmation",
   "platform_console_email_changed_notice",
+  "platform_console_mfa_changed_notice",
   "platform_console_operator_added",
   "platform_console_operator_role_granted",
   "platform_console_password_reset",
@@ -281,6 +293,17 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
     preview: adminConsoleEmailChangedNoticePreview,
     schema: adminConsoleEmailChangedNoticeDataSchema,
   }),
+  admin_console_mfa_changed_notice: defineTemplate({
+    element: ({ data, locale, messages, timeZone }) =>
+      createElement(AdminConsoleMfaChangedNoticeEmail, {
+        data,
+        locale,
+        messages,
+        timeZone,
+      }),
+    preview: adminConsoleMfaChangedNoticePreview,
+    schema: adminConsoleMfaChangedNoticeDataSchema,
+  }),
   admin_console_password_reset: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>
       createElement(AdminConsolePasswordResetEmail, {
@@ -312,6 +335,17 @@ const TEMPLATES: Record<TemplateId, TemplateResolver> = {
       }),
     preview: platformConsoleEmailChangedNoticePreview,
     schema: platformConsoleEmailChangedNoticeDataSchema,
+  }),
+  platform_console_mfa_changed_notice: defineTemplate({
+    element: ({ data, locale, messages, timeZone }) =>
+      createElement(PlatformConsoleMfaChangedNoticeEmail, {
+        data,
+        locale,
+        messages,
+        timeZone,
+      }),
+    preview: platformConsoleMfaChangedNoticePreview,
+    schema: platformConsoleMfaChangedNoticeDataSchema,
   }),
   platform_console_operator_added: defineTemplate({
     element: ({ data, locale, messages, timeZone }) =>

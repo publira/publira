@@ -137,3 +137,32 @@ export const tenantRoleField = (): z.ZodEnum<{
   tenant_auditor: "tenant_auditor";
   tenant_editor: "tenant_editor";
 }> => z.enum(["tenant_admin", "tenant_editor", "tenant_auditor"]);
+
+/**
+ * What changed among a tenant console account's second factors, which the
+ * notice names so its owner can tell whether they made the change.
+ */
+export const adminConsoleMfaChangeField = (): z.ZodEnum<{
+  passkey_registered: "passkey_registered";
+  passkey_removed: "passkey_removed";
+  recovery_codes_regenerated: "recovery_codes_regenerated";
+  totp_disabled: "totp_disabled";
+  totp_enabled: "totp_enabled";
+}> =>
+  z.enum([
+    "totp_enabled",
+    "totp_disabled",
+    "passkey_registered",
+    "passkey_removed",
+    "recovery_codes_regenerated",
+  ]);
+
+/**
+ * What changed of a Platform Console operator's second factor. An operator
+ * holds no passkeys.
+ */
+export const platformConsoleMfaChangeField = (): z.ZodEnum<{
+  recovery_codes_regenerated: "recovery_codes_regenerated";
+  totp_disabled: "totp_disabled";
+  totp_enabled: "totp_enabled";
+}> => z.enum(["totp_enabled", "totp_disabled", "recovery_codes_regenerated"]);
