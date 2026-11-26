@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import type { RestrictedAgeRating } from "./age-rating";
 import type { EyeCatchImageVariant } from "./catalog";
 
 /**
@@ -84,31 +85,65 @@ interface OpenGraphSource {
 }
 
 /**
+ * A work's artwork with the rating that governs it. The rating is required,
+ * not optional, so a call site that forgets it fails to compile instead of
+ * sharing a rated work's artwork.
+ */
+interface OpenGraphWork extends OpenGraphSource {
+  ageRating: RestrictedAgeRating | undefined;
+}
+
+/**
  * The card image for a series: its uploaded eye-catch where it has an `og`
  * variant, untouched, and the card the storefront draws at `cardUrl` where it
  * has none.
+ *
+ * A rated series always gets the drawn card. The site shows a rated work's
+ * artwork only once the browser has confirmed the rating
+ * (`AgeRatedVisibility`), and a link preview is rendered by a chat or a social
+ * network for everyone the link reaches, with nobody asked to confirm
+ * anything. The drawn card carries the title, the logo, and the theme's
+ * colors, none of which the rating withholds.
  */
 export const resolveSeriesOpenGraphImage = (
-  series: OpenGraphSource,
+  series: OpenGraphWork,
   cardUrl: string
-): OpenGraphImage =>
-  resolveOpenGraphImage(series.variants, series.alt) ??
-  openGraphCardImage(cardUrl, series.alt);
+): OpenGraphImage => {
+  if (series.ageRating) {
+    return openGraphCardImage(cardUrl, series.alt);
+  }
+
+  return (
+    resolveOpenGraphImage(series.variants, series.alt) ??
+    openGraphCardImage(cardUrl, series.alt)
+  );
+};
 
 /**
  * The card image for an episode: its own eye-catch where it has an `og`
  * variant, its series' where it does not, and the card the storefront draws
  * at `cardUrl` where neither has one — so an episode without artwork still
  * unfurls with the work's picture before it falls back on a drawn one.
+ *
+ * The series' rating covers the episode's own artwork too, so an episode of a
+ * rated series always gets the drawn card, for the reason
+ * {@link resolveSeriesOpenGraphImage} gives.
  */
 export const resolveEpisodeOpenGraphImage = (
   episode: OpenGraphSource,
-  series: OpenGraphSource,
+  series: OpenGraphWork,
   cardUrl: string
-): OpenGraphImage =>
-  resolveOpenGraphImage(episode.variants, episode.alt) ??
-  resolveOpenGraphImage(series.variants, series.alt) ??
-  openGraphCardImage(cardUrl, episode.alt);
+): OpenGraphImage => {
+  if (series.ageRating) {
+    return openGraphCardImage(cardUrl, episode.alt);
+  }
+
+  return (
+    resolveOpenGraphImage(episode.variants, episode.alt) ??
+    resolveOpenGraphImage(series.variants, series.alt) ??
+    openGraphCardImage(cardUrl, episode.alt)
+  );
+};
 
 interface OpenGraphCard {
   description?: string;

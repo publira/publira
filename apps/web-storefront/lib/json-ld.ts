@@ -292,6 +292,7 @@ export const seriesJsonLd = (
   site: JsonLdSite,
   series: Pick<
     SeriesDetail,
+    | "ageRating"
     | "credits"
     | "eyeCatchImageVariants"
     | "genres"
@@ -308,7 +309,14 @@ export const seriesJsonLd = (
 ): WithContext<ComicSeries> => {
   const description = series.synopsis.trim();
   const authors = creditAuthors(site, series.credits);
-  const images = workImages(site, series.eyeCatchImageVariants);
+
+  // A rated work's artwork is left out, as it is of its link preview: the site
+  // shows it only once the browser has confirmed the rating, and what a crawler
+  // reads here it may show in results to anyone.
+  const images = series.ageRating
+    ? []
+    : workImages(site, series.eyeCatchImageVariants);
+
   const served = jsonLdSiteIn(site, series.locale);
 
   const work: WithContext<ComicSeries> = {
