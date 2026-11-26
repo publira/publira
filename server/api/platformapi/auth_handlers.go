@@ -178,7 +178,7 @@ func enqueuePlatformOperatorRoleGrantedEmail(ctx context.Context, queries *dbmod
 
 func insertPlatformOutboxEvent(
 	ctx context.Context,
-	queries *dbmodels.Queries,
+	queries dbmodels.Querier,
 	eventType string,
 	payload []byte,
 	idempotencyKey string,

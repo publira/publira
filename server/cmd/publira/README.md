@@ -160,6 +160,7 @@ The long-lived background process. It hosts one River client, on which it drains
 | `platform_email_change_confirmation_email` | Platform Console email change confirmation, one event per address to confirm |
 | `platform_email_changed_notice_email` | Platform Console notice to the previous address once the change completes |
 | `platform_operator_role_granted_email` | Platform Console notice to an existing account a Super admin gave a role, saying it can now sign in |
+| `platform_mfa_changed_notice_email` | Platform Console notice that the account's authenticator app was turned on or off, or its recovery codes were regenerated. The first factor added to finish a sign-in that requires one sends none |
 | `reader_email_verification_email` | Reader sign-up address verification |
 | `reader_email_change_confirmation_email` | Reader email change confirmation, one event per address to confirm |
 | `reader_email_changed_notice_email` | Reader notice to the previous address once the change completes |
@@ -175,6 +176,7 @@ The long-lived background process. It hosts one River client, on which it drains
 | `admin_password_reset_email` | Admin console password reset |
 | `admin_email_change_confirmation_email` | Admin console email change confirmation, one event per address to confirm |
 | `admin_email_changed_notice_email` | Admin console notice to the previous address once the change completes |
+| `admin_mfa_changed_notice_email` | Admin console notice that the account's authenticator app was turned on or off, a passkey was added or removed, or its recovery codes were regenerated. The first factor added to finish a sign-in that requires one sends none |
 
 It also handles these non-mail events:
 

@@ -212,7 +212,15 @@ func enable(ctx context.Context, acct Account) ([]string, error) {
 			return errAlreadyEnabled
 		}
 		codes, err = ReplaceRecoveryCodes(ctx, acct, q)
-		return err
+		if err != nil {
+			return err
+		}
+		// The first factor an enroll challenge adds finishes the owner's own
+		// sign-in, so there is nobody to warn.
+		if acct.FromChallenge() {
+			return nil
+		}
+		return notify(ctx, acct, q, ChangeTotpEnabled)
 	})
 	if err != nil {
 		return nil, err
@@ -330,7 +338,7 @@ func Disable(ctx context.Context, acct Account, code string) error {
 		if err := acct.ReleaseRecoveryCodes(ctx, q); err != nil {
 			return acct.InternalError(ctx, "failed to delete mfa recovery codes", err)
 		}
-		return nil
+		return notify(ctx, acct, q, ChangeTotpDisabled)
 	})
 	if err != nil {
 		return err
@@ -386,11 +394,22 @@ func RegenerateRecoveryCodesFor(ctx context.Context, acct Account, factor string
 		}
 		var err error
 		codes, err = ReplaceRecoveryCodes(ctx, acct, q)
-		return err
+		if err != nil {
+			return err
+		}
+		return notify(ctx, acct, q, ChangeRecoveryCodesRegenerated)
 	})
 	if err != nil {
 		return nil, err
 	}
 	acct.Audit(ctx, acct.Actions().RecoveryCodesRegenerated, auditlog.OutcomeSuccess, factor)
 	return codes, nil
+}
+
+// notify queues the notice of change on q, the transaction that makes it.
+func notify(ctx context.Context, acct Account, q dbmodels.Querier, change Change) error {
+	if err := acct.NotifyChange(ctx, q, change); err != nil {
+		return acct.InternalError(ctx, "failed to queue the mfa change notice", err)
+	}
+	return nil
 }

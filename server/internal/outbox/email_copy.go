@@ -161,9 +161,11 @@ func (c *emailComposer) linkLine(key string, values map[string]any, url string) 
 var emailTemplates = map[string]func(*emailComposer){
 	"admin_console_email_change_confirmation":    adminConsoleEmailChangeConfirmationCopy,
 	"admin_console_email_changed_notice":         adminConsoleEmailChangedNoticeCopy,
+	"admin_console_mfa_changed_notice":           adminConsoleMfaChangedNoticeCopy,
 	"admin_console_password_reset":               adminConsolePasswordResetCopy,
 	"platform_console_email_change_confirmation": platformConsoleEmailChangeConfirmationCopy,
 	"platform_console_email_changed_notice":      platformConsoleEmailChangedNoticeCopy,
+	"platform_console_mfa_changed_notice":        platformConsoleMfaChangedNoticeCopy,
 	"platform_console_operator_added":            platformConsoleOperatorAddedCopy,
 	"platform_console_operator_role_granted":     platformConsoleOperatorRoleGrantedCopy,
 	"platform_console_password_reset":            platformConsolePasswordResetCopy,
@@ -747,6 +749,16 @@ func adminConsoleEmailChangedNoticeCopy(c *emailComposer) {
 	c.line("email.admin_console_email_changed_notice.warning", nil)
 }
 
+func adminConsoleMfaChangedNoticeCopy(c *emailComposer) {
+	brand := c.value("tenant_name")
+	c.setSubject("email.admin_console_mfa_changed_notice.subject", map[string]any{"tenant_name": brand})
+	c.from(brand)
+	c.line("email.admin_console_mfa_changed_notice.heading", nil)
+	c.line("email.admin_console_mfa_changed_notice.change_"+c.value("change"), nil)
+	c.line("email.admin_console_mfa_changed_notice.changed_at", map[string]any{"changed_at": c.instant("changed_at")})
+	c.line("email.admin_console_mfa_changed_notice.warning", nil)
+}
+
 func platformConsolePasswordResetCopy(c *emailComposer) {
 	resetURL := c.value("reset_url")
 	c.setSubject("email.platform_console_password_reset.subject", nil)
@@ -813,4 +825,13 @@ func platformConsoleEmailChangedNoticeCopy(c *emailComposer) {
 	c.line("email.platform_console_email_changed_notice.previous_email", map[string]any{"previous_email": c.value("previous_email")})
 	c.line("email.platform_console_email_changed_notice.new_email", map[string]any{"new_email": c.value("new_email")})
 	c.line("email.platform_console_email_changed_notice.warning", nil)
+}
+
+func platformConsoleMfaChangedNoticeCopy(c *emailComposer) {
+	c.setSubject("email.platform_console_mfa_changed_notice.subject", nil)
+	c.from(c.message("email.layout.brand", nil))
+	c.line("email.platform_console_mfa_changed_notice.heading", nil)
+	c.line("email.platform_console_mfa_changed_notice.change_"+c.value("change"), nil)
+	c.line("email.platform_console_mfa_changed_notice.changed_at", map[string]any{"changed_at": c.instant("changed_at")})
+	c.line("email.platform_console_mfa_changed_notice.warning", nil)
 }

@@ -16,6 +16,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mfa"
 	"github.com/publira/publira/server/internal/mfaflow"
+	"github.com/publira/publira/server/internal/outbox"
 	"github.com/publira/publira/server/internal/platformpolicy"
 	publirasplatformv1 "github.com/publira/publira/server/internal/proto/gen/publira/platform/v1"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
@@ -290,6 +291,14 @@ func (a operatorMfaAccount) Audit(ctx context.Context, action, outcome, reason s
 
 func (a operatorMfaAccount) LogVerification(ctx context.Context, outcome, reason string) {
 	auth.AuditEvent(ctx, "platform_mfa_verify", outcome, "", a.actor.User.PublicID, reason)
+}
+
+func (a operatorMfaAccount) NotifyChange(ctx context.Context, q dbmodels.Querier, change mfaflow.Change) error {
+	payload, key, err := outbox.PlatformMfaChangedNoticeEmailEvent(a.actor.User.ID, change, time.Now())
+	if err != nil {
+		return err
+	}
+	return insertPlatformOutboxEvent(ctx, q, outbox.EventTypePlatformMfaChangedNoticeEmail, payload, key)
 }
 
 func (a operatorMfaAccount) InternalError(ctx context.Context, msg string, err error) error {

@@ -23,6 +23,18 @@
       "subject": "{$tenant_name} 관리자 콘솔 이메일 주소 변경 완료",
       "warning": "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정해 주세요."
     },
+    "admin_console_mfa_changed_notice": {
+      "change_passkey_registered": "관리자 콘솔 계정에 패스키가 추가되었습니다.",
+      "change_passkey_removed": "관리자 콘솔 계정에서 패스키가 삭제되었습니다.",
+      "change_recovery_codes_regenerated": "관리자 콘솔 계정의 복구 코드가 재발급되었습니다. 이전 코드는 더 이상 사용할 수 없습니다.",
+      "change_totp_disabled": "관리자 콘솔 계정의 인증 앱이 해제되었습니다.",
+      "change_totp_enabled": "관리자 콘솔 계정에 인증 앱이 설정되었습니다.",
+      "changed_at": "변경 일시: {$changed_at}",
+      "heading": "관리자 콘솔 2단계 인증이 변경되었습니다",
+      "preview": "관리자 콘솔 계정의 2단계 인증이 변경되었습니다.",
+      "subject": "{$tenant_name} 관리자 콘솔 2단계 인증 변경",
+      "warning": "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정하고 2단계 인증 설정을 확인해 주세요."
+    },
     "admin_console_password_reset": {
       "action": "비밀번호 재설정",
       "body": "아래 버튼을 열어 새 비밀번호를 설정해 주세요.",
@@ -60,6 +72,16 @@
       "previous_email": "변경 전: {$previous_email}",
       "subject": "Publira 플랫폼 콘솔 이메일 주소 변경 완료",
       "warning": "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정해 주세요."
+    },
+    "platform_console_mfa_changed_notice": {
+      "change_recovery_codes_regenerated": "플랫폼 콘솔 계정의 복구 코드가 재발급되었습니다. 이전 코드는 더 이상 사용할 수 없습니다.",
+      "change_totp_disabled": "플랫폼 콘솔 계정의 인증 앱이 해제되었습니다.",
+      "change_totp_enabled": "플랫폼 콘솔 계정에 인증 앱이 설정되었습니다.",
+      "changed_at": "변경 일시: {$changed_at}",
+      "heading": "플랫폼 콘솔 2단계 인증이 변경되었습니다",
+      "preview": "플랫폼 콘솔 계정의 2단계 인증이 변경되었습니다.",
+      "subject": "Publira 플랫폼 콘솔 2단계 인증 변경",
+      "warning": "이 변경을 요청하지 않으셨다면 즉시 비밀번호를 재설정하고 2단계 인증 설정을 확인해 주세요."
     },
     "platform_console_operator_added": {
       "action": "비밀번호 설정",

@@ -6,12 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/auth"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailrenderer"
+	"github.com/publira/publira/server/internal/mfaflow"
 )
 
 // The admin console's auth mail. An admin account belongs to a tenant just as a
@@ -22,6 +26,7 @@ const (
 	EventTypeAdminPasswordResetEmail           = "admin_password_reset_email"
 	EventTypeAdminEmailChangeConfirmationEmail = "admin_email_change_confirmation_email"
 	EventTypeAdminEmailChangedNoticeEmail      = "admin_email_changed_notice_email"
+	EventTypeAdminMfaChangedNoticeEmail        = "admin_mfa_changed_notice_email"
 )
 
 // AdminPasswordResetEmailPayload names the reset row the mail is about and
@@ -47,6 +52,38 @@ type AdminEmailChangeConfirmationEmailPayload struct {
 type AdminEmailChangedNoticeEmailPayload struct {
 	TenantID string `json:"tenant_id"`
 	TokenID  string `json:"token_id"`
+}
+
+// AdminMfaChangedNoticeEmailPayload names the console account whose second
+// factors changed, what changed, and when. The change leaves nothing behind
+// that a handler could read it back from, a removed passkey least of all, so
+// the payload is the record of it.
+type AdminMfaChangedNoticeEmailPayload struct {
+	TenantID  string `json:"tenant_id"`
+	UserID    string `json:"user_id"`
+	Change    string `json:"change"`
+	ChangedAt string `json:"changed_at"`
+}
+
+// AdminMfaChangedNoticeEmailEvent is the payload and the idempotency key of
+// the notice that change was made to userID's second factors at changedAt.
+// Every change is a notice of its own, so the key names the event rather than
+// anything the change is about.
+func AdminMfaChangedNoticeEmailEvent(tenantID, userID uuid.UUID, change mfaflow.Change, changedAt time.Time) ([]byte, string, error) {
+	payload, err := json.Marshal(AdminMfaChangedNoticeEmailPayload{
+		TenantID:  tenantID.String(),
+		UserID:    userID.String(),
+		Change:    string(change),
+		ChangedAt: changedAt.UTC().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		return nil, "", fmt.Errorf("marshal %s payload: %w", EventTypeAdminMfaChangedNoticeEmail, err)
+	}
+	key, err := uuid.NewV7()
+	if err != nil {
+		return nil, "", fmt.Errorf("generate %s key: %w", EventTypeAdminMfaChangedNoticeEmail, err)
+	}
+	return payload, EventTypeAdminMfaChangedNoticeEmail + ":" + key.String(), nil
 }
 
 // NewAdminPasswordResetEmailHandler sends a tenant administrator the link that
@@ -228,4 +265,87 @@ func NewAdminEmailChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
 			TimeZone: delivery.timeZone,
 		})
 	}
+}
+
+// adminMfaChanges are the changes a tenant console account is told of.
+var adminMfaChanges = []mfaflow.Change{
+	mfaflow.ChangeTotpEnabled,
+	mfaflow.ChangeTotpDisabled,
+	mfaflow.ChangePasskeyRegistered,
+	mfaflow.ChangePasskeyRemoved,
+	mfaflow.ChangeRecoveryCodesRegenerated,
+}
+
+// NewAdminMfaChangedNoticeEmailHandler tells a console account that one of
+// its second factors was added or removed, at the address the account holds
+// when the mail goes out. An account deleted since has nobody left to tell.
+func NewAdminMfaChangedNoticeEmailHandler(cfg EmailHandlerConfig) Handler {
+	queries := dbmodels.New(cfg.DB)
+	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
+		if err := cfg.require("admin mfa changed notice email"); err != nil {
+			return err
+		}
+		var payload AdminMfaChangedNoticeEmailPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return Permanent(fmt.Errorf("decode admin mfa changed notice email payload: %w", err))
+		}
+		tenantID, err := tenantAuthEventTenantID(event, payload.TenantID)
+		if err != nil {
+			return Permanent(err)
+		}
+		userID, change, changedAt, err := decodeMfaChange(event, payload.UserID, payload.Change, payload.ChangedAt, adminMfaChanges)
+		if err != nil {
+			return Permanent(err)
+		}
+
+		admin, err := queries.GetUserByID(ctx, userID)
+		if errors.Is(err, sql.ErrNoRows) {
+			cfg.logDroppedAuthEmail(ctx, event, userID.String(), "user_not_found")
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("load admin user: %w", err)
+		}
+		if !admin.TenantID.Valid || admin.TenantID.UUID != tenantID {
+			return Permanent(fmt.Errorf("admin user %s is not a member of tenant %s", userID, tenantID))
+		}
+
+		delivery, err := resolveTenantDelivery(ctx, queries, tenantID, cfg.Encryptor)
+		if err != nil {
+			return err
+		}
+
+		return deliverEmail(ctx, cfg, delivery.settings, admin.Email, emailrenderer.Request{
+			Template: "admin_console_mfa_changed_notice",
+			Locale:   delivery.locale,
+			Data: map[string]any{
+				"change":      string(change),
+				"changed_at":  changedAt.UTC().Format(time.RFC3339Nano),
+				"tenant_name": delivery.tenantName,
+			},
+			TimeZone: delivery.timeZone,
+		})
+	}
+}
+
+// decodeMfaChange checks the account, the change, and the time a second
+// factor notice names. A change outside allowed is one this console's
+// accounts cannot make, so no mail for it has copy to say it in.
+func decodeMfaChange(
+	event dbmodels.OutboxEvent,
+	accountID, change, changedAt string,
+	allowed []mfaflow.Change,
+) (uuid.UUID, mfaflow.Change, time.Time, error) {
+	parsedID, err := uuid.Parse(accountID)
+	if err != nil {
+		return uuid.Nil, "", time.Time{}, fmt.Errorf("%s payload has an invalid account id", event.EventType)
+	}
+	if !slices.Contains(allowed, mfaflow.Change(change)) {
+		return uuid.Nil, "", time.Time{}, fmt.Errorf("%s payload has an unknown change %q", event.EventType, change)
+	}
+	at, err := time.Parse(time.RFC3339Nano, changedAt)
+	if err != nil {
+		return uuid.Nil, "", time.Time{}, fmt.Errorf("%s payload has an invalid changed_at: %w", event.EventType, err)
+	}
+	return parsedID, mfaflow.Change(change), at, nil
 }

@@ -14,6 +14,7 @@ import (
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/mfa"
 	"github.com/publira/publira/server/internal/mfaflow"
+	"github.com/publira/publira/server/internal/outbox"
 	publirattypesv1 "github.com/publira/publira/server/internal/proto/gen/publira/types/v1"
 	publirav1 "github.com/publira/publira/server/internal/proto/gen/publira/v1"
 	"github.com/publira/publira/server/internal/rpcerrors"
@@ -284,6 +285,21 @@ func (a mfaAccount) Audit(ctx context.Context, action, outcome, reason string) {
 // LogVerification writes nothing: the security log is where Audit already
 // wrote the line for the same step.
 func (a mfaAccount) LogVerification(context.Context, string, string) {}
+
+// NotifyChange tells a member of staff, as the console would, of a change
+// made on the site: the authenticator and the recovery codes are the console
+// account's own, so the console's notice covers them wherever they change. A
+// reader who holds no console role is told nothing.
+func (a mfaAccount) NotifyChange(ctx context.Context, q dbmodels.Querier, change mfaflow.Change) error {
+	if a.actor.Role == "" {
+		return nil
+	}
+	payload, key, err := outbox.AdminMfaChangedNoticeEmailEvent(a.actor.Tenant.ID, a.actor.User.ID, change, time.Now())
+	if err != nil {
+		return err
+	}
+	return insertPublicOutboxEvent(ctx, q, a.actor.Tenant.ID, outbox.EventTypeAdminMfaChangedNoticeEmail, payload, key)
+}
 
 func (a mfaAccount) InternalError(ctx context.Context, msg string, err error) error {
 	return a.s.internalError(ctx, msg, err, "user_id", a.actor.User.ID.String())

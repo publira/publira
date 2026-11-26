@@ -14,8 +14,8 @@ Every `publiractl` command here is shown bare; run it the way [The Platform Cons
 | To | Mail |
 | --- | --- |
 | A tenant's readers | The link that confirms a new account's address; password reset, and the notice that the password changed; confirming a new email address, and the notice to the old one that it changed; the notice that someone tried to sign up with an address that already has an account; a staff member's answer to a contact message; a new episode of a series or by an author they follow, an announcement the tenant posted, and the approval of their comment |
-| A tenant's staff | The invitation to administer the tenant; password reset; confirming a new email address, and the notice to the old one; a new contact message from a reader |
-| Platform operators | Password reset; confirming a new email address, and the notice to the old one |
+| A tenant's staff | The invitation to administer the tenant; password reset; confirming a new email address, and the notice to the old one; the notice that the authenticator app was turned on or off, a passkey was added or removed, or the recovery codes were regenerated; a new contact message from a reader |
+| Platform operators | Password reset; confirming a new email address, and the notice to the old one; the notice that the authenticator app was turned on or off, or the recovery codes were regenerated |
 
 Each mail is written in the tenant's default language, or for an operator in the platform's.
 
