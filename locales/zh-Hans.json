@@ -5836,6 +5836,22 @@
         "targets_invalid": "所选的部分书系或系列已不存在。请重新加载页面后再选择。"
       }
     },
+    "reauthentication": {
+      "title": "确认身份",
+      "description": "请输入密码以继续。即使已登录，这类更改也会再次确认，以免他人借用您的会话进行更改。",
+      "required": "此更改需要先确认身份。",
+      "password_label": "密码",
+      "code_label": "或身份验证器应用中的验证码",
+      "code_description": "将密码留空即可改用验证码确认。也可以使用恢复码。",
+      "use_passkey": "使用通行密钥",
+      "submit": "继续",
+      "submitting": "正在确认…",
+      "errors": {
+        "password_required": "请输入密码。",
+        "invalid_password": "密码不正确。",
+        "failed": "无法确认身份。请重试。"
+      }
+    },
     "translations": {
       "tabs_label": "语言",
       "not_added": "（未添加）"

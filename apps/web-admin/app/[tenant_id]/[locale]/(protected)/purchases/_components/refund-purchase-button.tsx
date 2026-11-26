@@ -8,6 +8,7 @@ import { formatPrice } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import * as Reauthentication from "#components/reauthentication";
 import { SettledToast } from "#components/settled-toast";
 
 import { refundPurchaseAction } from "../_lib/actions";
@@ -52,6 +53,7 @@ export const RefundPurchaseButton = ({
       id={formId}
       showSuccess={false}
     >
+      <Reauthentication.Request />
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="purchase_id" type="hidden" value={purchaseId} />
       {bounds ? (

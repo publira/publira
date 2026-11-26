@@ -1,5 +1,6 @@
 import { AdminLayout } from "#components/admin-layout";
 import { AdminToastProvider } from "#components/admin-toast-provider";
+import * as Reauthentication from "#components/reauthentication";
 
 /**
  * Awaits nothing: this layout wraps every signed-in route, so a read here
@@ -10,7 +11,9 @@ const ProtectedLayout = ({
   children,
 }: LayoutProps<"/[tenant_id]/[locale]">) => (
   <AdminLayout>
-    <AdminToastProvider>{children}</AdminToastProvider>
+    <AdminToastProvider>
+      <Reauthentication.Root>{children}</Reauthentication.Root>
+    </AdminToastProvider>
   </AdminLayout>
 );
 

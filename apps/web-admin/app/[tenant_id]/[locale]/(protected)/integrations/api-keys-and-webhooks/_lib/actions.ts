@@ -11,6 +11,10 @@ import { withAdminSessionReauth } from "#lib/auth-session";
 import { assertSameOrigin } from "#lib/csrf";
 import { getMessagesFor } from "#lib/messages";
 import {
+  isReauthenticationRequired,
+  withReauthentication,
+} from "#lib/reauthentication";
+import {
   createWebhookEndpoint,
   deleteWebhookEndpoint,
   resendWebhookDelivery,
@@ -58,8 +62,14 @@ export const createApiKeyAction = async (
   const { name, scopes, tenantId } = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
-    createApiKey({ name, scopes, tenantId }, locale)
+    withReauthentication(tenantId, locale, () =>
+      createApiKey({ name, scopes, tenantId }, locale)
+    )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -130,8 +140,14 @@ export const createWebhookEndpointAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    createWebhookEndpoint(parsed.data, locale)
+    withReauthentication(parsed.data.tenantId, locale, () =>
+      createWebhookEndpoint(parsed.data, locale)
+    )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -179,8 +195,14 @@ export const updateWebhookEndpointAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateWebhookEndpoint(parsedId.data.endpointId, parsed.data, locale)
+    withReauthentication(parsed.data.tenantId, locale, () =>
+      updateWebhookEndpoint(parsedId.data.endpointId, parsed.data, locale)
+    )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return { message: result.message, ok: false };
@@ -216,8 +238,14 @@ export const rotateWebhookSecretAction = async (
   const { endpointId, tenantId } = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
-    rotateWebhookSecret(tenantId, endpointId, locale)
+    withReauthentication(tenantId, locale, () =>
+      rotateWebhookSecret(tenantId, endpointId, locale)
+    )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return { message: result.message, ok: false };

@@ -11,6 +11,7 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import * as ProviderChoice from "#components/provider-choice";
 import * as ProviderEnabled from "#components/provider-enabled";
+import * as Reauthentication from "#components/reauthentication";
 import { paymentSettingsStatus } from "#lib/payment-settings-shared";
 import type {
   PaymentProvider,
@@ -147,6 +148,7 @@ export const TenantPaymentSettingsForm = ({
         action={updateTenantPaymentSettingsAction}
         className="grid gap-5 sm:max-w-3xl"
       >
+        <Reauthentication.Request />
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         {loadErrorMessage ? null : (

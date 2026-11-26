@@ -5,6 +5,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import * as Reauthentication from "#components/reauthentication";
 
 import { resetReaderMfaAction } from "../_lib/actions";
 
@@ -37,6 +38,7 @@ export const RemoveReaderMfaButton = ({
       className="grid gap-1"
       id={formId}
     >
+      <Reauthentication.Request />
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="public_id" type="hidden" value={publicId} />
       <input name="reader_id" type="hidden" value={readerId} />

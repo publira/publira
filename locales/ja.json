@@ -5836,6 +5836,22 @@
         "targets_invalid": "選んだレーベルまたはシリーズの一部がなくなっています。ページを再読み込みして選び直してください。"
       }
     },
+    "reauthentication": {
+      "title": "本人確認",
+      "description": "続けるにはパスワードを入力してください。この種の変更は、サインイン中でもあらためて確認します。ほかの人があなたのセッションを使って変更できないようにするためです。",
+      "required": "この変更には本人確認が必要です。",
+      "password_label": "パスワード",
+      "code_label": "または認証アプリの確認コード",
+      "code_description": "パスワードを空欄にすると、確認コードで本人確認します。リカバリーコードも使えます。",
+      "use_passkey": "パスキーを使う",
+      "submit": "続ける",
+      "submitting": "確認中…",
+      "errors": {
+        "password_required": "パスワードを入力してください。",
+        "invalid_password": "パスワードが正しくありません。",
+        "failed": "本人確認ができませんでした。もう一度お試しください。"
+      }
+    },
     "translations": {
       "tabs_label": "言語",
       "not_added": "(未追加)"

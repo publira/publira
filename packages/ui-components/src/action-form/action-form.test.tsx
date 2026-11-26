@@ -71,6 +71,17 @@ const SettledSpy = ({
   return null;
 };
 
+/** Sends the form's last submission again, as a re-authentication would. */
+const Resend = () => {
+  const resubmit = ActionForm.useResubmit();
+
+  return (
+    <button onClick={resubmit} type="button">
+      Send again
+    </button>
+  );
+};
+
 /** Refuses a row's rename, naming the row it was sent from. */
 const renameRow = (
   _prevState: ActionForm.State,
@@ -694,6 +705,56 @@ describe("ActionForm", () => {
       );
     });
     expect(screen.getByTestId("first").textContent).toBe("Rename first");
+  });
+
+  it("sends the last submission again as it was sent, a field that has unmounted since included", async () => {
+    const save = vi
+      .fn<
+        (
+          previousState: ActionForm.State,
+          formData: FormData
+        ) => Promise<ActionForm.State>
+      >()
+      .mockResolvedValueOnce({ message: "Confirm it first.", ok: false })
+      .mockResolvedValue({ message: "Saved.", ok: true });
+
+    const PortaledForm = ({ withReason }: { withReason: boolean }) => (
+      <ActionForm.Root action={save} id="portal-form">
+        <input aria-label="Name" defaultValue="Ada" name="name" />
+        {withReason
+          ? createPortal(
+              <input
+                aria-label="Reason"
+                defaultValue="Bought twice"
+                form="portal-form"
+                name="reason"
+              />,
+              document.body
+            )
+          : null}
+        <Resend />
+        <ActionForm.Submit name="intent" value="refund">
+          Save
+        </ActionForm.Submit>
+      </ActionForm.Root>
+    );
+
+    const { rerender } = render(<PortaledForm withReason />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Confirm it first.");
+
+    // The dialog that held the reason has closed since.
+    rerender(<PortaledForm withReason={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Send again" }));
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledTimes(2);
+    });
+    const resent = save.mock.calls[1]?.[1];
+    expect(resent?.get("name")).toBe("Ada");
+    expect(resent?.get("reason")).toBe("Bought twice");
+    expect(resent?.get("intent")).toBe("refund");
   });
 
   it("refuses to read the state outside an ActionForm", () => {

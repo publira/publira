@@ -18,7 +18,9 @@ import { apiClient, withSessionHeaders } from "./api";
 import type { CachedRead } from "./cached-read";
 import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 
 /**
  * What a key may call: the catalog's reads, the purchases and their buyers, or
@@ -193,7 +195,7 @@ export const createApiKey = async (
         scopes: input.scopes.map((scope) => rpcScopes[scope]),
         tenant: { tenantId: normalizedTenantId },
       },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     if (!response.apiKey || !response.key) {
@@ -209,6 +211,7 @@ export const createApiKey = async (
       ok: true,
     };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 

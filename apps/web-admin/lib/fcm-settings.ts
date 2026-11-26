@@ -16,7 +16,9 @@ import { apiClient, withSessionHeaders } from "./api";
 import type { CachedRead } from "./cached-read";
 import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 
 /** What the console shows of the stored credentials; never the key itself. */
 export interface TenantFcmSettings {
@@ -152,11 +154,12 @@ export const saveTenantFcmCredentials = async (
         serviceAccountJson: input.serviceAccountJson,
         tenant: { tenantId: normalizedTenantId },
       },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     return { ok: true, settings: toTenantFcmSettings(response.settings) };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 

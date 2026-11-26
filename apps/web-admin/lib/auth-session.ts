@@ -17,6 +17,7 @@ import {
   sanitizeRedirectPath,
 } from "./admin-auth-shared";
 import { getAccessToken } from "./session";
+import { clearStepUpCookie } from "./step-up";
 
 /**
  * Reported by a read that runs inside a `"use cache"` scope, where the redirect
@@ -41,6 +42,7 @@ export interface SessionRejectable {
 export const clearAdminSessionCookie = async (): Promise<void> => {
   const cookieStore = await cookies();
   cookieStore.delete(ADMIN_SESSION_COOKIE_NAME);
+  await clearStepUpCookie();
   updateTag(ADMIN_SESSION_CACHE_TAG);
 };
 

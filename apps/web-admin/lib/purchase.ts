@@ -28,7 +28,9 @@ import {
   emptyCursorPageTokens,
 } from "./cursor-page";
 import { getMessagesFor } from "./messages";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 
 /**
  * Which sale of an episode a purchase was: its permanent copy, a rental of it,
@@ -515,7 +517,7 @@ export const refundPurchase = async (
         reason: input.reason,
         tenant: { tenantId: input.tenantId },
       },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     if (!response.purchase) {
@@ -524,6 +526,7 @@ export const refundPurchase = async (
 
     return { ok: true, purchase: mapPurchase(response.purchase) };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
@@ -577,7 +580,7 @@ export const refundPurchaseInPart = async (
         reason: input.reason,
         tenant: { tenantId: input.tenantId },
       },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     if (!response.purchase) {
@@ -586,6 +589,7 @@ export const refundPurchaseInPart = async (
 
     return { ok: true, purchase: mapPurchase(response.purchase) };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
 
     if (rpcErrorCode(error) === Code.Unimplemented) {

@@ -20,7 +20,9 @@ import { apiClient, withSessionHeaders } from "./api";
 import type { CachedRead } from "./cached-read";
 import { settleCachedRead } from "./cached-read";
 import { getMessagesFor } from "./messages";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 
 export interface TenantAppleSignInSettings {
   enabled: boolean;
@@ -269,11 +271,12 @@ export const updateTenantSignInSettings = async (
         },
         tenant: { tenantId: normalizedTenantId },
       },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     return { ok: true, settings: toTenantSignInSettings(response.settings) };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
     const fieldErrors = refusedFieldErrors(error, input, t);

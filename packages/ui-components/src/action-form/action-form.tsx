@@ -90,6 +90,7 @@ export type ActionFormSettledListener<
 > = (state: State | null) => void;
 
 interface ActionFormStateContextValue {
+  resubmit: () => void;
   state: ActionFormResult | null;
   subscribe: (listener: ActionFormSettledListener) => () => void;
 }
@@ -141,6 +142,19 @@ export const useActionFormSettled = <
     [subscribe]
   );
 };
+
+/**
+ * Answers a function that sends what was last submitted to the surrounding
+ * `ActionForm`'s own Action again, as it was submitted: the submitter's pair
+ * and the fields a portal rendered outside the form, which may have unmounted
+ * since, included. It does nothing before the first submission.
+ *
+ * For a submission an Action refused for something the operator settles
+ * elsewhere, such as confirming it's them, and that goes ahead unchanged once
+ * they have; the fields on screen may no longer hold what was sent.
+ */
+export const useActionFormResubmit = (): (() => void) =>
+  useActionFormStateContext("useActionFormResubmit").resubmit;
 
 export interface ActionFormFieldErrorProps {
   className?: string;
@@ -364,6 +378,20 @@ const isRenderFunction = <State extends ActionFormResult>(
 ): children is ActionFormRenderFunction<State> =>
   typeof children === "function";
 
+/**
+ * A copy of `formData`, so what an Action or a wrapper around it does to the
+ * one it was handed leaves the submission `useActionFormResubmit` sends alone.
+ */
+const copyFormData = (formData: FormData): FormData => {
+  const copy = new FormData();
+
+  for (const [name, value] of formData) {
+    copy.append(name, value);
+  }
+
+  return copy;
+};
+
 export interface ActionFormProps<
   State extends ActionFormResult = ActionFormResult,
 > {
@@ -396,6 +424,7 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
   const formRef = useRef<HTMLFormElement>(null);
   const controlSubmissionRef = useRef<ActionFormControlSubmission | null>(null);
   const listenersRef = useRef(new Set<ActionFormSettledListener>());
+  const lastSubmissionRef = useRef<FormData | null>(null);
 
   const [submittedTo, setSubmittedTo] =
     useState<ActionFormControlAction | null>(null);
@@ -444,6 +473,10 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
       );
     }
 
+    if (!controlAction) {
+      lastSubmissionRef.current = copyFormData(formData);
+    }
+
     setSubmittedTo(() => controlAction);
     startTransition(() => {
       if (controlAction) {
@@ -453,6 +486,19 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
       }
     });
   };
+
+  const resubmit = useCallback(() => {
+    const lastSubmission = lastSubmissionRef.current;
+
+    if (!lastSubmission) {
+      return;
+    }
+
+    setSubmittedTo(null);
+    startTransition(() => {
+      formAction(copyFormData(lastSubmission));
+    });
+  }, [formAction]);
 
   // `requestSubmit` dispatches the submit event before it returns, so the
   // Action is read by `handleSubmit` above or, when validation stops the
@@ -480,8 +526,8 @@ export const ActionForm = <State extends ActionFormResult = ActionFormResult>({
   }, []);
 
   const stateContext = useMemo(
-    () => ({ state, subscribe }),
-    [state, subscribe]
+    () => ({ resubmit, state, subscribe }),
+    [resubmit, state, subscribe]
   );
 
   return (

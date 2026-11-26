@@ -23,7 +23,9 @@ import { settleCachedRead } from "./cached-read";
 import { SECRET_UPDATE_MODE_UNCHANGED } from "./email-settings-shared";
 import type { TenantSmtpSettings } from "./email-settings-shared";
 import { getMessagesFor } from "./messages";
+import { rethrowReauthenticationRequiredRpcError } from "./reauthentication";
 import { getAccessToken } from "./session";
+import { stepUpCallOptions } from "./step-up";
 
 export type { TenantSmtpSettings } from "./email-settings-shared";
 
@@ -320,11 +322,12 @@ export const updateTenantEmailSettings = async (
         tenant: { tenantId: normalizedTenantId },
         username: input.username,
       },
-      withSessionHeaders(sessionId)
+      await stepUpCallOptions(sessionId)
     );
 
     return { ok: true, settings: toTenantSmtpSettings(response.settings) };
   } catch (error) {
+    rethrowReauthenticationRequiredRpcError(error);
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 

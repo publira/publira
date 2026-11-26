@@ -35,6 +35,10 @@ import {
 } from "#lib/inbound-email-settings";
 import { getMessagesFor } from "#lib/messages";
 import { toProviderCredentialUpdates } from "#lib/provider-credential-form";
+import {
+  isReauthenticationRequired,
+  withReauthentication,
+} from "#lib/reauthentication";
 
 import type {
   TenantEmailSettingsFormState,
@@ -142,8 +146,14 @@ export const updateTenantEmailSettingsAction = async (
   const input = parsed.data;
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantEmailSettings(input, locale)
+    withReauthentication(input.tenantId, locale, () =>
+      updateTenantEmailSettings(input, locale)
+    )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return {
@@ -289,17 +299,23 @@ export const updateTenantInboundEmailSettingsAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantInboundEmailSettings(
-      {
-        domain: parsed.data.domain,
-        enabled: parsed.data.enabled,
-        fields: credentials.fields,
-        provider: declared.provider.id,
-        tenantId: parsed.data.tenantId,
-      },
-      locale
+    withReauthentication(parsed.data.tenantId, locale, () =>
+      updateTenantInboundEmailSettings(
+        {
+          domain: parsed.data.domain,
+          enabled: parsed.data.enabled,
+          fields: credentials.fields,
+          provider: declared.provider.id,
+          tenantId: parsed.data.tenantId,
+        },
+        locale
+      )
     )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return result.domainInvalid

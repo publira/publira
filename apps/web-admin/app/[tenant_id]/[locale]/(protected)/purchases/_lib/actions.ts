@@ -22,6 +22,10 @@ import {
   refundPurchase,
   refundPurchaseInPart,
 } from "#lib/purchase";
+import {
+  isReauthenticationRequired,
+  withReauthentication,
+} from "#lib/reauthentication";
 
 import type { RefundPurchaseActionState } from "../purchase-types";
 
@@ -135,10 +139,19 @@ export const refundPurchaseAction = async (
   }
 
   const result = await withAdminSessionReauth(() =>
-    amount && amount.amount < amount.left
-      ? refundPurchaseInPart({ ...parsed.data, amount: amount.amount }, locale)
-      : refundPurchase(parsed.data, locale)
+    withReauthentication(parsed.data.tenantId, locale, () =>
+      amount && amount.amount < amount.left
+        ? refundPurchaseInPart(
+            { ...parsed.data, amount: amount.amount },
+            locale
+          )
+        : refundPurchase(parsed.data, locale)
+    )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return { message: result.message, ok: false };

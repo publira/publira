@@ -8,6 +8,7 @@ import { formatDateTime } from "@publira/utils";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import * as Reauthentication from "#components/reauthentication";
 import { getMessages } from "#lib/get-messages";
 import type { WebhookEndpointItem } from "#lib/webhooks";
 
@@ -177,6 +178,7 @@ export const WebhookEndpointCard = async ({
           className="grid justify-items-start gap-3"
           id={rotateFormId}
         >
+          <Reauthentication.Request />
           <EndpointIdFields endpointId={endpoint.id} tenantId={tenantId} />
           <ConfirmDialog.Root>
             <ConfirmDialog.Trigger
@@ -240,6 +242,7 @@ export const WebhookEndpointCard = async ({
         action={updateWebhookEndpointAction}
         className="grid gap-5 sm:max-w-3xl"
       >
+        <Reauthentication.Request />
         <EndpointIdFields endpointId={endpoint.id} tenantId={tenantId} />
         <ActionForm.Fieldset className="grid gap-5">
           <WebhookEndpointFields

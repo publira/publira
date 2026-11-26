@@ -10,6 +10,7 @@ import { SkeletonLine } from "@publira/ui-components/skeleton";
 import { Suspense } from "react";
 
 import { Message } from "#components/message";
+import * as Reauthentication from "#components/reauthentication";
 import type { TenantSmtpSettings } from "#lib/email-settings-shared";
 
 import {
@@ -61,6 +62,7 @@ export const TenantEmailSettingsForm = ({
       className="grid gap-5 sm:max-w-3xl"
       id={formId}
     >
+      <Reauthentication.Request />
       <input name="tenant_id" type="hidden" value={tenantId} />
 
       {/* A save refreshes the settings; keying on them remounts the fields

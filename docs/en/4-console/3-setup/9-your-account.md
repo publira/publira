@@ -103,3 +103,22 @@ If you have lost a device, sign in with what you have left: another passkey, the
 If you have lost every second factor and every recovery code, you cannot sign in to the console any more, and your password alone cannot remove two-step verification from your account. Ask another Tenant admin of the tenant: they can remove it from your page under **Readers**, as [Lost two-step verification](../2-readers/1-accounts.md#lost-two-step-verification) describes. If there is none, ask the operator of the install, who can remove it as [A tenant's staff](../../3-operations/3-tenant-staff.md#lost-two-step-verification) describes. Either way, you then sign in with your password and set it up again.
 
 Setting it up, registering, renaming, and removing a passkey, turning it off, regenerating recovery codes, and each sign-in with a code, a passkey, or a recovery code are recorded in the tenant's [audit log](./8-audit-log.md).
+
+## Confirming it's you
+
+The console keeps you signed in for a day, so the changes a session someone else got hold of could do the most harm with ask you to prove it is still you, even while you are signed in:
+
+- Inviting a member, and changing a member's role.
+- Issuing an API key.
+- Adding or editing a webhook endpoint, and rotating its secret.
+- Saving a payment provider, the in-app purchase settings, the email settings, the push notification credentials, or the sign-in settings.
+- Refunding a purchase.
+- Deleting a reader's account, and removing a reader's two-step verification.
+
+The first of them you make shows **Confirm it's you**. Answer it in one of these ways:
+
+- Enter your **Password** and choose **Continue**.
+- If you have an authenticator app, leave the password empty, enter a code from the app under **Or a code from your authenticator app**, and choose **Continue**. A recovery code works there too, and is spent.
+- If you have a passkey, choose **Use a passkey** and unlock one when the browser asks.
+
+The change then goes ahead as you submitted it. **Cancel** leaves it unmade. For the next fifteen minutes the console does not ask again, until you sign out. A wrong password counts toward the same limit as the one **Change the email address** asks for, and a wrong code or passkey toward the same lock as a wrong code at sign-in. Each time you confirm it's you, and each refusal, is recorded in the tenant's [audit log](./8-audit-log.md).

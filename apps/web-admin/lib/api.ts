@@ -29,6 +29,28 @@ export const withSessionHeaders = (sessionId: string): SessionCallOptions => ({
   headers: { Authorization: `Bearer ${sessionId}` },
 });
 
+/** Where the API reads the step-up token `Reauthenticate` answers. */
+const STEP_UP_HEADER_NAME = "Publira-Step-Up";
+
+/**
+ * {@link withSessionHeaders} with the step-up token the session earned, for
+ * the RPCs whose proto comment says "Requires a recent re-authentication". An
+ * empty token sends the session alone, which those RPCs refuse with the reason
+ * `REAUTHENTICATION_REQUIRED`.
+ */
+export const withStepUpHeaders = (
+  sessionId: string,
+  stepUpToken: string
+): SessionCallOptions =>
+  stepUpToken
+    ? {
+        headers: {
+          Authorization: `Bearer ${sessionId}`,
+          [STEP_UP_HEADER_NAME]: stepUpToken,
+        },
+      }
+    : withSessionHeaders(sessionId);
+
 /**
  * Call options for a read the console makes as itself: one of the admin API's
  * tenant-level reads, whose answer is the same for every operator of the

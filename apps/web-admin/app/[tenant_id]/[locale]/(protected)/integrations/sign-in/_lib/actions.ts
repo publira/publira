@@ -17,6 +17,10 @@ import {
 } from "#lib/form-schemas";
 import { getMessagesFor } from "#lib/messages";
 import {
+  isReauthenticationRequired,
+  withReauthentication,
+} from "#lib/reauthentication";
+import {
   hasSecretKey,
   secretKeyFormInput,
   secretKeySchema,
@@ -176,25 +180,31 @@ export const updateTenantSignInSettingsAction = async (
   const privateKey = await toSecretKeyUpdate(data.privateKey);
 
   const result = await withAdminSessionReauth(() =>
-    updateTenantSignInSettings(
-      {
-        apple: {
-          privateKey,
-          enabled: data.appleEnabled,
-          keyId: data.keyId,
-          servicesId: data.servicesId,
-          teamId: data.teamId,
+    withReauthentication(data.tenantId, locale, () =>
+      updateTenantSignInSettings(
+        {
+          apple: {
+            privateKey,
+            enabled: data.appleEnabled,
+            keyId: data.keyId,
+            servicesId: data.servicesId,
+            teamId: data.teamId,
+          },
+          google: {
+            enabled: data.googleEnabled,
+            iosClientId: data.iosClientId,
+            webClientId: data.webClientId,
+          },
+          tenantId: data.tenantId,
         },
-        google: {
-          enabled: data.googleEnabled,
-          iosClientId: data.iosClientId,
-          webClientId: data.webClientId,
-        },
-        tenantId: data.tenantId,
-      },
-      locale
+        locale
+      )
     )
   );
+
+  if (isReauthenticationRequired(result)) {
+    return result;
+  }
 
   if (!result.ok) {
     return {

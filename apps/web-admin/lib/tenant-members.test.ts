@@ -57,6 +57,13 @@ vi.mock("./api", () => ({
   }),
 }));
 
+// The RPCs that ask for a re-authentication carry the session alone here: the
+// step-up token beside it is read from a cookie these tests do not set.
+vi.mock("./step-up", () => ({
+  stepUpCallOptions: (sessionId: string) =>
+    Promise.resolve({ headers: { Authorization: `Bearer ${sessionId}` } }),
+}));
+
 const reasonError = (code: Code, reason: string) =>
   new ConnectError("refused", code, undefined, [
     { desc: ErrorInfoSchema, value: { domain: "publira", reason } },

@@ -11,6 +11,7 @@ import { Suspense } from "react";
 
 import * as CredentialsEnabled from "#components/credentials-enabled";
 import { Message } from "#components/message";
+import * as Reauthentication from "#components/reauthentication";
 import * as SecretKey from "#components/secret-key";
 import { storeStatus } from "#lib/store-payment-settings-shared";
 import type {
@@ -166,6 +167,7 @@ export const TenantStorePaymentSettingsForm = ({
         action={updateTenantStorePaymentSettingsAction}
         className="grid gap-8 sm:max-w-3xl"
       >
+        <Reauthentication.Request />
         <input name="tenant_id" type="hidden" value={tenantId} />
 
         {settings === undefined ? null : (
