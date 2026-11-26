@@ -3905,7 +3905,10 @@
         "passkey_removed": "The passkey has been removed.",
         "passkey_remove_failed": "Could not remove the passkey. Please try again later.",
         "passkey_last_factor": "This is the last second factor on your account, and this tenant requires two-step verification for administrators. Add another passkey or set up an authenticator app before removing it.",
-        "passkey_not_found": "That passkey is no longer registered to your account."
+        "passkey_not_found": "That passkey is no longer registered to your account.",
+        "confirmation_help_totp": "Changing your second factors asks for one you already have. Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+        "confirmation_help_totp_or_passkey": "Changing your second factors asks for one you already have. Enter the 6-digit code from your authenticator app or a recovery code, or leave this empty to confirm with one of your passkeys.",
+        "confirmation_help_passkey": "Changing your second factors asks for one you already have. Leave this empty to confirm with one of your passkeys, or enter a recovery code if you no longer have them."
       },
       "credentials": {
         "secret_change": "Change",

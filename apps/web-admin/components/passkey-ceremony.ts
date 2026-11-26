@@ -12,12 +12,21 @@ import { useClientMessages } from "#components/client-message";
 import type { AdminClientMessageAccessor } from "#lib/messages";
 import type { PasskeyCeremonyStartState } from "#lib/mfa-action-state";
 
-interface PasskeyFailure {
+export interface PasskeyFailure {
   ok: false;
   message: string;
 }
 
 type CeremonyOutcome = { ok: true; credential: string } | PasskeyFailure;
+
+/**
+ * What a form running a ceremony holds: its Action's state, or the failure of
+ * the browser's half, which never reached the Action.
+ */
+type CeremonyFormState<State extends ActionForm.Result | null> =
+  | State
+  | PasskeyFailure
+  | null;
 
 /**
  * What to tell the operator when the browser's half of a ceremony failed.
@@ -85,7 +94,7 @@ export const usePasskeyCeremony = <State extends ActionForm.Result | null>(
   const t = useClientMessages();
 
   return async (
-    _previousState: State | PasskeyFailure | null,
+    _previousState: CeremonyFormState<State>,
     formData: FormData
   ): Promise<State | PasskeyFailure> => {
     if (!browserSupportsWebAuthn()) {
@@ -120,3 +129,69 @@ export const authenticatePasskey = (optionsJson: string) =>
 /** The browser's half of creating a passkey for the account. */
 export const registerPasskey = (optionsJson: string) =>
   startRegistration({ optionsJSON: JSON.parse(optionsJson) });
+
+/**
+ * An Action `usePasskeyConfirmation` can wrap: one that may be handed the
+ * failure of the confirmation's own ceremony as its previous state.
+ */
+export type PasskeyConfirmedAction<State extends ActionForm.Result | null> = (
+  previousState: CeremonyFormState<State>,
+  formData: FormData
+) => Promise<CeremonyFormState<State>>;
+
+/**
+ * Wrap `action` so that a form asking for a confirmation has one of the
+ * account's passkeys make it when the form's `confirmation_code` was left
+ * empty, and hands the assertion to `action` as `confirmation_credential`.
+ *
+ * Whether the account holds a passkey to ask is the form's
+ * `confirmation_passkey` field; without it, or with a code typed in, the form
+ * goes to `action` as it was submitted. The assertion is made before `action`
+ * runs, so a change that runs a ceremony of its own, such as adding a passkey,
+ * asks for the confirmation first and has the passkey created second.
+ */
+export const usePasskeyConfirmation = <State extends ActionForm.Result | null>(
+  begin: (formData: FormData) => Promise<PasskeyCeremonyStartState>,
+  action: PasskeyConfirmedAction<State>
+) => {
+  const t = useClientMessages();
+
+  return async (
+    previousState: CeremonyFormState<State>,
+    formData: FormData
+  ): Promise<CeremonyFormState<State>> => {
+    const typed =
+      (formData.get("confirmation_code")?.toString().trim() ?? "") !== "";
+
+    if (typed || formData.get("confirmation_passkey") !== "true") {
+      return action(previousState, formData);
+    }
+
+    if (!browserSupportsWebAuthn()) {
+      return {
+        message: t("admin.auth.mfa.errors.passkey_unsupported"),
+        ok: false,
+      };
+    }
+
+    const started = await begin(formData);
+
+    if (!started.ok) {
+      return started;
+    }
+
+    const outcome = await runCeremony(
+      authenticatePasskey,
+      started.optionsJson,
+      t
+    );
+
+    if (!outcome.ok) {
+      return outcome;
+    }
+
+    formData.set("confirmation_credential", outcome.credential);
+
+    return action(previousState, formData);
+  };
+};

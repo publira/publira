@@ -52,6 +52,13 @@ WHERE user_id = sqlc.arg('user_id')
 DELETE FROM user_mfa_totp
 WHERE user_id = $1;
 
+-- name: DeleteUnconfirmedUserMfaTotp :exec
+-- A confirmed authenticator is a factor and stays; an unconfirmed one is only
+-- an enrollment someone started.
+DELETE FROM user_mfa_totp
+WHERE user_id = $1
+  AND enabled_at IS NULL;
+
 -- name: CreateUserMfaRecoveryCode :exec
 INSERT INTO user_mfa_recovery_codes (id, tenant_id, user_id, code_hash)
 VALUES ($1, $2, $3, $4);

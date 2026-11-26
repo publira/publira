@@ -16,6 +16,9 @@ import {
   regenerateAccountMfaRecoveryCodesAction,
   startAccountMfaEnrollmentAction,
 } from "../_lib/mfa-actions";
+import { MfaConfirmationField } from "./mfa-confirmation-field";
+import type { MfaConfirmationFactors } from "./mfa-confirmation-field";
+import { MfaConfirmedForm } from "./mfa-confirmed-form";
 import * as MfaSettingsOutcome from "./mfa-settings-outcome";
 import { PasskeySettings } from "./passkey-settings";
 
@@ -27,14 +30,24 @@ interface MfaSettingsCardProps {
   timeZone: string;
 }
 
-const MfaStartForm = ({ tenantId }: { tenantId: string }) => (
-  <ActionForm.Root
+/**
+ * Starts setting up the authenticator app. An account whose passkeys already
+ * verify its sign-ins confirms it with one of them, or a recovery code, first.
+ */
+const MfaStartForm = ({
+  factors,
+  tenantId,
+}: {
+  factors: MfaConfirmationFactors;
+  tenantId: string;
+}) => (
+  <MfaConfirmedForm
     action={startAccountMfaEnrollmentAction}
     className="grid gap-3"
-    showSuccess={false}
   >
     <input name="tenant_id" type="hidden" value={tenantId} />
     <MfaEnrollment.Started />
+    <MfaConfirmationField factors={factors} />
     <div className="flex justify-end">
       <ActionForm.Submit>
         <Suspense fallback={<SkeletonLine className="h-4 w-40" />}>
@@ -47,7 +60,7 @@ const MfaStartForm = ({ tenantId }: { tenantId: string }) => (
         </Suspense>
       </ActionForm.Submit>
     </div>
-  </ActionForm.Root>
+  </MfaConfirmedForm>
 );
 
 const MfaConfirmForm = ({ tenantId }: { tenantId: string }) => (
@@ -257,11 +270,20 @@ export const MfaSettingsCard = ({
         ) : (
           <MfaEnrollment.Root
             confirm={<MfaConfirmForm tenantId={tenantId} />}
-            start={<MfaStartForm tenantId={tenantId} />}
+            start={
+              <MfaStartForm
+                factors={{
+                  authenticator: false,
+                  passkey: status.passkeys.length > 0,
+                }}
+                tenantId={tenantId}
+              />
+            }
           />
         )}
       </div>
       <PasskeySettings
+        hasAuthenticator={status.enabled}
         locale={locale}
         passkeys={status.passkeys}
         regeneratesRecoveryCodes={!status.enabled}

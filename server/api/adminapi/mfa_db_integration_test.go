@@ -98,14 +98,22 @@ func mfaNextCode(t *testing.T, secret string) string {
 	return code
 }
 
-// enrollMfa takes a signed-in account through a whole enrollment and returns
-// the secret its authenticator now holds together with the recovery codes it
-// was handed exactly once.
+// enrollMfa takes a signed-in account that holds no second factor yet through
+// a whole enrollment and returns the secret its authenticator now holds
+// together with the recovery codes it was handed exactly once.
 func enrollMfa(t *testing.T, env *adminDBEnv, tenant adminDBTenant) (string, []string) {
+	t.Helper()
+	return enrollMfaConfirmed(t, env, tenant, nil)
+}
+
+// enrollMfaConfirmed is enrollMfa for an account that already holds a
+// passkey, proved by confirmation.
+func enrollMfaConfirmed(t *testing.T, env *adminDBEnv, tenant adminDBTenant, confirmation *publiraadminv1.MfaConfirmation) (string, []string) {
 	t.Helper()
 
 	started, err := env.authClient().StartMfaEnrollment(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.AdminAuthServiceStartMfaEnrollmentRequest{
-		Tenant: tenant.tenantContext(),
+		Tenant:       tenant.tenantContext(),
+		Confirmation: confirmation,
 	})
 	if err != nil {
 		t.Fatalf("StartMfaEnrollment: %v", err)

@@ -94,12 +94,33 @@ message AdminAuthServiceGetMfaStatusResponse {
   repeated MfaMethod methods = 5;
 }
 
+// Proof that a signed-in account still holds one of its second factors, sent
+// with a request that adds a factor to the account or removes one. A session
+// shows only that the account answered its second step once; a change to what
+// that step asks for asks it again. An account that holds no second factor
+// sends none.
+//
+// Exactly one of the two is sent. A refused code or assertion counts toward
+// the same lock a refused sign-in does.
+message MfaConfirmation {
+  // A code from the authenticator, or one of the recovery codes, as VerifyMfa
+  // takes it. A recovery code is spent by the request it confirms.
+  string code = 1;
+  // An assertion made with one of the account's passkeys over a challenge
+  // BeginPasskeyConfirmation issued, as its toJSON() serializes it.
+  string passkey_credential_json = 2;
+}
+
 message AdminAuthServiceStartMfaEnrollmentRequest {
   publira.types.v1.TenantContext tenant = 1;
   // Sent instead of an Authorization header when the login stopped at an
   // enroll challenge. A signed-in account enrolling voluntarily leaves it
   // empty and is identified by its session.
   string challenge_token = 2;
+  // Required of a signed-in account that already holds a passkey. A
+  // confirmed authenticator is never replaced here: DisableMfa takes it off
+  // first.
+  MfaConfirmation confirmation = 3;
 }
 
 message AdminAuthServiceStartMfaEnrollmentResponse {
@@ -188,6 +209,10 @@ message AdminAuthServiceFinishPasskeyRegistrationRequest {
   string credential_json = 3;
   // At most 64 characters; empty leaves it unnamed.
   string name = 4;
+  // Required of a signed-in account that already holds a second factor. It
+  // is checked once the new credential has verified, so a prompt the owner
+  // closes spends no recovery code.
+  MfaConfirmation confirmation = 5;
 }
 
 message AdminAuthServiceFinishPasskeyRegistrationResponse {
@@ -233,8 +258,8 @@ message AdminAuthServiceBeginPasskeyConfirmationRequest {
 message AdminAuthServiceBeginPasskeyConfirmationResponse {
   // PublicKeyCredentialRequestOptionsJSON, as
   // BeginPasskeyVerificationResponse answers it. The assertion made over it
-  // goes in the passkey_credential_json of the request it confirms, and
-  // confirms that one request.
+  // goes in the passkey_credential_json of the request it confirms, or of
+  // that request's MfaConfirmation, and confirms that one request.
   string request_options_json = 1;
 }
 
@@ -261,6 +286,9 @@ message AdminAuthServiceRenamePasskeyResponse {
 message AdminAuthServiceDeletePasskeyRequest {
   publira.types.v1.TenantContext tenant = 1;
   string id = 2;
+  // Always required: the passkey being removed is a factor the account
+  // holds, and an assertion from it is proof enough.
+  MfaConfirmation confirmation = 3;
 }
 
 message AdminAuthServiceDeletePasskeyResponse {}
@@ -474,9 +502,10 @@ service AdminAuthService {
   // assertion counts toward the same lock a wrong code does.
   rpc FinishPasskeyVerification(AdminAuthServiceFinishPasskeyVerificationRequest) returns (AdminAuthServiceFinishPasskeyVerificationResponse) {}
   // Begins the fresh assertion a signed-in account confirms
-  // RegenerateMfaRecoveryCodes with in place of a code, allowing its own
-  // passkeys for the console's relying party ID alone. failed_precondition for
-  // an account that holds none.
+  // RegenerateMfaRecoveryCodes, or a request carrying an MfaConfirmation,
+  // with in place of a code, allowing its own passkeys for the console's
+  // relying party ID alone. failed_precondition for an account that holds
+  // none.
   rpc BeginPasskeyConfirmation(AdminAuthServiceBeginPasskeyConfirmationRequest) returns (AdminAuthServiceBeginPasskeyConfirmationResponse) {}
   rpc ListPasskeys(AdminAuthServiceListPasskeysRequest) returns (AdminAuthServiceListPasskeysResponse) {}
   rpc RenamePasskey(AdminAuthServiceRenamePasskeyRequest) returns (AdminAuthServiceRenamePasskeyResponse) {}

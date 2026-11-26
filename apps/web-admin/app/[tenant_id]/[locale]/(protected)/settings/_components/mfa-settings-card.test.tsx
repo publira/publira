@@ -294,6 +294,20 @@ const rerenderCard = async (
   });
 };
 
+/**
+ * Has the confirmation an account with a factor is asked for answered by one
+ * of its passkeys, as the browser does when the confirmation field is left
+ * empty.
+ */
+const confirmWithPasskey = () => {
+  beginConfirmation.mockResolvedValue({
+    message: "",
+    ok: true,
+    optionsJson: '{"challenge":"Y29uZmlybQ"}',
+  });
+  startAuthentication.mockResolvedValue({ id: "confirmation" });
+};
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -511,6 +525,11 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     expect(finishPasskey.mock.calls[0]?.[0].get("credential")).toBe(
       '{"id":"credential"}'
     );
+    // The account held no factor, so there was nothing to confirm with.
+    expect(beginConfirmation).not.toHaveBeenCalled();
+    expect(
+      finishPasskey.mock.calls[0]?.[0].get("confirmation_code")
+    ).toBeNull();
 
     const name = await screen.findByLabelText("Name", {}, onScreen);
     fireEvent.change(name, { target: { value: "Phone" } });
@@ -527,6 +546,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
   });
 
   it("leaves the codes alone when a later passkey brings none", async () => {
+    confirmWithPasskey();
     beginPasskey.mockResolvedValue({
       message: "",
       ok: true,
@@ -550,6 +570,14 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
       await screen.findByText("The passkey has been added.", {}, onScreen)
     ).toBeDefined();
     expect(screen.queryByText("Recovery codes")).toBeNull();
+    // The confirmation field was left empty, so a passkey the account holds
+    // confirmed the addition before the new one was created.
+    expect(startAuthentication).toHaveBeenCalledWith({
+      optionsJSON: { challenge: "Y29uZmlybQ" },
+    });
+    expect(
+      finishPasskey.mock.calls[0]?.[0].get("confirmation_credential")
+    ).toBe('{"id":"confirmation"}');
     fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
     expect(
       await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
@@ -588,6 +616,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
   // it; once the status read again says no factor is left, the codes went
   // with the last one on the server and must not stay on screen to be saved.
   it("keeps the codes a first passkey brought until the last factor is gone", async () => {
+    confirmWithPasskey();
     beginPasskey.mockResolvedValue({
       message: "",
       ok: true,
@@ -681,6 +710,7 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     const refusal =
       "This is the last second factor on your account, and this tenant requires two-step verification for administrators. Add another passkey or set up an authenticator app before removing it.";
 
+    confirmWithPasskey();
     deletePasskey.mockResolvedValue({ message: refusal, ok: false });
 
     renderCard(passkeyOnly);
@@ -696,6 +726,94 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     const removed = deletePasskey.mock.calls[0]?.[1];
     expect(removed?.get("passkey_id")).toBe("PASSKEY00001");
     expect(removed?.get("tenant_id")).toBe("TENANT001");
+    expect(removed?.get("confirmation_credential")).toBe(
+      '{"id":"confirmation"}'
+    );
+  });
+
+  // A code typed into the confirmation field is the confirmation, and no
+  // passkey is asked for one.
+  it("confirms a passkey added beside an authenticator app with a typed code", async () => {
+    beginPasskey.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: "{}",
+    });
+    startRegistration.mockResolvedValue({ id: "credential" });
+    finishPasskey.mockResolvedValue({
+      message: "The passkey has been added.",
+      ok: true,
+      passkeyId: "PASSKEY00002",
+      recoveryCodes: [],
+    });
+
+    renderCard(enabled);
+
+    const form = await formOf("Add a passkey");
+    // The field is required here, so its label carries the mark that says so.
+    fireEvent.change(form.getByLabelText(/^Verification code/u), {
+      target: { value: "123456" },
+    });
+    fireEvent.click(form.getByRole("button", { name: "Add a passkey" }));
+
+    expect(
+      await screen.findByText("The passkey has been added.", {}, onScreen)
+    ).toBeDefined();
+    expect(beginConfirmation).not.toHaveBeenCalled();
+    expect(finishPasskey.mock.calls[0]?.[0].get("confirmation_code")).toBe(
+      "123456"
+    );
+  });
+
+  // Setting up the authenticator app beside a passkey is confirmed with it.
+  it("confirms setting up an authenticator app beside a passkey", async () => {
+    confirmWithPasskey();
+    start.mockResolvedValue({
+      message: "",
+      ok: true,
+      qr: { path: "M0 0h1v1H0z", size: 21 },
+      secret: "JBSWY3DPEHPK3PXP",
+    });
+
+    renderCard(passkeyOnly);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Set up" }, onScreen)
+    );
+
+    expect(
+      await screen.findByText("JBSWY3DPEHPK3PXP", {}, onScreen)
+    ).toBeDefined();
+    expect(start.mock.calls[0]?.[1].get("confirmation_credential")).toBe(
+      '{"id":"confirmation"}'
+    );
+  });
+
+  it("starts nothing when the confirming prompt is closed", async () => {
+    beginConfirmation.mockResolvedValue({
+      message: "",
+      ok: true,
+      optionsJson: "{}",
+    });
+    startAuthentication.mockRejectedValue(
+      Object.assign(new Error("closed"), { name: "NotAllowedError" })
+    );
+
+    renderCard(passkeyOnly);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Add a passkey" }, onScreen)
+    );
+
+    expect(
+      await screen.findByText(
+        "The passkey request was cancelled or timed out. Try again.",
+        {},
+        onScreen
+      )
+    ).toBeDefined();
+    expect(beginPasskey).not.toHaveBeenCalled();
+    expect(finishPasskey).not.toHaveBeenCalled();
   });
   // With no authenticator app to give a code, a passkey is what replaces the
   // recovery codes, and the batch it issues is shown once as a code's is.

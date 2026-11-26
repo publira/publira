@@ -18,6 +18,9 @@ import {
   deleteAccountPasskeyAction,
   renameAccountPasskeyAction,
 } from "../_lib/mfa-actions";
+import { MfaConfirmationField } from "./mfa-confirmation-field";
+import type { MfaConfirmationFactors } from "./mfa-confirmation-field";
+import { MfaConfirmedForm } from "./mfa-confirmed-form";
 import * as MfaSettingsOutcome from "./mfa-settings-outcome";
 import * as PasskeyAddition from "./passkey-addition";
 import { PasskeyRegenerateForm } from "./passkey-regeneration";
@@ -130,27 +133,30 @@ const PasskeyRenameButton = ({
 };
 
 /**
- * Removes one passkey, once the operator has confirmed it. The refusal worth
- * reading is the last second factor of an account the tenant requires one
- * of, and it stays on the row. Success is reported to the card instead, since
- * the row is gone, and the card is what drops a batch an earlier addition
- * left on screen once the last factor, and the codes with it, are gone.
+ * Removes one passkey, once the operator has confirmed it with a factor the
+ * account holds — this passkey among them. The refusals worth reading are a
+ * confirmation that was not accepted and the last second factor of an account
+ * the tenant requires one of, and they stay on the row. Success is reported to
+ * the card instead, since the row is gone, and the card is what drops a batch
+ * an earlier addition left on screen once the last factor, and the codes with
+ * it, are gone.
  */
 const PasskeyRemoveButton = ({
+  factors,
   passkeyId,
   tenantId,
 }: {
+  factors: MfaConfirmationFactors;
   passkeyId: string;
   tenantId: string;
 }) => {
   const formId = useId();
 
   return (
-    <ActionForm.Root
+    <MfaConfirmedForm
       action={deleteAccountPasskeyAction}
       className="grid gap-1"
       id={formId}
-      showSuccess={false}
     >
       <input name="tenant_id" type="hidden" value={tenantId} />
       <input name="passkey_id" type="hidden" value={passkeyId} />
@@ -182,6 +188,9 @@ const PasskeyRemoveButton = ({
                 </Suspense>
               </ConfirmDialog.Description>
             </ConfirmDialog.Header>
+            <div className="mt-4">
+              <MfaConfirmationField factors={factors} form={formId} />
+            </div>
             <ConfirmDialog.Footer>
               <ConfirmDialog.Cancel>
                 <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
@@ -197,16 +206,18 @@ const PasskeyRemoveButton = ({
           </ConfirmDialog.Content>
         </ConfirmDialog.Root>
       </ActionForm.Fieldset>
-    </ActionForm.Root>
+    </MfaConfirmedForm>
   );
 };
 
 const PasskeyRow = ({
   dates,
+  factors,
   passkey,
   tenantId,
 }: {
   dates: FormatDateTimeOptions;
+  factors: MfaConfirmationFactors;
   passkey: AdminPasskey;
   tenantId: string;
 }) => (
@@ -239,16 +250,32 @@ const PasskeyRow = ({
     </div>
     <div className="flex flex-wrap items-start gap-2">
       <PasskeyRenameButton passkey={passkey} tenantId={tenantId} />
-      <PasskeyRemoveButton passkeyId={passkey.id} tenantId={tenantId} />
+      <PasskeyRemoveButton
+        factors={factors}
+        passkeyId={passkey.id}
+        tenantId={tenantId}
+      />
     </div>
   </li>
 );
 
-const PasskeyAddStep = ({ tenantId }: { tenantId: string }) => (
+/**
+ * Adds a passkey. An account that already holds a factor confirms it with
+ * one first; with a passkey, that is a prompt of its own before the one that
+ * creates the new passkey.
+ */
+const PasskeyAddStep = ({
+  factors,
+  tenantId,
+}: {
+  factors: MfaConfirmationFactors;
+  tenantId: string;
+}) => (
   <PasskeyAddition.AddForm>
     <input name="tenant_id" type="hidden" value={tenantId} />
     <MfaSettingsOutcome.Report />
     <PasskeyAddition.Added />
+    <MfaConfirmationField factors={factors} />
     <div className="flex justify-end">
       <ActionForm.Submit variant="outline">
         <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
@@ -343,58 +370,70 @@ const PasskeyRegenerateStep = ({ tenantId }: { tenantId: string }) => (
  * The account's passkeys for the console, each with when it was added and
  * last used, and the form that adds another. `regeneratesRecoveryCodes` adds
  * the form that replaces the recovery codes with one of them, for an account
- * with no authenticator app to do it with a code.
+ * with no authenticator app to do it with a code. `hasAuthenticator` is
+ * whether the authenticator app is on, which, with the passkeys, is what
+ * adding or removing one is confirmed with.
  */
 export const PasskeySettings = ({
+  hasAuthenticator,
   locale,
   passkeys,
   regeneratesRecoveryCodes,
   tenantId,
   timeZone,
 }: {
+  hasAuthenticator: boolean;
   locale: Locale;
   passkeys: AdminPasskey[];
   regeneratesRecoveryCodes: boolean;
   tenantId: string;
   timeZone: string;
-}) => (
-  <div className="grid gap-3">
-    <div className="grid gap-1">
-      <h3 className="text-sm font-medium text-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
-          <Message message="admin.settings.mfa.passkeys_title" />
-        </Suspense>
-      </h3>
-      <p className="text-xs text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
-          <Message message="admin.settings.mfa.passkeys_description" />
-        </Suspense>
-      </p>
+}) => {
+  const factors = {
+    authenticator: hasAuthenticator,
+    passkey: passkeys.length > 0,
+  };
+
+  return (
+    <div className="grid gap-3">
+      <div className="grid gap-1">
+        <h3 className="text-sm font-medium text-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-24" />}>
+            <Message message="admin.settings.mfa.passkeys_title" />
+          </Suspense>
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+            <Message message="admin.settings.mfa.passkeys_description" />
+          </Suspense>
+        </p>
+      </div>
+      {passkeys.length > 0 ? (
+        <ul className="divide-y divide-border border-y border-border">
+          {passkeys.map((passkey) => (
+            <PasskeyRow
+              dates={{ fallback: "-", locale, timeZone }}
+              factors={factors}
+              key={passkey.id}
+              passkey={passkey}
+              tenantId={tenantId}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+            <Message message="admin.settings.mfa.passkeys_empty" />
+          </Suspense>
+        </p>
+      )}
+      <PasskeyAddition.Root
+        add={<PasskeyAddStep factors={factors} tenantId={tenantId} />}
+        name={<PasskeyNameStep tenantId={tenantId} />}
+      />
+      {regeneratesRecoveryCodes && passkeys.length > 0 ? (
+        <PasskeyRegenerateStep tenantId={tenantId} />
+      ) : null}
     </div>
-    {passkeys.length > 0 ? (
-      <ul className="divide-y divide-border border-y border-border">
-        {passkeys.map((passkey) => (
-          <PasskeyRow
-            dates={{ fallback: "-", locale, timeZone }}
-            key={passkey.id}
-            passkey={passkey}
-            tenantId={tenantId}
-          />
-        ))}
-      </ul>
-    ) : (
-      <p className="text-sm text-muted-foreground">
-        <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
-          <Message message="admin.settings.mfa.passkeys_empty" />
-        </Suspense>
-      </p>
-    )}
-    <PasskeyAddition.Root
-      add={<PasskeyAddStep tenantId={tenantId} />}
-      name={<PasskeyNameStep tenantId={tenantId} />}
-    />
-    {regeneratesRecoveryCodes && passkeys.length > 0 ? (
-      <PasskeyRegenerateStep tenantId={tenantId} />
-    ) : null}
-  </div>
-);
+  );
+};

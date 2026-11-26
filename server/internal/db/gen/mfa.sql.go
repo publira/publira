@@ -49,6 +49,19 @@ func (q *Queries) CreateUserMfaRecoveryCode(ctx context.Context, arg CreateUserM
 	return err
 }
 
+const DeleteUnconfirmedUserMfaTotp = `-- name: DeleteUnconfirmedUserMfaTotp :exec
+DELETE FROM user_mfa_totp
+WHERE user_id = $1
+  AND enabled_at IS NULL
+`
+
+// A confirmed authenticator is a factor and stays; an unconfirmed one is only
+// an enrollment someone started.
+func (q *Queries) DeleteUnconfirmedUserMfaTotp(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, DeleteUnconfirmedUserMfaTotp, userID)
+	return err
+}
+
 const DeleteUserMfaRecoveryCodesByUserID = `-- name: DeleteUserMfaRecoveryCodesByUserID :exec
 DELETE FROM user_mfa_recovery_codes
 WHERE user_id = $1
