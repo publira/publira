@@ -11,6 +11,7 @@ import (
 	"github.com/publira/publira/server/internal/mfachallenges"
 	"github.com/publira/publira/server/internal/orphanimages"
 	"github.com/publira/publira/server/internal/retention"
+	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
 // Run deletes the content_events rows past their retention window.
@@ -186,6 +187,43 @@ func (s WithdrawnCommentPurge) Run(ctx context.Context, deps Deps) error {
 		"chunk_size", s.ChunkSize,
 		"dry_run", result.DryRun,
 		"tenant_count", result.TenantCount,
+		"row_count", result.RowCount,
+		"chunk_count", result.ChunkCount,
+		"duration", time.Since(started),
+	)
+	return nil
+}
+
+// Run deletes the webhook deliveries settled longer ago than
+// [tenantwebhooks.DeliveryRetention].
+func (s WebhookDeliveryPurge) Run(ctx context.Context, deps Deps) error {
+	if deps.DB == nil {
+		return errNoDB
+	}
+	logger := deps.logger()
+
+	now := time.Now().UTC()
+	started := time.Now()
+	result, err := tenantwebhooks.NewPurger(deps.DB).Run(ctx, tenantwebhooks.PurgeOptions{
+		Now:       now,
+		ChunkSize: s.ChunkSize,
+		DryRun:    s.DryRun,
+	})
+	if err != nil {
+		logger.ErrorContext(ctx, "webhook delivery purge failed",
+			"now", now.Format(time.RFC3339),
+			"dry_run", s.DryRun,
+			"row_count", result.RowCount,
+			"chunk_count", result.ChunkCount,
+			"duration", time.Since(started),
+			"error", err,
+		)
+		return err
+	}
+	logger.InfoContext(ctx, "webhook delivery purge completed",
+		"cutoff", result.Cutoff.Format(time.RFC3339),
+		"chunk_size", s.ChunkSize,
+		"dry_run", result.DryRun,
 		"row_count", result.RowCount,
 		"chunk_count", result.ChunkCount,
 		"duration", time.Since(started),

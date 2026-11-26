@@ -24,6 +24,7 @@ var jobGroup = commandGroup{
 		jobCommand("purge-mfa-challenges", "Delete the spent MFA challenges, unfinished passkey ceremonies, and signed-out sessions that have expired", runPurgeMfaChallenges),
 		jobCommand("purge-withdrawn-comments", "Delete the comments their authors withdrew past the retention window", runPurgeWithdrawnComments),
 		jobCommand("purge-orphan-images", "Delete the image rows and storage objects nothing references", runPurgeOrphanImages),
+		jobCommand("purge-webhook-deliveries", "Delete the webhook deliveries delivered or given up more than 30 days ago", runPurgeWebhookDeliveries),
 		jobCommand("build-recommend-features", "Rebuild the daily user and item recommend feature snapshots", runBuildRecommendFeatures),
 		jobCommand("close-royalty-statements", "Close the royalty statements tenants on automatic closing are owed", runCloseRoyaltyStatements),
 		jobCommand("sync-google-play-voided-purchases", "Take back the purchases Google Play refunded in the last 30 days", runSyncGooglePlayVoidedPurchases),

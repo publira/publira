@@ -2,7 +2,7 @@
 title: API keys and webhooks
 description: Give the tenant's own systems a key that reads the admin API or puts series and episodes in through it, send them signed events for sales, refunds, sign-ups, subscriptions, episodes published or taken off the site, readers' comments, and contact messages, verify the signature, and resend a delivery that was given up.
 published: 2026-11-04
-updated: 2026-11-13
+updated: 2026-11-26
 ---
 
 **Integrations** › **API keys and webhooks** connects the tenant to systems the publisher runs itself, such as a CRM, a data warehouse, or an accounting system. A system reads the tenant's catalog and purchases, or puts series and episodes into the catalog, with an **API key**, and learns of a sale, a refund, a new reader, a subscription, an episode published or taken off the site, a reader's comment, or a reader's contact message as it happens from a **webhook endpoint**, a URL of its own that each event is sent to. **Deliveries** lists what was sent to each endpoint and what was given up.
@@ -189,3 +189,5 @@ How a delivery goes depends on the endpoint's answer:
 A delivery given up is **Dead**. **Deliveries** lists every delivery, newest first, and **Failed** and **Dead** narrow the list to those: each with when it was created, the event, the endpoint, how many attempts were made, its status, and the endpoint's last answer or why there was none.
 
 **Resend** beside a dead delivery sends it again, with the same body and event ID, and with 20 attempts of its own. Its **Attempts** keep counting from where they were. Fix what made the receiver refuse it first, or the resend is given up the same way.
+
+A delivery is deleted 30 days after it was delivered or given up, so a dead one can be resent until then; one still being tried is kept until it is settled. A delivery whose event names a reader, such as a purchase, a sign-up, a subscription, a comment, or a contact message, is deleted with that reader's account. An event about a reader who deletes their account before it is delivered is therefore not sent. Whatever the publisher has to keep of an event, its receiver keeps.

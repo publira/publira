@@ -228,6 +228,9 @@ message SendTestWebhookResponse {
 
 // Cursor pagination, newest delivery first. Field shape and token rules:
 // proto/README.md. Changing the filter starts again from the first page.
+//
+// A delivery is listed until 30 days after it was delivered or given up, and
+// one whose event names a reader is deleted with the reader's account.
 message ListWebhookDeliveriesRequest {
   publira.types.v1.TenantContext tenant = 1;
   // Max items in one page. <= 0 or > 100 falls back to 20.

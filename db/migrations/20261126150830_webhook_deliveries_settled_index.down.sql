@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_webhook_deliveries_settled_updated_at;

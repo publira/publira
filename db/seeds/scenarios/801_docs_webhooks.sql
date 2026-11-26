@@ -186,6 +186,10 @@ WHERE t.public_id = 'DwhkTNNTAAA1';
 
 -- One delivered sale, one refund that is being retried, one sign-up given up
 -- after its 20 attempts, and the test that was sent when the endpoint was saved.
+--
+-- updated_at is the moment the scenario is applied rather than a literal: the
+-- worker's purge deletes a delivery 30 days after it was last updated, and the
+-- screens print only when a delivery was created.
 INSERT INTO webhook_deliveries (
     id,
     tenant_id,
@@ -214,7 +218,7 @@ SELECT
     seed.last_error,
     seed.delivered_at,
     seed.created_at,
-    seed.updated_at
+    NOW()
 FROM (
     VALUES
         (
@@ -226,8 +230,7 @@ FROM (
             204,
             NULL::text,
             '2026-10-20 04:00:02+00'::timestamptz,
-            '2026-10-20 04:00:00+00'::timestamptz,
-            '2026-10-20 04:00:02+00'::timestamptz
+            '2026-10-20 04:00:00+00'::timestamptz
         ),
         (
             '018f1ad0-0006-7000-8000-000000000002',
@@ -238,8 +241,7 @@ FROM (
             NULL,
             'Post "https://crm.example.com/hooks/publira": context deadline exceeded',
             NULL,
-            '2026-10-29 10:12:00+00',
-            '2026-10-30 08:40:00+00'
+            '2026-10-29 10:12:00+00'
         ),
         (
             '018f1ad0-0006-7000-8000-000000000003',
@@ -250,8 +252,7 @@ FROM (
             503,
             'the endpoint answered HTTP 503',
             NULL,
-            '2026-11-02 05:58:00+00',
-            '2026-11-02 06:05:00+00'
+            '2026-11-02 05:58:00+00'
         ),
         (
             '018f1ad0-0006-7000-8000-000000000004',
@@ -262,8 +263,7 @@ FROM (
             200,
             NULL,
             '2026-11-02 06:20:01+00',
-            '2026-11-02 06:20:00+00',
-            '2026-11-02 06:20:01+00'
+            '2026-11-02 06:20:00+00'
         )
 ) AS seed (
     id,
@@ -274,7 +274,6 @@ FROM (
     last_status_code,
     last_error,
     delivered_at,
-    created_at,
-    updated_at
+    created_at
 )
 JOIN tenants t ON t.public_id = 'DwhkTNNTAAA1';

@@ -446,6 +446,9 @@ export const SendTestWebhookResponseSchema: GenMessage<SendTestWebhookResponse> 
  * Cursor pagination, newest delivery first. Field shape and token rules:
  * proto/README.md. Changing the filter starts again from the first page.
  *
+ * A delivery is listed until 30 days after it was delivered or given up, and
+ * one whose event names a reader is deleted with the reader's account.
+ *
  * @generated from message publira.admin.v1.ListWebhookDeliveriesRequest
  */
 export type ListWebhookDeliveriesRequest = Message<"publira.admin.v1.ListWebhookDeliveriesRequest"> & {

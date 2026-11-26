@@ -2412,4 +2412,5 @@ type WebhookDelivery struct {
 	DeliveredAt    sql.NullTime    `json:"delivered_at"`
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
+	ReaderID       uuid.NullUUID   `json:"reader_id"`
 }

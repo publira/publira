@@ -51,6 +51,7 @@ const (
 	ServiceNamePurgeMfaChallenges     = "publira-purge-mfa-challenges"
 	ServiceNamePurgeWithdrawnComments = "publira-purge-withdrawn-comments"
 	ServiceNamePurgeOrphanImages      = "publira-purge-orphan-images"
+	ServiceNamePurgeWebhookDeliveries = "publira-purge-webhook-deliveries"
 
 	ServiceNameCloseRoyaltyStatements = "publira-close-royalty-statements"
 
@@ -128,6 +129,7 @@ const (
 	kindPurgeMfaChallenges     = "maintenance.purge_mfa_challenges"
 	kindPurgeWithdrawnComments = "maintenance.purge_withdrawn_comments"
 	kindPurgeOrphanImages      = "maintenance.purge_orphan_images"
+	kindPurgeWebhookDeliveries = "maintenance.purge_webhook_deliveries"
 
 	kindCloseRoyaltyStatements = "maintenance.close_royalty_statements"
 
@@ -202,6 +204,7 @@ const (
 	mfaChallengePurgeInterval     = time.Hour
 	withdrawnCommentPurgeInterval = time.Hour
 	orphanImagePurgeInterval      = 24 * time.Hour
+	webhookDeliveryPurgeInterval  = 24 * time.Hour
 	dataExportPurgeInterval       = time.Hour
 )
 
@@ -218,6 +221,7 @@ func ServiceNames() []string {
 		ServiceNamePurgeMfaChallenges,
 		ServiceNamePurgeWithdrawnComments,
 		ServiceNamePurgeOrphanImages,
+		ServiceNamePurgeWebhookDeliveries,
 		ServiceNameCloseRoyaltyStatements,
 		ServiceNameSyncGooglePlayVoidedPurchases,
 		ServiceNameBuildSearchIndex,
@@ -280,6 +284,7 @@ type Jobs struct {
 	mfaChallenges     maintenance.MfaChallengePurge
 	withdrawnComments maintenance.WithdrawnCommentPurge
 	orphanImages      maintenance.OrphanImagePurge
+	webhookDeliveries maintenance.WebhookDeliveryPurge
 
 	royaltyStatements maintenance.RoyaltyStatementClose
 
@@ -350,6 +355,9 @@ func New(cfg Config) (*Jobs, error) {
 	if jobs.orphanImages, err = maintenance.LoadOrphanImagePurge(); err != nil {
 		return nil, fmt.Errorf("maintenancejobs: %w", err)
 	}
+	if jobs.webhookDeliveries, err = maintenance.LoadWebhookDeliveryPurge(); err != nil {
+		return nil, fmt.Errorf("maintenancejobs: %w", err)
+	}
 	return jobs, nil
 }
 
@@ -393,6 +401,9 @@ func (j *Jobs) Register(workers *river.Workers) error {
 	}
 	if err := river.AddWorkerSafely(workers, &purgeOrphanImagesWorker{jobs: j}); err != nil {
 		return fmt.Errorf("maintenancejobs: register purge-orphan-images worker: %w", err)
+	}
+	if err := river.AddWorkerSafely(workers, &purgeWebhookDeliveriesWorker{jobs: j}); err != nil {
+		return fmt.Errorf("maintenancejobs: register purge-webhook-deliveries worker: %w", err)
 	}
 	if err := river.AddWorkerSafely(workers, &closeRoyaltyStatementsWorker{jobs: j}); err != nil {
 		return fmt.Errorf("maintenancejobs: register close-royalty-statements worker: %w", err)
@@ -438,6 +449,7 @@ func (j *Jobs) PeriodicJobs() []*river.PeriodicJob {
 		{mfaChallengePurgeInterval, PurgeMfaChallengesArgs{}},
 		{withdrawnCommentPurgeInterval, PurgeWithdrawnCommentsArgs{}},
 		{orphanImagePurgeInterval, PurgeOrphanImagesArgs{}},
+		{webhookDeliveryPurgeInterval, PurgeWebhookDeliveriesArgs{}},
 		{royaltyCloseInterval, CloseRoyaltyStatementsArgs{}},
 		{googlePlayVoidedPurchaseInterval, SyncGooglePlayVoidedPurchasesArgs{}},
 		{searchIndexBuildInterval, BuildSearchIndexArgs{}},
@@ -482,6 +494,7 @@ func (j *Jobs) Settings() []any {
 		"comment_purge_chunk_size", j.withdrawnComments.ChunkSize,
 		"orphan_images_min_age", j.orphanImages.MinAge,
 		"orphan_images_page_size", j.orphanImages.PageSize,
+		"webhook_delivery_purge_chunk_size", j.webhookDeliveries.ChunkSize,
 	}
 }
 

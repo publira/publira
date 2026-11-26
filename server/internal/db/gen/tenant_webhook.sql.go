@@ -15,6 +15,22 @@ import (
 	"github.com/lib/pq"
 )
 
+const CountSettledWebhookDeliveries = `-- name: CountSettledWebhookDeliveries :one
+SELECT count(*)::bigint AS count
+FROM webhook_deliveries
+WHERE status IN ('delivered', 'dead')
+    AND updated_at < $1
+`
+
+// How many deliveries DeleteSettledWebhookDeliveries would take: those
+// delivered or given up before the cutoff, across every tenant.
+func (q *Queries) CountSettledWebhookDeliveries(ctx context.Context, cutoff time.Time) (int64, error) {
+	row := q.db.QueryRowContext(ctx, CountSettledWebhookDeliveries, cutoff)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const CountTenantWebhookEndpoints = `-- name: CountTenantWebhookEndpoints :one
 SELECT count(*)::integer AS count
 FROM tenant_webhook_endpoints
@@ -85,6 +101,38 @@ func (q *Queries) CreateTenantWebhookEndpoint(ctx context.Context, arg CreateTen
 	return i, err
 }
 
+const DeleteSettledWebhookDeliveries = `-- name: DeleteSettledWebhookDeliveries :execrows
+WITH settled AS (
+    SELECT s.id
+    FROM webhook_deliveries s
+    WHERE s.status IN ('delivered', 'dead')
+        AND s.updated_at < $1
+    ORDER BY s.updated_at
+    LIMIT $2 FOR
+    UPDATE SKIP LOCKED
+)
+DELETE FROM webhook_deliveries d USING settled
+WHERE d.id = settled.id
+`
+
+type DeleteSettledWebhookDeliveriesParams struct {
+	Cutoff    time.Time `json:"cutoff"`
+	ChunkSize int32     `json:"chunk_size"`
+}
+
+// Deletes at most chunk_size of the deliveries delivered or given up before
+// the cutoff, across every tenant, oldest first. The ordered subquery reads
+// them from idx_webhook_deliveries_settled_updated_at rather than scanning the
+// table, and SKIP LOCKED leaves a delivery being resent to the resend, whose
+// update makes it pending and takes it out of the purge's reach.
+func (q *Queries) DeleteSettledWebhookDeliveries(ctx context.Context, arg DeleteSettledWebhookDeliveriesParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, DeleteSettledWebhookDeliveries, arg.Cutoff, arg.ChunkSize)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const DeleteTenantWebhookEndpoint = `-- name: DeleteTenantWebhookEndpoint :execrows
 DELETE FROM tenant_webhook_endpoints
 WHERE tenant_id = $1
@@ -145,6 +193,7 @@ SELECT p.id,
     cp.public_id AS coin_pack_public_id,
     cpp.coins,
     cpp.bonus_coins,
+    u.id AS reader_id,
     u.public_id AS reader_public_id
 FROM purchases p
     JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id
@@ -173,6 +222,7 @@ type GetWebhookCoinPackPurchaseRow struct {
 	CoinPackPublicID string         `json:"coin_pack_public_id"`
 	Coins            int32          `json:"coins"`
 	BonusCoins       int32          `json:"bonus_coins"`
+	ReaderID         uuid.NullUUID  `json:"reader_id"`
 	ReaderPublicID   sql.NullString `json:"reader_public_id"`
 }
 
@@ -195,6 +245,7 @@ func (q *Queries) GetWebhookCoinPackPurchase(ctx context.Context, arg GetWebhook
 		&i.CoinPackPublicID,
 		&i.Coins,
 		&i.BonusCoins,
+		&i.ReaderID,
 		&i.ReaderPublicID,
 	)
 	return i, err
@@ -206,6 +257,7 @@ SELECT c.public_id AS comment_public_id,
     s.public_id AS series_public_id,
     c.body,
     c.published_at::timestamptz AS published_at,
+    u.id AS author_id,
     u.public_id AS author_public_id,
     u.name AS author_name
 FROM episode_comments c
@@ -232,6 +284,7 @@ type GetWebhookCommentRow struct {
 	SeriesPublicID  string    `json:"series_public_id"`
 	Body            string    `json:"body"`
 	PublishedAt     time.Time `json:"published_at"`
+	AuthorID        uuid.UUID `json:"author_id"`
 	AuthorPublicID  string    `json:"author_public_id"`
 	AuthorName      string    `json:"author_name"`
 }
@@ -249,6 +302,7 @@ func (q *Queries) GetWebhookComment(ctx context.Context, arg GetWebhookCommentPa
 		&i.SeriesPublicID,
 		&i.Body,
 		&i.PublishedAt,
+		&i.AuthorID,
 		&i.AuthorPublicID,
 		&i.AuthorName,
 	)
@@ -260,6 +314,7 @@ SELECT m.public_id AS message_public_id,
     m.subject,
     m.body,
     m.created_at,
+    u.id AS reader_id,
     u.public_id AS reader_public_id,
     u.name AS reader_name
 FROM contact_messages m
@@ -279,6 +334,7 @@ type GetWebhookContactMessageRow struct {
 	Subject         sql.NullString `json:"subject"`
 	Body            string         `json:"body"`
 	CreatedAt       time.Time      `json:"created_at"`
+	ReaderID        uuid.NullUUID  `json:"reader_id"`
 	ReaderPublicID  sql.NullString `json:"reader_public_id"`
 	ReaderName      sql.NullString `json:"reader_name"`
 }
@@ -296,6 +352,7 @@ func (q *Queries) GetWebhookContactMessage(ctx context.Context, arg GetWebhookCo
 		&i.Subject,
 		&i.Body,
 		&i.CreatedAt,
+		&i.ReaderID,
 		&i.ReaderPublicID,
 		&i.ReaderName,
 	)
@@ -307,6 +364,7 @@ SELECT m.public_id AS message_public_id,
     m.subject,
     me.body,
     me.created_at,
+    u.id AS reader_id,
     u.public_id AS reader_public_id,
     u.name AS reader_name
 FROM contact_message_entries me
@@ -329,6 +387,7 @@ type GetWebhookContactMessageReplyRow struct {
 	Subject         sql.NullString `json:"subject"`
 	Body            string         `json:"body"`
 	CreatedAt       time.Time      `json:"created_at"`
+	ReaderID        uuid.NullUUID  `json:"reader_id"`
 	ReaderPublicID  sql.NullString `json:"reader_public_id"`
 	ReaderName      sql.NullString `json:"reader_name"`
 }
@@ -346,6 +405,7 @@ func (q *Queries) GetWebhookContactMessageReply(ctx context.Context, arg GetWebh
 		&i.Subject,
 		&i.Body,
 		&i.CreatedAt,
+		&i.ReaderID,
 		&i.ReaderPublicID,
 		&i.ReaderName,
 	)
@@ -414,7 +474,7 @@ func (q *Queries) GetWebhookDelivery(ctx context.Context, arg GetWebhookDelivery
 }
 
 const GetWebhookDeliveryForUpdate = `-- name: GetWebhookDeliveryForUpdate :one
-SELECT id, tenant_id, endpoint_id, event_type, event_id, payload, status, attempts, last_status_code, last_error, delivered_at, created_at, updated_at
+SELECT id, tenant_id, endpoint_id, event_type, event_id, payload, status, attempts, last_status_code, last_error, delivered_at, created_at, updated_at, reader_id
 FROM webhook_deliveries
 WHERE tenant_id = $1
     AND id = $2 FOR
@@ -443,6 +503,7 @@ func (q *Queries) GetWebhookDeliveryForUpdate(ctx context.Context, arg GetWebhoo
 		&i.DeliveredAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReaderID,
 	)
 	return i, err
 }
@@ -565,6 +626,7 @@ SELECT p.id,
     p.is_test,
     (p.coin_pack_id IS NOT NULL)::boolean AS coin_pack,
     (p.series_bundle_id IS NOT NULL)::boolean AS series_bundle,
+    u.id AS reader_id,
     u.public_id AS reader_public_id,
     u.email AS reader_email,
     e.public_id AS episode_public_id,
@@ -609,6 +671,7 @@ type GetWebhookPurchaseRow struct {
 	IsTest          bool           `json:"is_test"`
 	CoinPack        bool           `json:"coin_pack"`
 	SeriesBundle    bool           `json:"series_bundle"`
+	ReaderID        uuid.NullUUID  `json:"reader_id"`
 	ReaderPublicID  sql.NullString `json:"reader_public_id"`
 	ReaderEmail     sql.NullString `json:"reader_email"`
 	EpisodePublicID sql.NullString `json:"episode_public_id"`
@@ -636,6 +699,7 @@ func (q *Queries) GetWebhookPurchase(ctx context.Context, arg GetWebhookPurchase
 		&i.IsTest,
 		&i.CoinPack,
 		&i.SeriesBundle,
+		&i.ReaderID,
 		&i.ReaderPublicID,
 		&i.ReaderEmail,
 		&i.EpisodePublicID,
@@ -692,6 +756,7 @@ SELECT s.id,
     s.created_at,
     sp.public_id AS plan_public_id,
     sp.name AS plan_name,
+    u.id AS reader_id,
     u.public_id AS reader_public_id,
     u.email AS reader_email
 FROM subscriptions s
@@ -718,6 +783,7 @@ type GetWebhookSubscriptionRow struct {
 	CreatedAt         time.Time      `json:"created_at"`
 	PlanPublicID      string         `json:"plan_public_id"`
 	PlanName          string         `json:"plan_name"`
+	ReaderID          uuid.NullUUID  `json:"reader_id"`
 	ReaderPublicID    sql.NullString `json:"reader_public_id"`
 	ReaderEmail       sql.NullString `json:"reader_email"`
 }
@@ -735,6 +801,7 @@ func (q *Queries) GetWebhookSubscription(ctx context.Context, arg GetWebhookSubs
 		&i.CreatedAt,
 		&i.PlanPublicID,
 		&i.PlanName,
+		&i.ReaderID,
 		&i.ReaderPublicID,
 		&i.ReaderEmail,
 	)
@@ -751,6 +818,7 @@ SELECT p.id,
     p.is_test,
     e.public_id AS episode_public_id,
     s.public_id AS series_public_id,
+    u.id AS reader_id,
     u.public_id AS reader_public_id,
     ARRAY(
         SELECT credit.public_id
@@ -802,6 +870,7 @@ type GetWebhookTipRow struct {
 	IsTest           bool           `json:"is_test"`
 	EpisodePublicID  string         `json:"episode_public_id"`
 	SeriesPublicID   string         `json:"series_public_id"`
+	ReaderID         uuid.NullUUID  `json:"reader_id"`
 	ReaderPublicID   sql.NullString `json:"reader_public_id"`
 	CreatorPublicIds []string       `json:"creator_public_ids"`
 }
@@ -827,6 +896,7 @@ func (q *Queries) GetWebhookTip(ctx context.Context, arg GetWebhookTipParams) (G
 		&i.IsTest,
 		&i.EpisodePublicID,
 		&i.SeriesPublicID,
+		&i.ReaderID,
 		&i.ReaderPublicID,
 		pq.Array(&i.CreatorPublicIds),
 	)
@@ -894,7 +964,8 @@ WITH delivery AS (
             endpoint_id,
             event_type,
             event_id,
-            payload
+            payload,
+            reader_id
         )
     VALUES (
             $2,
@@ -902,7 +973,8 @@ WITH delivery AS (
             $4,
             $5,
             $6,
-            $7
+            $7,
+            $8
         ) ON CONFLICT (endpoint_id, event_id) DO NOTHING
     RETURNING id,
         tenant_id
@@ -938,13 +1010,15 @@ type InsertWebhookDeliveryParams struct {
 	EventType     string          `json:"event_type"`
 	EventID       string          `json:"event_id"`
 	Payload       json.RawMessage `json:"payload"`
+	ReaderID      uuid.NullUUID   `json:"reader_id"`
 }
 
 // Owes one endpoint one event and queues the webhook_delivery outbox event
 // that sends it, in one statement, so neither is written without the other
 // even on a connection outside a transaction. An event already owed to the
 // endpoint — the same change recorded twice — writes nothing and returns no
-// row.
+// row. reader_id is the reader the payload names, so the delivery goes with
+// their account.
 func (q *Queries) InsertWebhookDelivery(ctx context.Context, arg InsertWebhookDeliveryParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, InsertWebhookDelivery,
 		arg.OutboxEventID,
@@ -954,6 +1028,7 @@ func (q *Queries) InsertWebhookDelivery(ctx context.Context, arg InsertWebhookDe
 		arg.EventType,
 		arg.EventID,
 		arg.Payload,
+		arg.ReaderID,
 	)
 	var delivery_id uuid.UUID
 	err := row.Scan(&delivery_id)
@@ -1411,6 +1486,10 @@ func (q *Queries) LockWebhookPublishedEpisodesOfSeries(ctx context.Context, arg 
 const RecordWebhookDeliveryAttempt = `-- name: RecordWebhookDeliveryAttempt :exec
 UPDATE webhook_deliveries
 SET status = $1,
+    payload = CASE
+        WHEN $1::text = 'delivered' THEN '{}'::jsonb
+        ELSE payload
+    END,
     attempts = attempts + 1,
     last_status_code = $2,
     last_error = $3,
@@ -1431,7 +1510,9 @@ type RecordWebhookDeliveryAttemptParams struct {
 	ID             uuid.UUID      `json:"id"`
 }
 
-// Records one attempt at a delivery and what it came to.
+// Records one attempt at a delivery and what it came to. A delivered one is
+// never sent again — only a dead one can be resent — so its payload, which may
+// carry a reader's address or what they wrote, is dropped once it has arrived.
 func (q *Queries) RecordWebhookDeliveryAttempt(ctx context.Context, arg RecordWebhookDeliveryAttemptParams) error {
 	_, err := q.db.ExecContext(ctx, RecordWebhookDeliveryAttempt,
 		arg.Status,

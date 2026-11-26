@@ -89,7 +89,8 @@ ORDER BY created_at,
 -- that sends it, in one statement, so neither is written without the other
 -- even on a connection outside a transaction. An event already owed to the
 -- endpoint — the same change recorded twice — writes nothing and returns no
--- row.
+-- row. reader_id is the reader the payload names, so the delivery goes with
+-- their account.
 WITH delivery AS (
     INSERT INTO webhook_deliveries (
             id,
@@ -97,7 +98,8 @@ WITH delivery AS (
             endpoint_id,
             event_type,
             event_id,
-            payload
+            payload,
+            reader_id
         )
     VALUES (
             sqlc.arg('id'),
@@ -105,7 +107,8 @@ WITH delivery AS (
             sqlc.arg('endpoint_id'),
             sqlc.arg('event_type'),
             sqlc.arg('event_id'),
-            sqlc.arg('payload')
+            sqlc.arg('payload'),
+            sqlc.narg('reader_id')
         ) ON CONFLICT (endpoint_id, event_id) DO NOTHING
     RETURNING id,
         tenant_id
@@ -152,9 +155,15 @@ WHERE d.tenant_id = sqlc.arg('tenant_id')
     AND d.id = sqlc.arg('id');
 
 -- name: RecordWebhookDeliveryAttempt :exec
--- Records one attempt at a delivery and what it came to.
+-- Records one attempt at a delivery and what it came to. A delivered one is
+-- never sent again — only a dead one can be resent — so its payload, which may
+-- carry a reader's address or what they wrote, is dropped once it has arrived.
 UPDATE webhook_deliveries
 SET status = sqlc.arg('status'),
+    payload = CASE
+        WHEN sqlc.arg('status')::text = 'delivered' THEN '{}'::jsonb
+        ELSE payload
+    END,
     attempts = attempts + 1,
     last_status_code = sqlc.narg('last_status_code'),
     last_error = sqlc.narg('last_error'),
@@ -296,6 +305,7 @@ SELECT p.id,
     p.is_test,
     (p.coin_pack_id IS NOT NULL)::boolean AS coin_pack,
     (p.series_bundle_id IS NOT NULL)::boolean AS series_bundle,
+    u.id AS reader_id,
     u.public_id AS reader_public_id,
     u.email AS reader_email,
     e.public_id AS episode_public_id,
@@ -335,6 +345,7 @@ SELECT p.id,
     cp.public_id AS coin_pack_public_id,
     cpp.coins,
     cpp.bonus_coins,
+    u.id AS reader_id,
     u.public_id AS reader_public_id
 FROM purchases p
     JOIN coin_pack_purchases cpp ON cpp.tenant_id = p.tenant_id
@@ -364,6 +375,7 @@ SELECT p.id,
     p.is_test,
     e.public_id AS episode_public_id,
     s.public_id AS series_public_id,
+    u.id AS reader_id,
     u.public_id AS reader_public_id,
     ARRAY(
         SELECT credit.public_id
@@ -419,6 +431,7 @@ SELECT s.id,
     s.created_at,
     sp.public_id AS plan_public_id,
     sp.name AS plan_name,
+    u.id AS reader_id,
     u.public_id AS reader_public_id,
     u.email AS reader_email
 FROM subscriptions s
@@ -520,6 +533,7 @@ SELECT c.public_id AS comment_public_id,
     s.public_id AS series_public_id,
     c.body,
     c.published_at::timestamptz AS published_at,
+    u.id AS author_id,
     u.public_id AS author_public_id,
     u.name AS author_name
 FROM episode_comments c
@@ -544,6 +558,7 @@ SELECT m.public_id AS message_public_id,
     m.subject,
     m.body,
     m.created_at,
+    u.id AS reader_id,
     u.public_id AS reader_public_id,
     u.name AS reader_name
 FROM contact_messages m
@@ -562,6 +577,7 @@ SELECT m.public_id AS message_public_id,
     m.subject,
     me.body,
     me.created_at,
+    u.id AS reader_id,
     u.public_id AS reader_public_id,
     u.name AS reader_name
 FROM contact_message_entries me
@@ -592,3 +608,29 @@ FROM webhook_deliveries d
     AND e.id = d.endpoint_id
 WHERE d.tenant_id = sqlc.arg('tenant_id')
     AND d.id = sqlc.arg('id');
+
+-- name: CountSettledWebhookDeliveries :one
+-- How many deliveries DeleteSettledWebhookDeliveries would take: those
+-- delivered or given up before the cutoff, across every tenant.
+SELECT count(*)::bigint AS count
+FROM webhook_deliveries
+WHERE status IN ('delivered', 'dead')
+    AND updated_at < sqlc.arg('cutoff');
+
+-- name: DeleteSettledWebhookDeliveries :execrows
+-- Deletes at most chunk_size of the deliveries delivered or given up before
+-- the cutoff, across every tenant, oldest first. The ordered subquery reads
+-- them from idx_webhook_deliveries_settled_updated_at rather than scanning the
+-- table, and SKIP LOCKED leaves a delivery being resent to the resend, whose
+-- update makes it pending and takes it out of the purge's reach.
+WITH settled AS (
+    SELECT s.id
+    FROM webhook_deliveries s
+    WHERE s.status IN ('delivered', 'dead')
+        AND s.updated_at < sqlc.arg('cutoff')
+    ORDER BY s.updated_at
+    LIMIT sqlc.arg('chunk_size') FOR
+    UPDATE SKIP LOCKED
+)
+DELETE FROM webhook_deliveries d USING settled
+WHERE d.id = settled.id;

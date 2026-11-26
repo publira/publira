@@ -22,6 +22,7 @@ var purgeKinds = map[string]time.Duration{
 	"maintenance.purge_mfa_challenges":     time.Hour,
 	"maintenance.purge_withdrawn_comments": time.Hour,
 	"maintenance.purge_orphan_images":      24 * time.Hour,
+	"maintenance.purge_webhook_deliveries": 24 * time.Hour,
 }
 
 // A started worker runs every purge without anything else enqueueing one, and
