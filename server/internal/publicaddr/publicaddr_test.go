@@ -64,8 +64,10 @@ func TestParseAllowedReadsAddressesAndRanges(t *testing.T) {
 	}
 }
 
-// A restricted address is refused before anything connects to it, and a host
-// is reached at an allowed address whichever other addresses it resolves to.
+// A restricted address is refused before anything connects to it, a host is
+// reached at an allowed address whichever other addresses it resolves to, and
+// a permitted address that fails answers its own error rather than the
+// refusal of a restricted one beside it.
 func TestDialChecksEveryAddressItConnectsTo(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -104,4 +106,39 @@ func TestDialChecksEveryAddressItConnectsTo(t *testing.T) {
 		t.Fatalf("Dial(localhost) with 127.0.0.1 allowed = %v, want it connected", err)
 	}
 	_ = conn.Close()
+
+	// Both families permitted: ::1 refuses, and the race falls back to
+	// 127.0.0.1, which takes the connection.
+	both := append([]netip.Prefix{netip.MustParsePrefix("::1/128")}, allowed...)
+	conn, err = Dial(t.Context(), dialer, "tcp", net.JoinHostPort("localhost", port), both)
+	if err != nil {
+		t.Fatalf("Dial(localhost) with ::1 and 127.0.0.1 allowed = %v, want it connected", err)
+	}
+	_ = conn.Close()
+
+	_ = ln.Close()
+	_, err = Dial(t.Context(), dialer, "tcp", net.JoinHostPort("localhost", port), allowed)
+	if err == nil || errors.Is(err, ErrRestricted) {
+		t.Fatalf("Dial(localhost) to a closed port with 127.0.0.1 allowed = %v, want the allowed address's own failure", err)
+	}
+}
+
+func TestPartialDeadlineSharesTheTimeLeft(t *testing.T) {
+	t.Parallel()
+
+	now := time.Unix(1_800_000_000, 0)
+	for _, tc := range []struct {
+		left      time.Duration
+		remaining int
+		want      time.Duration
+	}{
+		{left: 10 * time.Second, remaining: 2, want: 5 * time.Second},
+		{left: 10 * time.Second, remaining: 10, want: 2 * time.Second},
+		{left: time.Second, remaining: 3, want: time.Second},
+		{left: 0, remaining: 2, want: 0},
+	} {
+		if got := partialDeadline(now, now.Add(tc.left), tc.remaining).Sub(now); got != tc.want {
+			t.Errorf("partialDeadline(%v left, %d remaining) = %v, want %v", tc.left, tc.remaining, got, tc.want)
+		}
+	}
 }

@@ -13,7 +13,7 @@ import (
 	"net/netip"
 	"slices"
 	"strings"
-	"syscall"
+	"time"
 	"unicode"
 )
 
@@ -58,31 +58,178 @@ func ParseAllowed(raw string) ([]netip.Prefix, error) {
 	return allowed, nil
 }
 
-// Dial connects to address, a host and a port, as dialer would, at an address
-// the host resolves to that is public or in allowed. The check runs as each
-// address is dialled, after resolution, so a name that resolves elsewhere
-// between a check and the dial cannot slip past it, and dialer keeps its own
-// handling of a host with several addresses: the timeout shared between them
-// and the fallback from IPv6 to IPv4. A host none of whose addresses may be
-// dialled is [ErrRestricted].
+// Dial connects to address, a host and a port, at the addresses the host
+// resolves to that are public or in allowed, and at no other: a host with
+// none is [ErrRestricted]. Each address is dialled as the IP it was checked
+// as, so a name that resolves elsewhere between a check and the dial cannot
+// slip past it. The rest follows net.Dialer: its timeout is shared between the
+// addresses, the other address family is raced after its fallback delay, and
+// the error of a host whose permitted addresses all fail is theirs.
 func Dial(ctx context.Context, dialer *net.Dialer, network, address string, allowed []netip.Prefix) (net.Conn, error) {
-	guarded := *dialer
-	control := dialer.ControlContext
-	guarded.Control = nil
-	guarded.ControlContext = func(ctx context.Context, network, address string, conn syscall.RawConn) error {
-		addrPort, err := netip.ParseAddrPort(address)
-		if err != nil || (!Public(addrPort.Addr()) && !inAllowed(addrPort.Addr(), allowed)) {
-			return ErrRestricted
-		}
-		if control != nil {
-			return control(ctx, network, address, conn)
-		}
-		if dialer.Control != nil {
-			return dialer.Control(network, address, conn)
-		}
-		return nil
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, fmt.Errorf("split the address: %w", err)
 	}
-	return guarded.DialContext(ctx, network, address)
+	resolver := net.DefaultResolver
+	if dialer.Resolver != nil {
+		resolver = dialer.Resolver
+	}
+	resolved, err := resolver.LookupNetIP(ctx, lookupNetwork(network), host)
+	if err != nil {
+		return nil, fmt.Errorf("resolve the host: %w", err)
+	}
+	var primaries, fallbacks []netip.Addr
+	for _, addr := range resolved {
+		addr = addr.Unmap()
+		if !Public(addr) && !inAllowed(addr, allowed) {
+			continue
+		}
+		if len(primaries) == 0 || addr.Is4() == primaries[0].Is4() {
+			primaries = append(primaries, addr)
+		} else {
+			fallbacks = append(fallbacks, addr)
+		}
+	}
+	if len(primaries) == 0 {
+		return nil, ErrRestricted
+	}
+
+	if dialer.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, dialer.Timeout)
+		defer cancel()
+	}
+	single := *dialer
+	single.Timeout = 0
+	if len(fallbacks) == 0 || dialer.FallbackDelay < 0 {
+		return dialSerial(ctx, &single, network, port, append(primaries, fallbacks...))
+	}
+	delay := dialer.FallbackDelay
+	if delay == 0 {
+		delay = defaultFallbackDelay
+	}
+	return dialParallel(ctx, &single, network, port, primaries, fallbacks, delay)
+}
+
+// defaultFallbackDelay is net.Dialer's wait before it races the other address
+// family, RFC 8305's recommended value.
+const defaultFallbackDelay = 300 * time.Millisecond
+
+// minimumAttempt is the least time net.Dialer gives one address while others
+// wait, unless less than that is left in all.
+const minimumAttempt = 2 * time.Second
+
+func lookupNetwork(network string) string {
+	switch network {
+	case "tcp4", "udp4":
+		return "ip4"
+	case "tcp6", "udp6":
+		return "ip6"
+	default:
+		return "ip"
+	}
+}
+
+// dialSerial tries addrs in order, giving each its share of the time left, and
+// answers the first address's error when all of them fail.
+func dialSerial(ctx context.Context, dialer *net.Dialer, network, port string, addrs []netip.Addr) (net.Conn, error) {
+	var firstErr error
+	for i, addr := range addrs {
+		conn, err := dialOne(ctx, dialer, network, net.JoinHostPort(addr.String(), port), len(addrs)-i)
+		if err == nil {
+			return conn, nil
+		}
+		if firstErr == nil {
+			firstErr = err
+		}
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	return nil, firstErr
+}
+
+func dialOne(ctx context.Context, dialer *net.Dialer, network, address string, remaining int) (net.Conn, error) {
+	if deadline, ok := ctx.Deadline(); ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithDeadline(ctx, partialDeadline(time.Now(), deadline, remaining))
+		defer cancel()
+	}
+	return dialer.DialContext(ctx, network, address)
+}
+
+// partialDeadline is the deadline of one of remaining attempts sharing the
+// time until deadline, as net.Dialer divides it.
+func partialDeadline(now, deadline time.Time, remaining int) time.Time {
+	left := deadline.Sub(now)
+	if left <= 0 {
+		return deadline
+	}
+	share := left / time.Duration(remaining)
+	if share < minimumAttempt {
+		share = min(left, minimumAttempt)
+	}
+	return now.Add(share)
+}
+
+// dialParallel races fallbacks against primaries once delay has passed, or as
+// soon as the primaries have all failed, and answers the first connection.
+// When both fail it answers the primaries' error, as net.Dialer does.
+func dialParallel(ctx context.Context, dialer *net.Dialer, network, port string, primaries, fallbacks []netip.Addr, delay time.Duration) (net.Conn, error) {
+	type result struct {
+		conn    net.Conn
+		err     error
+		primary bool
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	results := make(chan result)
+	race := func(primary bool, addrs []netip.Addr) {
+		conn, err := dialSerial(ctx, dialer, network, port, addrs)
+		select {
+		case results <- result{conn: conn, err: err, primary: primary}:
+		case <-ctx.Done():
+			if conn != nil {
+				_ = conn.Close()
+			}
+		}
+	}
+
+	go race(true, primaries)
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	var primaryErr, fallbackErr error
+	pending, fallbackStarted := 1, false
+	startFallback := func() {
+		if !fallbackStarted {
+			fallbackStarted = true
+			pending++
+			go race(false, fallbacks)
+		}
+	}
+	for {
+		select {
+		case <-timer.C:
+			startFallback()
+		case r := <-results:
+			pending--
+			if r.err == nil {
+				return r.conn, nil
+			}
+			if r.primary {
+				primaryErr = r.err
+				startFallback()
+			} else {
+				fallbackErr = r.err
+			}
+			if pending == 0 {
+				if primaryErr != nil {
+					return nil, primaryErr
+				}
+				return nil, fallbackErr
+			}
+		}
+	}
 }
 
 func inAllowed(addr netip.Addr, allowed []netip.Prefix) bool {
