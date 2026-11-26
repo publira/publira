@@ -29,7 +29,7 @@ const challenge = () => ({
 });
 
 const sealed = <TPayload>(payload: TPayload): Promise<string> =>
-  encryptPayload(payload, PUBLIRA_AUTH_SECRET);
+  encryptPayload(payload, PUBLIRA_AUTH_SECRET, "mfa-challenge");
 
 describe("readMfaChallenge", () => {
   beforeEach(() => {
@@ -103,7 +103,8 @@ describe("readMfaChallenge", () => {
     mockGetCookie.mockReturnValue({
       value: await encryptPayload(
         challenge(),
-        "another-secret-long-enough-to-key-a256gcm-0"
+        "another-secret-long-enough-to-key-a256gcm-0",
+        "mfa-challenge"
       ),
     });
 

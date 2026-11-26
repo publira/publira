@@ -154,7 +154,12 @@ export interface SignInRequest {
 export const writeSignInRequest = async (
   request: SignInRequest
 ): Promise<void> => {
-  const sealed = await encryptPayload(request, resolveAuthSecret());
+  const sealed = await encryptPayload(
+    request,
+    resolveAuthSecret(),
+    "sign-in-request"
+  );
+
   const cookieStore = await cookies();
   cookieStore.set({
     httpOnly: true,
@@ -177,7 +182,7 @@ export const readSignInRequest = async (): Promise<SignInRequest | null> => {
   }
 
   const parsed = signInRequestSchema.safeParse(
-    await decryptPayload(raw, resolveAuthSecret())
+    await decryptPayload(raw, resolveAuthSecret(), "sign-in-request")
   );
 
   return parsed.success ? parsed.data : null;
@@ -242,7 +247,12 @@ const PENDING_SIGN_UP_MAX_AGE_SECONDS = 240;
 export const writePendingSignUp = async (
   pending: PendingSignUp
 ): Promise<void> => {
-  const sealed = await encryptPayload(pending, resolveAuthSecret());
+  const sealed = await encryptPayload(
+    pending,
+    resolveAuthSecret(),
+    "pending-sign-up"
+  );
+
   const cookieStore = await cookies();
   cookieStore.set({
     httpOnly: true,
@@ -264,7 +274,7 @@ export const readPendingSignUp = async (): Promise<PendingSignUp | null> => {
   }
 
   const parsed = pendingSignUpSchema.safeParse(
-    await decryptPayload(raw, resolveAuthSecret())
+    await decryptPayload(raw, resolveAuthSecret(), "pending-sign-up")
   );
 
   return parsed.success ? parsed.data : null;

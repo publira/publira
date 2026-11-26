@@ -56,21 +56,51 @@ describe("web-session", () => {
       kind: "verify",
     };
 
-    const sealed = await encryptPayload(payload, SECRET);
+    const sealed = await encryptPayload(payload, SECRET, "mfa-challenge");
 
     expect(sealed).not.toContain("challenge-abc");
-    await expect(decryptPayload(sealed, SECRET)).resolves.toEqual(payload);
-    // The same bytes are not a session, and reading them as one reports so.
-    await expect(decryptSessionPayload(sealed, SECRET)).resolves.toBeNull();
+    await expect(
+      decryptPayload(sealed, SECRET, "mfa-challenge")
+    ).resolves.toEqual(payload);
   });
 
   it("reports a payload sealed with another key as no payload", async () => {
     const sealed = await encryptPayload(
       { kind: "verify" },
-      "another-secret-long-enough-to-key-a256gcm-0"
+      "another-secret-long-enough-to-key-a256gcm-0",
+      "mfa-challenge"
     );
 
-    await expect(decryptPayload(sealed, SECRET)).resolves.toBeNull();
+    await expect(
+      decryptPayload(sealed, SECRET, "mfa-challenge")
+    ).resolves.toBeNull();
+  });
+
+  it("keys the cookie with every byte of the secret", async () => {
+    // Both are longer than the 32-byte key and agree on their first 48 bytes,
+    // so a key taken from a prefix of the secret would open either's cookies.
+    const secret = `${"a".repeat(48)}-before-rotation`;
+    const rotated = `${"a".repeat(48)}-after-rotation`;
+    const payload = { accessToken: "token-abc", expiresAt: FUTURE };
+
+    const sealed = await encryptSessionPayload(payload, secret);
+
+    await expect(decryptSessionPayload(sealed, secret)).resolves.toEqual(
+      payload
+    );
+    await expect(decryptSessionPayload(sealed, rotated)).resolves.toBeNull();
+  });
+
+  it("does not open a value sealed for one purpose as another", async () => {
+    const payload = { accessToken: "token-abc", expiresAt: FUTURE };
+
+    const sealed = await encryptPayload(payload, SECRET, "mfa-challenge");
+
+    await expect(
+      decryptPayload(sealed, SECRET, "pending-sign-up")
+    ).resolves.toBeNull();
+    // Shaped like a session, and still not one.
+    await expect(decryptSessionPayload(sealed, SECRET)).resolves.toBeNull();
   });
 
   it("rejects a secret too short to key A256GCM", async () => {

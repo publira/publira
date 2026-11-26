@@ -106,7 +106,12 @@ export const readStoredMfaChallenge =
       return null;
     }
 
-    const payload = await decryptPayload(raw, resolveAuthSecret());
+    const payload = await decryptPayload(
+      raw,
+      resolveAuthSecret(),
+      "mfa-challenge"
+    );
+
     const parsed = storedMfaChallengeSchema.safeParse(payload);
 
     if (!parsed.success || isSessionExpired(parsed.data.expiresAt)) {
@@ -142,7 +147,12 @@ export const writeMfaChallenge = async (
     throw new Error("mfa challenge expiry is not an instant");
   }
 
-  const sealed = await encryptPayload(challenge, resolveAuthSecret());
+  const sealed = await encryptPayload(
+    challenge,
+    resolveAuthSecret(),
+    "mfa-challenge"
+  );
+
   const cookieStore = await cookies();
   cookieStore.set({
     ...sessionCookieOptions(toCookieExpires(expiresAt)),
