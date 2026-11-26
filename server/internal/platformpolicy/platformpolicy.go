@@ -51,7 +51,8 @@ type ReadLimits struct {
 	// for, so it has a budget a client that has spent the public API's still
 	// has, and the other way round.
 	Search int
-	// Images is the image routes of a tenant's site and image hosts.
+	// Images is the image routes of a tenant's site and image hosts, and
+	// the same count again, kept apart, for those of its console host.
 	Images int
 }
 

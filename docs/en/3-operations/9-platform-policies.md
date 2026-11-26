@@ -132,7 +132,7 @@ An operator can clear every count of one address at once, with `publiractl opera
 
 ### Anonymous reads
 
-Three more limits bound how fast one client address may read a tenant's site without being signed in: calls of the public API that the mobile app makes, calls of its catalog search, and the images of a tenant's domain and image host. Each is a count over a window of 10 seconds, with no daily count, and is kept behind the limits the edge in front of the install keeps on the same requests, for an edge that limits nothing. A call a web app makes as itself, on behalf of all of its readers at once, is not counted.
+Three more limits bound how fast one client address may read a tenant's site without being signed in: calls of the public API that the mobile app makes, calls of its catalog search, and the images of a tenant's domain and image host. The images limit also bounds the images of a tenant's console host, counted apart from those of its site, since an editing screen there loads every page of an episode at once, as a reader opening one does. Each is a count over a window of 10 seconds, with no daily count, and is kept behind the limits the edge in front of the install keeps on the same requests, for an edge that limits nothing. A call a web app makes as itself, on behalf of all of its readers at once, is not counted.
 
 They follow the sign-in attempt limits on the **Security** page, under **Anonymous reads**:
 

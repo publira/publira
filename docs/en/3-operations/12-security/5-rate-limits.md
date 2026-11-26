@@ -2,7 +2,7 @@
 title: Rate limits
 description: Which requests to limit per client in front of an install, which never to limit, and how to write the limits as AWS WAF, Cloud Armor, or Cloudflare rules, or in the proxy you run.
 published: 2026-10-30
-updated: 2026-11-24
+updated: 2026-11-26
 ---
 
 `publira server` limits what it can tell apart: password attempts, the mail it sends, and each reader action, such as posting a comment or using a wait-for-free ticket, as [Rate limits](../9-platform-policies.md#rate-limits) describes. It limits anonymous reads too, but only loosely, as [What publira server limits itself](#what-publira-server-limits-itself) describes: under that limit, one client can still fetch every page of every free episode, or run the search until the database falls behind, and the first sign of it is `/readyz` failing. Those requests have to be limited per client in front of it as well: by a managed WAF or CDN, or by the proxy at the edge.
@@ -17,7 +17,7 @@ Limit each reader's address, the one [The client address](../../2-deployments/4-
 
 Answer a request over the limit with `429 Too Many Requests`. Each limit counts per address, so readers behind one address, such as a carrier's NAT or an office network, share it: set them for the busiest address you expect a legitimate reader to come from, not for one reader.
 
-The console hosts are left to the limits `publira server` keeps: their traffic is your staff's, and the episode uploads and editing screens there are the heaviest an install serves.
+The console hosts are left to the limits `publira server` keeps, their images among them: their traffic is your staff's, and the episode uploads and editing screens there are the heaviest an install serves.
 
 ## What never to limit
 
@@ -59,9 +59,11 @@ Behind the edge, `publira server` keeps a limit of its own on the same reads, so
 | The search procedures, `/rpc/publira.v1.CatalogService/SearchPublished…` | 80 | 40 | `--anonymous-read-search-per-10-seconds` |
 | The images of a tenant's domain and image host, `/images` | 2,400 | 1,200 | `--anonymous-read-images-per-10-seconds` |
 
+The images of a tenant's console host are counted against the images limit too, apart from those of its domain and image host, so a member of staff who has spent one still has the other. An editing screen loads every page of an episode at once, as a reader opening one does.
+
 A call past it is refused with `resource_exhausted`, and an image with `429`, each with a `Retry-After` header naming the wait. Behind an edge with the limits above, a reader is refused by the edge first. The server's limit applies whatever the edge allows, so an edge allowance raised past it, for readers who share one address such as a carrier's NAT, admits requests the server then refuses. Raise the server's limit along with it: it is part of the [platform policy](../9-platform-policies.md#anonymous-reads), and the Platform Console's **Security** page or the flags above change it. A saved change reaches every instance within ten seconds, without a restart. A value below the least one, which is what the sample configurations admit in 10 seconds, is refused naming its field or its flag, so that the edge stays the first to refuse a reader. Readers behind one address share the server's limit as they share the edge's.
 
-The server cannot count what reaches it from inside the install. A request whose every hop is one of the [trusted proxies](../../2-deployments/4-edge/index.md#the-proxies-publira-trusts) is a web app calling as itself for all of its readers at once, so it is not counted. That covers the site's search page, which `web-storefront` runs on the server, so `web-storefront` limits that page itself, as [What web-storefront limits itself](#what-web-storefront-limits-itself) describes. A call `web-storefront` makes for one reader outside its cache, such as for a signed-in reader or to record a page view, carries that reader's address and is counted as theirs. The console hosts, the webhooks, and the health checks are not counted either.
+The server cannot count what reaches it from inside the install. A request whose every hop is one of the [trusted proxies](../../2-deployments/4-edge/index.md#the-proxies-publira-trusts) is a web app calling as itself for all of its readers at once, so it is not counted. That covers the site's search page, which `web-storefront` runs on the server, so `web-storefront` limits that page itself, as [What web-storefront limits itself](#what-web-storefront-limits-itself) describes. A call `web-storefront` makes for one reader outside its cache, such as for a signed-in reader or to record a page view, carries that reader's address and is counted as theirs. The webhooks and the health checks are not counted either, and of a console host only the images are.
 
 ## What web-storefront limits itself
 

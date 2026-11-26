@@ -259,6 +259,38 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 	}
 	defer cleanup()
 
+	if adminHost {
+		// The console host serves a body to staff alone, through the
+		// admin-media token the admin API puts on every page it lists, and that
+		// token is honoured here alone, so it cannot unlock a body on the
+		// storefront, where the response would be a shared cache entry. The
+		// console renders bodies with an <img>, which cannot decrypt, so its
+		// responses are not encrypted; the public rule stays with the
+		// storefront, whose responses are.
+		claims, ok := h.adminEpisodeImageClaims(r, tenant.ID)
+		if !ok {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		access, err := h.grantedAdminEpisodeImage(ctx, tenantQueries, tenant.ID, mediaID, claims)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				http.Error(w, "image not found", http.StatusNotFound)
+				return
+			}
+			h.logger.ErrorContext(ctx, "failed to evaluate admin image access", "error", err, "media_id", mediaID.String())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if access == nil {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		cleanup()
+		h.serveConverted(w, r, adminHost, access.ObjectKey, access.ContentType, "private, max-age=60", nil)
+		return
+	}
+
 	objectKey := ""
 	contentTypeFromDB := ""
 	cacheControl := publicImageCacheControl
@@ -280,29 +312,6 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			contentTypeFromDB = access.ContentType
 			cacheControl = "private, max-age=60"
 			cipher = &imageCipher{rawToken: credential.rawToken, subject: credential.claims.Subject}
-		}
-	}
-
-	// A staff preview is honoured on the console host alone, so an admin-media
-	// token cannot unlock a body on the storefront, where the response would
-	// be a shared cache entry.
-	if objectKey == "" && adminHost {
-		if claims, ok := h.adminEpisodeImageClaims(r, tenant.ID); ok {
-			access, err := h.grantedAdminEpisodeImage(ctx, tenantQueries, tenant.ID, mediaID, claims)
-			if err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					http.Error(w, "image not found", http.StatusNotFound)
-					return
-				}
-				h.logger.ErrorContext(ctx, "failed to evaluate admin image access", "error", err, "media_id", mediaID.String())
-				http.Error(w, "internal server error", http.StatusInternalServerError)
-				return
-			}
-			if access != nil {
-				objectKey = access.ObjectKey
-				contentTypeFromDB = access.ContentType
-				cacheControl = "private, max-age=60"
-			}
 		}
 	}
 
@@ -350,18 +359,14 @@ func (h *Handler) handleGetEpisodeImage(w http.ResponseWriter, r *http.Request) 
 			cacheControl = freeWindowCacheControl(publicAccess.FreeUntil.Time, time.Now())
 		}
 		// A free body leaves as ciphertext too, so what a page costs to
-		// extract does not depend on whether its episode is sold. The console
-		// host is left out: it renders bodies with an <img>, which cannot
-		// decrypt.
-		if !adminHost {
-			freeCipher, cipherErr := h.freeEpisodeImageCipher(r, tenant.ID, publicAccess.EpisodeID)
-			if cipherErr != nil {
-				h.logger.ErrorContext(ctx, "failed to derive free episode image cipher", "error", cipherErr, "media_id", mediaID.String())
-				http.Error(w, "internal server error", http.StatusInternalServerError)
-				return
-			}
-			cipher = freeCipher
+		// extract does not depend on whether its episode is sold.
+		freeCipher, cipherErr := h.freeEpisodeImageCipher(r, tenant.ID, publicAccess.EpisodeID)
+		if cipherErr != nil {
+			h.logger.ErrorContext(ctx, "failed to derive free episode image cipher", "error", cipherErr, "media_id", mediaID.String())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
 		}
+		cipher = freeCipher
 	}
 
 	// The row is read; the conversion below runs without the connection.
@@ -495,7 +500,7 @@ func (h *Handler) grantedEpisodeImage(
 // adminEpisodeImageClaims is the console host's counterpart of
 // episodeImageCredential. Only AudienceAdminMedia on the query is accepted: an
 // admin access token in the URL would be a session, and a reader media token
-// is evaluated on the public path instead.
+// unlocks a body on the storefront alone.
 func (h *Handler) adminEpisodeImageClaims(r *http.Request, tenantID uuid.UUID) (*auth.AccessTokenClaims, bool) {
 	if h.tokens == nil {
 		return nil, false
@@ -520,7 +525,7 @@ func (h *Handler) adminEpisodeImageClaims(r *http.Request, tenantID uuid.UUID) (
 // grantedAdminEpisodeImage evaluates a verified admin-media token against one
 // image. Tenant staff see the body regardless of publish state or price; a
 // nil row with a nil error means the credential is not staff (or is scoped
-// to a different episode) and the caller falls back to the public rule.
+// to a different episode), and the body is refused.
 func (h *Handler) grantedAdminEpisodeImage(
 	ctx context.Context,
 	tenantQueries TenantScopedQuerier,
@@ -1226,20 +1231,24 @@ func (h *Handler) tenantFromHost(w http.ResponseWriter, r *http.Request) (dbmode
 		http.Error(w, "tenant is suspended", http.StatusForbidden)
 		return dbmodels.Tenant{}, false, false
 	}
-	if kind != consoleHost && !h.allowRead(w, r) {
+	allowance := readguard.Images
+	if kind == consoleHost {
+		allowance = readguard.ConsoleImages
+	}
+	if !h.allowRead(w, r, allowance) {
 		return dbmodels.Tenant{}, false, false
 	}
 	return tenant, kind == consoleHost, true
 }
 
-// allowRead charges an image of a tenant's site or image host to the client's
-// read allowance, and answers too many requests once the client has spent it.
-// The charge follows the host lookup, since a console's hosts are not limited
-// by it, and precedes everything the route goes on to read: a refusal costs
-// the lookup and no object, conversion, or grant.
-func (h *Handler) allowRead(w http.ResponseWriter, r *http.Request) bool {
+// allowRead charges an image to the client's read allowance of the host it
+// arrived on, and answers too many requests once the client has spent it. The
+// charge follows the host lookup, since a console host has an allowance of its
+// own, and precedes everything the route goes on to read: a refusal costs the
+// lookup and no object, conversion, or grant.
+func (h *Handler) allowRead(w http.ResponseWriter, r *http.Request, allowance readguard.Allowance) bool {
 	ctx := r.Context()
-	decision, err := h.reads.Allow(ctx, readguard.Images)
+	decision, err := h.reads.Allow(ctx, allowance)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "failed to apply the read rate limit", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)

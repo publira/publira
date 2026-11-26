@@ -917,30 +917,61 @@ func TestEpisodeImageFreeEpisodeEncryption(t *testing.T) {
 		}
 	})
 
-	// The console renders bodies with an <img>, which cannot decrypt, so
-	// responses on that host stay ordinary images.
-	t.Run("the console host serves the same body unencrypted", func(t *testing.T) {
-		srv := newTestServerWithTokens(t,
-			stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}, console: true},
-			stubFactory{q: anonymousQueries},
-			&countingStore{objects: map[string]storedObject{
-				"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
-			}},
-			tokens,
-		)
-		req := httptest.NewRequest(http.MethodGet, "/images/episodes/"+mediaID.String(), nil)
-		req.Host = "admin.example.test"
-		req.Header.Set("Accept", "image/webp")
-		rec := httptest.NewRecorder()
-		srv.ServeHTTP(rec, req)
-		if rec.Code != http.StatusOK {
-			t.Fatalf("status = %d, body = %q", rec.Code, rec.Body.String())
+	// The console renders bodies with an <img>, which cannot decrypt, so its
+	// responses are not encrypted, and it serves a body to staff alone: the
+	// public rule, and the reader credentials it stands beside, are the
+	// storefront's.
+	t.Run("the console host serves a free body to no one but staff", func(t *testing.T) {
+		readerQueries := paidEpisodeQueries(mediaID, episodeID, userID, 4)
+		readerQueries.public.EpisodeID = episodeID
+		readerQueries.public.HasPublicAccess = true
+		bearer, _, err := tokens.Issue("reader-public-id", auth.AudiencePublic, tenantID.String(), "", 4, time.Now())
+		if err != nil {
+			t.Fatalf("Issue() error = %v", err)
 		}
-		if got := rec.Header().Get(imageEncryptionHeader); got != "" {
-			t.Errorf("%s = %q, want no header", imageEncryptionHeader, got)
+		readerMedia, _, err := tokens.IssueMediaToken("reader-public-id", tenantID.String(), episodeID.String(), 4, time.Now())
+		if err != nil {
+			t.Fatalf("IssueMediaToken() error = %v", err)
 		}
-		if !isWebP(rec.Body.Bytes()) {
-			t.Error("the response body is not the rendition")
+
+		for _, tc := range []struct {
+			name          string
+			queries       stubTenantQueries
+			token, bearer string
+		}{
+			{"a request with no credential", anonymousQueries, "", ""},
+			{"a request with the free material", anonymousQueries, issueFree(t, time.Now()), ""},
+			{"a signed-in reader's bearer", readerQueries, "", bearer},
+			{"a reader's media token", readerQueries, readerMedia, ""},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				srv := newTestServerWithTokens(t,
+					stubResolver{tenant: dbmodels.Tenant{ID: tenantID, Domain: "example.test"}, console: true},
+					stubFactory{q: tc.queries},
+					&countingStore{objects: map[string]storedObject{
+						"episodes/page.jpg": {data: testJPEG(), contentType: "image/jpeg"},
+					}},
+					tokens,
+				)
+				target := "/images/episodes/" + mediaID.String()
+				if tc.token != "" {
+					target += "?" + auth.MediaTokenQueryParam + "=" + url.QueryEscape(tc.token)
+				}
+				req := httptest.NewRequest(http.MethodGet, target, nil)
+				req.Host = "admin.example.test"
+				req.Header.Set("Accept", "image/webp")
+				if tc.bearer != "" {
+					req.Header.Set("Authorization", "Bearer "+tc.bearer)
+				}
+				rec := httptest.NewRecorder()
+				srv.ServeHTTP(rec, req)
+				if rec.Code != http.StatusForbidden {
+					t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+				}
+				if isWebP(rec.Body.Bytes()) {
+					t.Error("the refusal carries the rendition")
+				}
+			})
 		}
 	})
 
@@ -1132,11 +1163,27 @@ func TestEpisodeImageAdminMediaToken(t *testing.T) {
 			if got := rec.Header().Get("Cache-Control"); got != "private, max-age=60" {
 				t.Errorf("Cache-Control = %q, want %q", got, "private, max-age=60")
 			}
+			// The console renders bodies with an <img>, which cannot decrypt.
+			if got := rec.Header().Get(imageEncryptionHeader); got != "" {
+				t.Errorf("%s = %q, want no header", imageEncryptionHeader, got)
+			}
+			if got := rec.Header().Get("Content-Type"); got != "image/webp" {
+				t.Errorf("Content-Type = %q, want image/webp", got)
+			}
 			if rec.Body.Len() == 0 {
 				t.Error("body is empty")
 			}
 		})
 	}
+
+	t.Run("a published free body is refused without a staff token", func(t *testing.T) {
+		queries := unpublishedPaidEpisodeQueries(mediaID, episodeID, userID, 4, tenantID, []string{auth.RoleTenantEditor})
+		queries.public.IsPublished = true
+		queries.public.HasPublicAccess = true
+		if rec := serve(t, queries, "", consoleHost); rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
 
 	t.Run("the storefront host ignores an admin-media token", func(t *testing.T) {
 		rec := serve(t, staffQueries, issue(t, episodeID, 4, time.Now()), storefrontHost)

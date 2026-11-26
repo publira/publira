@@ -231,7 +231,8 @@ message AnonymousReadLimits {
   // Calls of CatalogService's SearchPublished… procedures, which have an
   // allowance of their own. At least 40.
   int32 search = 2;
-  // Images of a tenant's site and image hosts. At least 1200.
+  // Images of a tenant's site and image hosts, and the same count again,
+  // kept apart, of its console host. At least 1200.
   int32 images = 3;
 }
 
