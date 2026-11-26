@@ -127,13 +127,26 @@ func seedPreviewPage(t *testing.T, pg *testutil.PostgresEnv) (testutil.Tenant, s
 // base URL.
 func serveOnPools(t *testing.T, pools serverPools) string {
 	t.Helper()
-	t.Setenv("PUBLIRA_REDIS_URL", "disabled")
+	return serveConfigured(t, testServerConfig(), pools)
+}
 
-	built, err := assembleServer(shared{logger: slog.Default()}, serverConfig{
+// testServerConfig is the configuration serveOnPools assembles the server
+// with.
+func testServerConfig() serverConfig {
+	return serverConfig{
 		idTokens:  signin.VerifierConfig{},
 		clientIPs: clientip.New(clientip.Config{TrustedProxies: clientip.DefaultTrustedProxies}),
 		tokens:    testutil.TokenManager(),
-	}, pools)
+	}
+}
+
+// serveConfigured serves what `publira server` builds on pools with cfg, and
+// answers its base URL.
+func serveConfigured(t *testing.T, cfg serverConfig, pools serverPools) string {
+	t.Helper()
+	t.Setenv("PUBLIRA_REDIS_URL", "disabled")
+
+	built, err := assembleServer(shared{logger: slog.Default()}, cfg, pools)
 	if err != nil {
 		t.Fatalf("assembleServer: %v", err)
 	}

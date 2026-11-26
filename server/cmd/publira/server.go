@@ -30,6 +30,7 @@ import (
 	"github.com/publira/publira/server/internal/platformsearch"
 	"github.com/publira/publira/server/internal/platformstorage"
 	"github.com/publira/publira/server/internal/publicaddr"
+	"github.com/publira/publira/server/internal/ratelimit"
 	"github.com/publira/publira/server/internal/readguard"
 	"github.com/publira/publira/server/internal/readreplica"
 	"github.com/publira/publira/server/internal/redisurl"
@@ -150,6 +151,11 @@ type serverConfig struct {
 	// public address, read where the tenant console's connection test is
 	// served.
 	smtpAllowed []netip.Prefix
+	// readLimiter keeps the counters of the read limit. loadServerConfig leaves
+	// it nil, which keeps them where the environment says, in Redis when one is
+	// named. Its windows are aligned to the epoch, so a test charging a whole
+	// allowance sets one whose clock does not cross a window's boundary.
+	readLimiter *ratelimit.Limiter
 }
 
 func loadServerConfig(roles serverRoles) (serverConfig, error) {
@@ -229,7 +235,11 @@ func assembleServer(deps shared, cfg serverConfig, pools serverPools) (assembled
 	// either site holds it, and one that serves neither dials nothing for it.
 	var reads *readguard.Guard
 	if pools.public != nil || pools.admin != nil {
-		reads = readguard.NewFromEnv(policy, logger)
+		limiter := cfg.readLimiter
+		if limiter == nil {
+			limiter = ratelimit.NewFromEnv(logger)
+		}
+		reads = readguard.New(limiter, policy)
 	}
 
 	var served servedAPIs

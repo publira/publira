@@ -30,7 +30,12 @@ func TestAConsoleOnlyServerChargesItsImagesToTheSavedLimit(t *testing.T) {
 		t.Fatalf("the saved images limit %d is not below the built-in one, so the test could not tell them apart", policy.AnonymousReads.Images)
 	}
 
-	base := serveOnPools(t, serverPools{admin: pg.OpenAdminDB(t)})
+	// The requests take seconds, and a run that crossed a boundary of the
+	// epoch-aligned windows would charge them to two, neither of which reaches
+	// the limit.
+	cfg := testServerConfig()
+	cfg.readLimiter = testutil.Limiter()
+	base := serveConfigured(t, cfg, serverPools{admin: pg.OpenAdminDB(t)})
 	fetch := func() int {
 		t.Helper()
 		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, base+"/images/creators/"+uuid.NewString(), nil)
