@@ -48,7 +48,7 @@ publiractl db reseal --dry-run
 publiractl db reseal
 ```
 
-`db rehint` exists because a hint is derived once, when its credential is saved, and is stored in the clear so that a read never opens the credential: a hint saved by an earlier release keeps that release's shape until the credential is saved again. It changes no credential, and it runs while the install serves, a batch of rows locked at a time, as `db reseal` does. A hint it cannot derive is left as it is and logged with its table and row, and the command exits `1` once every other hint is written.
+`db rehint` changes no credential, and it runs while the install serves, a batch of rows locked at a time, as `db reseal` does. A hint it cannot derive is left as it is and logged with its table and row, and the command exits `1` once every other hint is written.
 
 ```bash
 publiractl db rehint --dry-run
