@@ -1795,32 +1795,6 @@ func (q *Queries) LockTenantCurrencyShared(ctx context.Context, tenantID uuid.UU
 	return err
 }
 
-const PurchaseRecordsProviderPayment = `-- name: PurchaseRecordsProviderPayment :one
-SELECT EXISTS (
-    SELECT 1
-    FROM purchases
-    WHERE tenant_id = $1
-        AND provider = $2::text
-        AND provider_payment_id = $3::text
-)::boolean AS recorded
-`
-
-type PurchaseRecordsProviderPaymentParams struct {
-	TenantID          uuid.UUID `json:"tenant_id"`
-	Provider          string    `json:"provider"`
-	ProviderPaymentID string    `json:"provider_payment_id"`
-}
-
-// Whether a purchase of the tenant's through the provider was paid by the
-// payment, which a notification naming the payment is held to before a
-// provider that signs none is asked about it.
-func (q *Queries) PurchaseRecordsProviderPayment(ctx context.Context, arg PurchaseRecordsProviderPaymentParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, PurchaseRecordsProviderPayment, arg.TenantID, arg.Provider, arg.ProviderPaymentID)
-	var recorded bool
-	err := row.Scan(&recorded)
-	return recorded, err
-}
-
 const RecordDisputeOnPurchase = `-- name: RecordDisputeOnPurchase :one
 UPDATE purchases
 SET revoked_at = COALESCE(revoked_at, NOW()),

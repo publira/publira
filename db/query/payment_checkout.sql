@@ -148,27 +148,39 @@ SELECT EXISTS (
         AND checkout_id = sqlc.arg('checkout_id')
 )::boolean AS started;
 
--- name: PaymentCheckoutKeepsPayment :one
--- Whether a checkout of the tenant's through the provider keeps the payment
--- as its completion, which a notification naming the payment is held to
--- before a provider that signs none is asked about it.
-SELECT EXISTS (
-    SELECT 1
-    FROM payment_checkouts
-    WHERE tenant_id = sqlc.arg('tenant_id')
-        AND provider = sqlc.arg('provider')
-        AND payment_id = sqlc.arg('payment_id')
-)::boolean AS kept;
-
--- name: PaymentCheckoutAwaitsPayment :one
--- Whether a checkout of the tenant's through the provider can still be paid
--- and keeps no payment yet, the one a notification of a payment the server
--- has not kept could complete.
-SELECT EXISTS (
-    SELECT 1
-    FROM payment_checkouts
-    WHERE tenant_id = sqlc.arg('tenant_id')
-        AND provider = sqlc.arg('provider')
-        AND payment_id IS NULL
-        AND NOT payment_checkout_closed(last_started_at, sqlc.arg('lifetime_seconds')::double precision)
-)::boolean AS awaiting;
+-- name: ProviderPaymentMayBeTenants :one
+-- Whether the payment may be one of the tenant's through the provider: one a
+-- purchase recorded, one a checkout kept as its completion, or, while a
+-- checkout of the tenant's can still be paid and keeps no payment, any
+-- payment, since nothing ties a payment to such a checkout before the
+-- provider is asked. A notification naming the payment is held to this before
+-- a provider that signs none is asked about it.
+--
+-- The three are read in one statement, and so from one snapshot: a
+-- completion committing the payment beside its checkout between two reads
+-- would leave the payment neither awaited by the one before it nor kept by
+-- the one after.
+SELECT (
+    EXISTS (
+        SELECT 1
+        FROM purchases AS p
+        WHERE p.tenant_id = sqlc.arg('tenant_id')
+            AND p.provider = sqlc.arg('provider')::text
+            AND p.provider_payment_id = sqlc.arg('payment_id')::text
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM payment_checkouts AS c
+        WHERE c.tenant_id = sqlc.arg('tenant_id')
+            AND c.provider = sqlc.arg('provider')::text
+            AND c.payment_id = sqlc.arg('payment_id')::text
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM payment_checkouts AS c
+        WHERE c.tenant_id = sqlc.arg('tenant_id')
+            AND c.provider = sqlc.arg('provider')::text
+            AND c.payment_id IS NULL
+            AND NOT payment_checkout_closed(c.last_started_at, sqlc.arg('lifetime_seconds')::double precision)
+    )
+)::boolean AS known;
