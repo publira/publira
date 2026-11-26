@@ -703,6 +703,7 @@
         "admin_mfa_passkey_registered": "新增了通行金鑰",
         "admin_mfa_passkey_renamed": "重新命名了通行金鑰",
         "admin_mfa_passkey_removed": "刪除了通行金鑰",
+        "admin_reauthenticated": "確認了身分",
         "other": "其他操作"
       },
       "outcome": {

@@ -5,7 +5,9 @@
 // compares it exactly. public, admin, and platform are the access tokens of
 // the three API namespaces; media and admin-media ride on an image URL; the
 // five MFA audiences are the challenge a correct password earns while a second
-// factor is still owed, which mfaflow spends. A token issued to a person
+// factor is still owed, which mfaflow spends; admin-step-up is the
+// re-authentication a tenant console account presents beside its session to
+// the operations that ask for one. A token issued to a person
 // carries the credentials_version of their users or platform_users row, which a
 // password change increments, so the change ends every token issued before it.
 //

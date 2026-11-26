@@ -131,6 +131,10 @@ const (
 	// reader icon policy does not allow: an upload under any policy but
 	// upload, and a preset under any but preset.
 	ReasonReaderIconNotAllowed = "READER_ICON_NOT_ALLOWED"
+	// ReasonReauthenticationRequired refuses an operation that asks for a
+	// recent re-authentication, sent without a step-up token that is valid
+	// beside its session. Nothing has been changed.
+	ReasonReauthenticationRequired = "REAUTHENTICATION_REQUIRED"
 	// ReasonReaderIconPresetLimit refuses adding a preset to a tenant that
 	// holds as many as it may.
 	ReasonReaderIconPresetLimit = "READER_ICON_PRESET_LIMIT"

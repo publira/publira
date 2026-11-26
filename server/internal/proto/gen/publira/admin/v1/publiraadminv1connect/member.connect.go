@@ -114,14 +114,17 @@ var (
 type AdminTenantMemberServiceClient interface {
 	// Minimum role: tenant_admin.
 	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error)
 	// Minimum role: tenant_admin.
 	RemoveTenantMember(context.Context, *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error)
 	// Minimum role: tenant_admin.
 	ListTenantAdminInvitations(context.Context, *v1.ListTenantAdminInvitationsRequest) (*v1.ListTenantAdminInvitationsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	CreateTenantAdminInvitation(context.Context, *v1.CreateTenantAdminInvitationRequest) (*v1.CreateTenantAdminInvitationResponse, error)
 	// Minimum role: tenant_admin.
@@ -142,14 +145,17 @@ func NewAdminTenantMemberServiceClient(client *connect.Client) AdminTenantMember
 type AdminTenantMemberServiceHandler interface {
 	// Minimum role: tenant_admin.
 	ListTenantMembers(context.Context, *v1.ListTenantMembersRequest) (*v1.ListTenantMembersResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	AddTenantMember(context.Context, *v1.AddTenantMemberRequest) (*v1.AddTenantMemberResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateTenantMemberRole(context.Context, *v1.UpdateTenantMemberRoleRequest) (*v1.UpdateTenantMemberRoleResponse, error)
 	// Minimum role: tenant_admin.
 	RemoveTenantMember(context.Context, *v1.RemoveTenantMemberRequest) (*v1.RemoveTenantMemberResponse, error)
 	// Minimum role: tenant_admin.
 	ListTenantAdminInvitations(context.Context, *v1.ListTenantAdminInvitationsRequest) (*v1.ListTenantAdminInvitationsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	CreateTenantAdminInvitation(context.Context, *v1.CreateTenantAdminInvitationRequest) (*v1.CreateTenantAdminInvitationResponse, error)
 	// Minimum role: tenant_admin.

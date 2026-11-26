@@ -703,6 +703,7 @@
         "admin_mfa_passkey_registered": "パスキーの登録",
         "admin_mfa_passkey_renamed": "パスキーの名前の変更",
         "admin_mfa_passkey_removed": "パスキーの削除",
+        "admin_reauthenticated": "本人確認",
         "other": "その他の操作"
       },
       "outcome": {

@@ -615,3 +615,97 @@ func TestLoginDeviceToken(t *testing.T) {
 		}
 	})
 }
+
+func TestStepUpToken(t *testing.T) {
+	manager := NewTokenManager([]byte(testSecret))
+	now := time.Now()
+	session := func(t *testing.T, subject, tenantID string, credentialsVersion int32) *AccessTokenClaims {
+		t.Helper()
+		token, _, err := manager.Issue(subject, AudienceAdmin, tenantID, RoleTenantAdmin, credentialsVersion, now)
+		if err != nil {
+			t.Fatalf("Issue() error = %v", err)
+		}
+		claims, err := manager.Verify(token, AudienceAdmin)
+		if err != nil {
+			t.Fatalf("Verify() error = %v", err)
+		}
+		return claims
+	}
+	stepUp := func(t *testing.T, on *AccessTokenClaims, at time.Time) string {
+		t.Helper()
+		sessionID, _, ok := on.SessionID()
+		if !ok {
+			t.Fatal("the session has no id")
+		}
+		token, expiresAt, err := manager.IssueStepUpToken(on.Subject, on.TenantID, sessionID, on.CredentialsVersion, at)
+		if err != nil {
+			t.Fatalf("IssueStepUpToken() error = %v", err)
+		}
+		if want := at.Add(StepUpTokenTTL); !expiresAt.Equal(want) {
+			t.Errorf("expiresAt = %v, want %v", expiresAt, want)
+		}
+		return token
+	}
+
+	t.Run("admits beside the session it was earned on", func(t *testing.T) {
+		own := session(t, "user-public-id", "tenant-id", 3)
+		if err := manager.VerifyStepUpToken(stepUp(t, own, now), own); err != nil {
+			t.Fatalf("VerifyStepUpToken() error = %v", err)
+		}
+	})
+
+	// Each claim the token is bound by refuses it beside a session that
+	// differs in that claim alone.
+	t.Run("admits nothing beside another session", func(t *testing.T) {
+		own := session(t, "user-public-id", "tenant-id", 3)
+		token := stepUp(t, own, now)
+		changed := *own
+		changed.CredentialsVersion = 4
+		for name, other := range map[string]*AccessTokenClaims{
+			"another session of the same account": session(t, "user-public-id", "tenant-id", 3),
+			"another account":                     session(t, "another-public-id", "tenant-id", 3),
+			"another tenant":                      session(t, "user-public-id", "another-tenant-id", 3),
+			"the session after a password change": &changed,
+		} {
+			if err := manager.VerifyStepUpToken(token, other); err == nil {
+				t.Errorf("VerifyStepUpToken() beside %s = nil, want a refusal", name)
+			}
+		}
+	})
+
+	t.Run("expires", func(t *testing.T) {
+		own := session(t, "user-public-id", "tenant-id", 3)
+		if err := manager.VerifyStepUpToken(stepUp(t, own, now.Add(-StepUpTokenTTL-time.Second)), own); err == nil {
+			t.Fatal("VerifyStepUpToken() of an expired token = nil, want a refusal")
+		}
+	})
+
+	// Neither token can be presented as the other, so neither proves what
+	// the other does.
+	t.Run("is no session and takes none in its place", func(t *testing.T) {
+		own := session(t, "user-public-id", "tenant-id", 3)
+		if _, err := manager.Verify(stepUp(t, own, now), AudienceAdmin); err == nil {
+			t.Error("Verify() of a step-up token as a session = nil, want an audience error")
+		}
+		sessionToken, _, err := manager.Issue(own.Subject, AudienceAdmin, own.TenantID, RoleTenantAdmin, own.CredentialsVersion, now)
+		if err != nil {
+			t.Fatalf("Issue() error = %v", err)
+		}
+		if err := manager.VerifyStepUpToken(sessionToken, own); err == nil {
+			t.Error("VerifyStepUpToken() of a session token = nil, want an audience error")
+		}
+	})
+
+	t.Run("binds to nothing without a session id", func(t *testing.T) {
+		own := session(t, "user-public-id", "tenant-id", 3)
+		token := stepUp(t, own, now)
+		withoutID := *own
+		withoutID.ID = ""
+		if err := manager.VerifyStepUpToken(token, &withoutID); err == nil {
+			t.Error("VerifyStepUpToken() beside a session without an id = nil, want a refusal")
+		}
+		if _, _, err := manager.IssueStepUpToken(own.Subject, own.TenantID, uuid.Nil, own.CredentialsVersion, now); err == nil {
+			t.Error("IssueStepUpToken() without a session = nil, want an error")
+		}
+	})
+}

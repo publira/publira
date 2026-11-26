@@ -105,6 +105,7 @@ message SendTenantSmtpTestEmailResponse {
 service AdminEmailSettingsService {
   // Minimum role: tenant_admin.
   rpc GetTenantEmailSettings(GetTenantEmailSettingsRequest) returns (GetTenantEmailSettingsResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc UpdateTenantEmailSettings(UpdateTenantEmailSettingsRequest) returns (UpdateTenantEmailSettingsResponse) {}
   // Answers the address the tenant's mail is sent from, so a sender a mail

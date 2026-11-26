@@ -172,4 +172,5 @@ export const auditActions = [
   "admin_mfa_passkey_registered",
   "admin_mfa_passkey_renamed",
   "admin_mfa_passkey_removed",
+  "admin_reauthenticated",
 ] as const;

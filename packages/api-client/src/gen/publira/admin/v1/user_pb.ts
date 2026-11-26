@@ -667,6 +667,7 @@ export const AdminUserService: GenService<{
    * staff account they name, and its page versions stop naming it. not_found
    * as GetReader. failed_precondition as SuspendReader.
    *
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminUserService.DeleteReader
@@ -689,6 +690,7 @@ export const AdminUserService: GenService<{
    * OWN_ACCOUNT reason, for the caller's own account, which a stolen session
    * could otherwise strip of its second factor.
    *
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminUserService.ResetReaderMfa

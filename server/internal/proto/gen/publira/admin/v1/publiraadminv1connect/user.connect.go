@@ -164,6 +164,7 @@ type AdminUserServiceClient interface {
 	// staff account they name, and its page versions stop naming it. not_found
 	// as GetReader. failed_precondition as SuspendReader.
 	//
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	DeleteReader(context.Context, *v1.DeleteReaderRequest) (*v1.DeleteReaderResponse, error)
 	// Removes the account's two-step verification, for a reader who has lost
@@ -178,6 +179,7 @@ type AdminUserServiceClient interface {
 	// OWN_ACCOUNT reason, for the caller's own account, which a stolen session
 	// could otherwise strip of its second factor.
 	//
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	ResetReaderMfa(context.Context, *v1.ResetReaderMfaRequest) (*v1.ResetReaderMfaResponse, error)
 }
@@ -234,6 +236,7 @@ type AdminUserServiceHandler interface {
 	// staff account they name, and its page versions stop naming it. not_found
 	// as GetReader. failed_precondition as SuspendReader.
 	//
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	DeleteReader(context.Context, *v1.DeleteReaderRequest) (*v1.DeleteReaderResponse, error)
 	// Removes the account's two-step verification, for a reader who has lost
@@ -248,6 +251,7 @@ type AdminUserServiceHandler interface {
 	// OWN_ACCOUNT reason, for the caller's own account, which a stolen session
 	// could otherwise strip of its second factor.
 	//
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	ResetReaderMfa(context.Context, *v1.ResetReaderMfaRequest) (*v1.ResetReaderMfaResponse, error)
 }

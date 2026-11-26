@@ -1021,6 +1021,10 @@ const mfaActionName = (action: string) => {
       );
     }
 
+    case "admin_reauthenticated": {
+      return <Message message="admin.audit.actions.admin_reauthenticated" />;
+    }
+
     default: {
       return null;
     }

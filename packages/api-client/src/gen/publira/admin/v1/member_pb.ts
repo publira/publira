@@ -578,6 +578,7 @@ export const AdminTenantMemberService: GenService<{
     output: typeof ListTenantMembersResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminTenantMemberService.AddTenantMember
@@ -588,6 +589,7 @@ export const AdminTenantMemberService: GenService<{
     output: typeof AddTenantMemberResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminTenantMemberService.UpdateTenantMemberRole
@@ -618,6 +620,7 @@ export const AdminTenantMemberService: GenService<{
     output: typeof ListTenantAdminInvitationsResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminTenantMemberService.CreateTenantAdminInvitation

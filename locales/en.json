@@ -703,6 +703,7 @@
         "admin_mfa_passkey_registered": "Passkey added",
         "admin_mfa_passkey_renamed": "Passkey renamed",
         "admin_mfa_passkey_removed": "Passkey removed",
+        "admin_reauthenticated": "Identity confirmed",
         "other": "Other action"
       },
       "outcome": {

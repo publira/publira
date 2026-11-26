@@ -366,6 +366,7 @@ export const AdminInboundEmailSettingsService: GenService<{
     output: typeof GetTenantInboundEmailSettingsResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminInboundEmailSettingsService.UpdateTenantInboundEmailSettings

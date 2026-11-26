@@ -736,6 +736,10 @@ export const AuditActionSelect = ({ defaultValue }: AuditActionSelectProps) => {
               label: t("admin.audit.actions.admin_mfa_passkey_removed"),
               value: "admin_mfa_passkey_removed",
             },
+            {
+              label: t("admin.audit.actions.admin_reauthenticated"),
+              value: "admin_reauthenticated",
+            },
           ]}
           name="action"
         />

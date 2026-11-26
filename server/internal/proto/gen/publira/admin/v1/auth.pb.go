@@ -603,10 +603,10 @@ func (x *AdminAuthServiceGetMfaStatusResponse) GetMethods() []MfaMethod {
 }
 
 // Proof that a signed-in account still holds one of its second factors, sent
-// with a request that adds a factor to the account or removes one. A session
-// shows only that the account answered its second step once; a change to what
-// that step asks for asks it again. An account that holds no second factor
-// sends none.
+// with a request that adds a factor to the account or removes one, and to
+// Reauthenticate. A session shows only that the account answered its second
+// step once; a change to what that step asks for asks it again. An account
+// that holds no second factor sends none.
 //
 // Exactly one of the two is sent. A refused code or assertion counts toward
 // the same lock a refused sign-in does.
@@ -3454,6 +3454,120 @@ func (x *AdminAuthServiceConfirmEmailChangeResponse) GetPendingConfirmationFor()
 	return ""
 }
 
+// Proof, on top of the session, that the account's owner is the one using
+// it. Exactly one of the two is sent.
+type AdminAuthServiceReauthenticateRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The account's password. A wrong one is invalid_argument on this field,
+	// and spends the account's step-up allowance, the one RequestEmailChange
+	// spends.
+	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	// A code, a recovery code, or a passkey's assertion, for an account that
+	// holds a second factor: failed_precondition for one that holds none.
+	Confirmation  *MfaConfirmation `protobuf:"bytes,3,opt,name=confirmation,proto3" json:"confirmation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceReauthenticateRequest) Reset() {
+	*x = AdminAuthServiceReauthenticateRequest{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceReauthenticateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceReauthenticateRequest) ProtoMessage() {}
+
+func (x *AdminAuthServiceReauthenticateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceReauthenticateRequest.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceReauthenticateRequest) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *AdminAuthServiceReauthenticateRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *AdminAuthServiceReauthenticateRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *AdminAuthServiceReauthenticateRequest) GetConfirmation() *MfaConfirmation {
+	if x != nil {
+		return x.Confirmation
+	}
+	return nil
+}
+
+type AdminAuthServiceReauthenticateResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Sent as the Publira-Step-Up header, beside the session's Authorization
+	// header, to the RPCs that ask for a recent re-authentication. It admits
+	// them only beside the session it was issued on, and until its expires_at.
+	StepUpToken   *v1.AccessToken `protobuf:"bytes,1,opt,name=step_up_token,json=stepUpToken,proto3" json:"step_up_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminAuthServiceReauthenticateResponse) Reset() {
+	*x = AdminAuthServiceReauthenticateResponse{}
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminAuthServiceReauthenticateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminAuthServiceReauthenticateResponse) ProtoMessage() {}
+
+func (x *AdminAuthServiceReauthenticateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_publira_admin_v1_auth_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminAuthServiceReauthenticateResponse.ProtoReflect.Descriptor instead.
+func (*AdminAuthServiceReauthenticateResponse) Descriptor() ([]byte, []int) {
+	return file_publira_admin_v1_auth_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *AdminAuthServiceReauthenticateResponse) GetStepUpToken() *v1.AccessToken {
+	if x != nil {
+		return x.StepUpToken
+	}
+	return nil
+}
+
 var File_publira_admin_v1_auth_proto protoreflect.FileDescriptor
 
 const file_publira_admin_v1_auth_proto_rawDesc = "" +
@@ -3662,7 +3776,13 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"*AdminAuthServiceConfirmEmailChangeResponse\x12\x1c\n" +
 	"\tconfirmed\x18\x01 \x01(\bR\tconfirmed\x12\x18\n" +
 	"\achanged\x18\x02 \x01(\bR\achanged\x128\n" +
-	"\x18pending_confirmation_for\x18\x03 \x01(\tR\x16pendingConfirmationFor*t\n" +
+	"\x18pending_confirmation_for\x18\x03 \x01(\tR\x16pendingConfirmationFor\"\xc3\x01\n" +
+	"%AdminAuthServiceReauthenticateRequest\x127\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1f.publira.types.v1.TenantContextR\x06tenant\x12\x1a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\x12E\n" +
+	"\fconfirmation\x18\x03 \x01(\v2!.publira.admin.v1.MfaConfirmationR\fconfirmation\"k\n" +
+	"&AdminAuthServiceReauthenticateResponse\x12A\n" +
+	"\rstep_up_token\x18\x01 \x01(\v2\x1d.publira.types.v1.AccessTokenR\vstepUpToken*t\n" +
 	"\x10MfaChallengeKind\x12\"\n" +
 	"\x1eMFA_CHALLENGE_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19MFA_CHALLENGE_KIND_VERIFY\x10\x01\x12\x1d\n" +
@@ -3670,7 +3790,7 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\tMfaMethod\x12\x1a\n" +
 	"\x16MFA_METHOD_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fMFA_METHOD_TOTP\x10\x01\x12\x16\n" +
-	"\x12MFA_METHOD_PASSKEY\x10\x022\xde\x1e\n" +
+	"\x12MFA_METHOD_PASSKEY\x10\x022\xe6\x1f\n" +
 	"\x10AdminAuthService\x12j\n" +
 	"\x05Login\x12..publira.admin.v1.AdminAuthServiceLoginRequest\x1a/.publira.admin.v1.AdminAuthServiceLoginResponse\"\x00\x12m\n" +
 	"\x06Logout\x12/.publira.admin.v1.AdminAuthServiceLogoutRequest\x1a0.publira.admin.v1.AdminAuthServiceLogoutResponse\"\x00\x12\x97\x01\n" +
@@ -3699,7 +3819,8 @@ const file_publira_admin_v1_auth_proto_rawDesc = "" +
 	"\x18BeginPasskeyConfirmation\x12A.publira.admin.v1.AdminAuthServiceBeginPasskeyConfirmationRequest\x1aB.publira.admin.v1.AdminAuthServiceBeginPasskeyConfirmationResponse\"\x00\x12\x7f\n" +
 	"\fListPasskeys\x125.publira.admin.v1.AdminAuthServiceListPasskeysRequest\x1a6.publira.admin.v1.AdminAuthServiceListPasskeysResponse\"\x00\x12\x82\x01\n" +
 	"\rRenamePasskey\x126.publira.admin.v1.AdminAuthServiceRenamePasskeyRequest\x1a7.publira.admin.v1.AdminAuthServiceRenamePasskeyResponse\"\x00\x12\x82\x01\n" +
-	"\rDeletePasskey\x126.publira.admin.v1.AdminAuthServiceDeletePasskeyRequest\x1a7.publira.admin.v1.AdminAuthServiceDeletePasskeyResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
+	"\rDeletePasskey\x126.publira.admin.v1.AdminAuthServiceDeletePasskeyRequest\x1a7.publira.admin.v1.AdminAuthServiceDeletePasskeyResponse\"\x00\x12\x85\x01\n" +
+	"\x0eReauthenticate\x127.publira.admin.v1.AdminAuthServiceReauthenticateRequest\x1a8.publira.admin.v1.AdminAuthServiceReauthenticateResponse\"\x00BVZTgithub.com/publira/publira/server/internal/proto/gen/publira/admin/v1;publiraadminv1b\x06proto3"
 
 var (
 	file_publira_admin_v1_auth_proto_rawDescOnce sync.Once
@@ -3714,7 +3835,7 @@ func file_publira_admin_v1_auth_proto_rawDescGZIP() []byte {
 }
 
 var file_publira_admin_v1_auth_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_publira_admin_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 58)
+var file_publira_admin_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 60)
 var file_publira_admin_v1_auth_proto_goTypes = []any{
 	(MfaChallengeKind)(0),                                      // 0: publira.admin.v1.MfaChallengeKind
 	(MfaMethod)(0),                                             // 1: publira.admin.v1.MfaMethod
@@ -3776,120 +3897,127 @@ var file_publira_admin_v1_auth_proto_goTypes = []any{
 	(*AdminAuthServiceRequestEmailChangeResponse)(nil),            // 57: publira.admin.v1.AdminAuthServiceRequestEmailChangeResponse
 	(*AdminAuthServiceConfirmEmailChangeRequest)(nil),             // 58: publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest
 	(*AdminAuthServiceConfirmEmailChangeResponse)(nil),            // 59: publira.admin.v1.AdminAuthServiceConfirmEmailChangeResponse
-	(*v1.TenantContext)(nil),                                      // 60: publira.types.v1.TenantContext
-	(*v1.User)(nil),                                               // 61: publira.types.v1.User
-	(*v1.AccessToken)(nil),                                        // 62: publira.types.v1.AccessToken
-	(*v1.LoginDevice)(nil),                                        // 63: publira.types.v1.LoginDevice
+	(*AdminAuthServiceReauthenticateRequest)(nil),                 // 60: publira.admin.v1.AdminAuthServiceReauthenticateRequest
+	(*AdminAuthServiceReauthenticateResponse)(nil),                // 61: publira.admin.v1.AdminAuthServiceReauthenticateResponse
+	(*v1.TenantContext)(nil),                                      // 62: publira.types.v1.TenantContext
+	(*v1.User)(nil),                                               // 63: publira.types.v1.User
+	(*v1.AccessToken)(nil),                                        // 64: publira.types.v1.AccessToken
+	(*v1.LoginDevice)(nil),                                        // 65: publira.types.v1.LoginDevice
 }
 var file_publira_admin_v1_auth_proto_depIdxs = []int32{
-	60, // 0: publira.admin.v1.AdminAuthServiceLoginRequest.tenant:type_name -> publira.types.v1.TenantContext
-	61, // 1: publira.admin.v1.AdminAuthServiceLoginResponse.user:type_name -> publira.types.v1.User
-	62, // 2: publira.admin.v1.AdminAuthServiceLoginResponse.access_token:type_name -> publira.types.v1.AccessToken
+	62, // 0: publira.admin.v1.AdminAuthServiceLoginRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63, // 1: publira.admin.v1.AdminAuthServiceLoginResponse.user:type_name -> publira.types.v1.User
+	64, // 2: publira.admin.v1.AdminAuthServiceLoginResponse.access_token:type_name -> publira.types.v1.AccessToken
 	4,  // 3: publira.admin.v1.AdminAuthServiceLoginResponse.mfa_challenge:type_name -> publira.admin.v1.AdminAuthServiceMfaChallenge
-	63, // 4: publira.admin.v1.AdminAuthServiceLoginResponse.device:type_name -> publira.types.v1.LoginDevice
+	65, // 4: publira.admin.v1.AdminAuthServiceLoginResponse.device:type_name -> publira.types.v1.LoginDevice
 	0,  // 5: publira.admin.v1.AdminAuthServiceMfaChallenge.kind:type_name -> publira.admin.v1.MfaChallengeKind
 	1,  // 6: publira.admin.v1.AdminAuthServiceMfaChallenge.methods:type_name -> publira.admin.v1.MfaMethod
-	60, // 7: publira.admin.v1.AdminAuthServiceVerifyMfaRequest.tenant:type_name -> publira.types.v1.TenantContext
-	61, // 8: publira.admin.v1.AdminAuthServiceVerifyMfaResponse.user:type_name -> publira.types.v1.User
-	62, // 9: publira.admin.v1.AdminAuthServiceVerifyMfaResponse.access_token:type_name -> publira.types.v1.AccessToken
-	60, // 10: publira.admin.v1.AdminAuthServiceGetMfaStatusRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 7: publira.admin.v1.AdminAuthServiceVerifyMfaRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63, // 8: publira.admin.v1.AdminAuthServiceVerifyMfaResponse.user:type_name -> publira.types.v1.User
+	64, // 9: publira.admin.v1.AdminAuthServiceVerifyMfaResponse.access_token:type_name -> publira.types.v1.AccessToken
+	62, // 10: publira.admin.v1.AdminAuthServiceGetMfaStatusRequest.tenant:type_name -> publira.types.v1.TenantContext
 	1,  // 11: publira.admin.v1.AdminAuthServiceGetMfaStatusResponse.methods:type_name -> publira.admin.v1.MfaMethod
-	60, // 12: publira.admin.v1.AdminAuthServiceStartMfaEnrollmentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 12: publira.admin.v1.AdminAuthServiceStartMfaEnrollmentRequest.tenant:type_name -> publira.types.v1.TenantContext
 	9,  // 13: publira.admin.v1.AdminAuthServiceStartMfaEnrollmentRequest.confirmation:type_name -> publira.admin.v1.MfaConfirmation
-	60, // 14: publira.admin.v1.AdminAuthServiceConfirmMfaEnrollmentRequest.tenant:type_name -> publira.types.v1.TenantContext
-	61, // 15: publira.admin.v1.AdminAuthServiceConfirmMfaEnrollmentResponse.user:type_name -> publira.types.v1.User
-	62, // 16: publira.admin.v1.AdminAuthServiceConfirmMfaEnrollmentResponse.access_token:type_name -> publira.types.v1.AccessToken
-	60, // 17: publira.admin.v1.AdminAuthServiceDisableMfaRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 18: publira.admin.v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 19: publira.admin.v1.AdminAuthServiceBeginPasskeyRegistrationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 20: publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 14: publira.admin.v1.AdminAuthServiceConfirmMfaEnrollmentRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63, // 15: publira.admin.v1.AdminAuthServiceConfirmMfaEnrollmentResponse.user:type_name -> publira.types.v1.User
+	64, // 16: publira.admin.v1.AdminAuthServiceConfirmMfaEnrollmentResponse.access_token:type_name -> publira.types.v1.AccessToken
+	62, // 17: publira.admin.v1.AdminAuthServiceDisableMfaRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 18: publira.admin.v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 19: publira.admin.v1.AdminAuthServiceBeginPasskeyRegistrationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 20: publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationRequest.tenant:type_name -> publira.types.v1.TenantContext
 	9,  // 21: publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationRequest.confirmation:type_name -> publira.admin.v1.MfaConfirmation
 	18, // 22: publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationResponse.passkey:type_name -> publira.admin.v1.Passkey
-	61, // 23: publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationResponse.user:type_name -> publira.types.v1.User
-	62, // 24: publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationResponse.access_token:type_name -> publira.types.v1.AccessToken
-	60, // 25: publira.admin.v1.AdminAuthServiceBeginPasskeyVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 26: publira.admin.v1.AdminAuthServiceFinishPasskeyVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	61, // 27: publira.admin.v1.AdminAuthServiceFinishPasskeyVerificationResponse.user:type_name -> publira.types.v1.User
-	62, // 28: publira.admin.v1.AdminAuthServiceFinishPasskeyVerificationResponse.access_token:type_name -> publira.types.v1.AccessToken
-	60, // 29: publira.admin.v1.AdminAuthServiceBeginPasskeyConfirmationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 30: publira.admin.v1.AdminAuthServiceListPasskeysRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63, // 23: publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationResponse.user:type_name -> publira.types.v1.User
+	64, // 24: publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationResponse.access_token:type_name -> publira.types.v1.AccessToken
+	62, // 25: publira.admin.v1.AdminAuthServiceBeginPasskeyVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 26: publira.admin.v1.AdminAuthServiceFinishPasskeyVerificationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63, // 27: publira.admin.v1.AdminAuthServiceFinishPasskeyVerificationResponse.user:type_name -> publira.types.v1.User
+	64, // 28: publira.admin.v1.AdminAuthServiceFinishPasskeyVerificationResponse.access_token:type_name -> publira.types.v1.AccessToken
+	62, // 29: publira.admin.v1.AdminAuthServiceBeginPasskeyConfirmationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 30: publira.admin.v1.AdminAuthServiceListPasskeysRequest.tenant:type_name -> publira.types.v1.TenantContext
 	18, // 31: publira.admin.v1.AdminAuthServiceListPasskeysResponse.passkeys:type_name -> publira.admin.v1.Passkey
-	60, // 32: publira.admin.v1.AdminAuthServiceRenamePasskeyRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 32: publira.admin.v1.AdminAuthServiceRenamePasskeyRequest.tenant:type_name -> publira.types.v1.TenantContext
 	18, // 33: publira.admin.v1.AdminAuthServiceRenamePasskeyResponse.passkey:type_name -> publira.admin.v1.Passkey
-	60, // 34: publira.admin.v1.AdminAuthServiceDeletePasskeyRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 34: publira.admin.v1.AdminAuthServiceDeletePasskeyRequest.tenant:type_name -> publira.types.v1.TenantContext
 	9,  // 35: publira.admin.v1.AdminAuthServiceDeletePasskeyRequest.confirmation:type_name -> publira.admin.v1.MfaConfirmation
-	60, // 36: publira.admin.v1.AdminAuthServiceLogoutRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 37: publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 38: publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 39: publira.admin.v1.AdminAuthServiceGetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	61, // 40: publira.admin.v1.AdminAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
-	60, // 41: publira.admin.v1.AdminAuthServiceGetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 36: publira.admin.v1.AdminAuthServiceLogoutRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 37: publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 38: publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 39: publira.admin.v1.AdminAuthServiceGetMeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	63, // 40: publira.admin.v1.AdminAuthServiceGetMeResponse.user:type_name -> publira.types.v1.User
+	62, // 41: publira.admin.v1.AdminAuthServiceGetTenantRequest.tenant:type_name -> publira.types.v1.TenantContext
 	46, // 42: publira.admin.v1.AdminAuthServiceGetTenantResponse.tenant:type_name -> publira.admin.v1.AdminAuthServiceTenant
-	60, // 43: publira.admin.v1.AdminAuthServiceGetTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 44: publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 45: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 46: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 47: publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	60, // 48: publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
-	2,  // 49: publira.admin.v1.AdminAuthService.Login:input_type -> publira.admin.v1.AdminAuthServiceLoginRequest
-	35, // 50: publira.admin.v1.AdminAuthService.Logout:input_type -> publira.admin.v1.AdminAuthServiceLogoutRequest
-	37, // 51: publira.admin.v1.AdminAuthService.RequestPasswordReset:input_type -> publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest
-	39, // 52: publira.admin.v1.AdminAuthService.ConfirmPasswordReset:input_type -> publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest
-	41, // 53: publira.admin.v1.AdminAuthService.GetMe:input_type -> publira.admin.v1.AdminAuthServiceGetMeRequest
-	43, // 54: publira.admin.v1.AdminAuthService.GetTenantByDomain:input_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
-	45, // 55: publira.admin.v1.AdminAuthService.GetTenant:input_type -> publira.admin.v1.AdminAuthServiceGetTenantRequest
-	48, // 56: publira.admin.v1.AdminAuthService.GetTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
-	50, // 57: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:input_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest
-	52, // 58: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:input_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest
-	54, // 59: publira.admin.v1.AdminAuthService.UpdateTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
-	56, // 60: publira.admin.v1.AdminAuthService.RequestEmailChange:input_type -> publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest
-	58, // 61: publira.admin.v1.AdminAuthService.ConfirmEmailChange:input_type -> publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest
-	5,  // 62: publira.admin.v1.AdminAuthService.VerifyMfa:input_type -> publira.admin.v1.AdminAuthServiceVerifyMfaRequest
-	7,  // 63: publira.admin.v1.AdminAuthService.GetMfaStatus:input_type -> publira.admin.v1.AdminAuthServiceGetMfaStatusRequest
-	10, // 64: publira.admin.v1.AdminAuthService.StartMfaEnrollment:input_type -> publira.admin.v1.AdminAuthServiceStartMfaEnrollmentRequest
-	12, // 65: publira.admin.v1.AdminAuthService.ConfirmMfaEnrollment:input_type -> publira.admin.v1.AdminAuthServiceConfirmMfaEnrollmentRequest
-	14, // 66: publira.admin.v1.AdminAuthService.DisableMfa:input_type -> publira.admin.v1.AdminAuthServiceDisableMfaRequest
-	16, // 67: publira.admin.v1.AdminAuthService.RegenerateMfaRecoveryCodes:input_type -> publira.admin.v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest
-	19, // 68: publira.admin.v1.AdminAuthService.BeginPasskeyRegistration:input_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyRegistrationRequest
-	21, // 69: publira.admin.v1.AdminAuthService.FinishPasskeyRegistration:input_type -> publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationRequest
-	23, // 70: publira.admin.v1.AdminAuthService.BeginPasskeyVerification:input_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyVerificationRequest
-	25, // 71: publira.admin.v1.AdminAuthService.FinishPasskeyVerification:input_type -> publira.admin.v1.AdminAuthServiceFinishPasskeyVerificationRequest
-	27, // 72: publira.admin.v1.AdminAuthService.BeginPasskeyConfirmation:input_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyConfirmationRequest
-	29, // 73: publira.admin.v1.AdminAuthService.ListPasskeys:input_type -> publira.admin.v1.AdminAuthServiceListPasskeysRequest
-	31, // 74: publira.admin.v1.AdminAuthService.RenamePasskey:input_type -> publira.admin.v1.AdminAuthServiceRenamePasskeyRequest
-	33, // 75: publira.admin.v1.AdminAuthService.DeletePasskey:input_type -> publira.admin.v1.AdminAuthServiceDeletePasskeyRequest
-	3,  // 76: publira.admin.v1.AdminAuthService.Login:output_type -> publira.admin.v1.AdminAuthServiceLoginResponse
-	36, // 77: publira.admin.v1.AdminAuthService.Logout:output_type -> publira.admin.v1.AdminAuthServiceLogoutResponse
-	38, // 78: publira.admin.v1.AdminAuthService.RequestPasswordReset:output_type -> publira.admin.v1.AdminAuthServiceRequestPasswordResetResponse
-	40, // 79: publira.admin.v1.AdminAuthService.ConfirmPasswordReset:output_type -> publira.admin.v1.AdminAuthServiceConfirmPasswordResetResponse
-	42, // 80: publira.admin.v1.AdminAuthService.GetMe:output_type -> publira.admin.v1.AdminAuthServiceGetMeResponse
-	44, // 81: publira.admin.v1.AdminAuthService.GetTenantByDomain:output_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
-	47, // 82: publira.admin.v1.AdminAuthService.GetTenant:output_type -> publira.admin.v1.AdminAuthServiceGetTenantResponse
-	49, // 83: publira.admin.v1.AdminAuthService.GetTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
-	51, // 84: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:output_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse
-	53, // 85: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:output_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
-	55, // 86: publira.admin.v1.AdminAuthService.UpdateTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
-	57, // 87: publira.admin.v1.AdminAuthService.RequestEmailChange:output_type -> publira.admin.v1.AdminAuthServiceRequestEmailChangeResponse
-	59, // 88: publira.admin.v1.AdminAuthService.ConfirmEmailChange:output_type -> publira.admin.v1.AdminAuthServiceConfirmEmailChangeResponse
-	6,  // 89: publira.admin.v1.AdminAuthService.VerifyMfa:output_type -> publira.admin.v1.AdminAuthServiceVerifyMfaResponse
-	8,  // 90: publira.admin.v1.AdminAuthService.GetMfaStatus:output_type -> publira.admin.v1.AdminAuthServiceGetMfaStatusResponse
-	11, // 91: publira.admin.v1.AdminAuthService.StartMfaEnrollment:output_type -> publira.admin.v1.AdminAuthServiceStartMfaEnrollmentResponse
-	13, // 92: publira.admin.v1.AdminAuthService.ConfirmMfaEnrollment:output_type -> publira.admin.v1.AdminAuthServiceConfirmMfaEnrollmentResponse
-	15, // 93: publira.admin.v1.AdminAuthService.DisableMfa:output_type -> publira.admin.v1.AdminAuthServiceDisableMfaResponse
-	17, // 94: publira.admin.v1.AdminAuthService.RegenerateMfaRecoveryCodes:output_type -> publira.admin.v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse
-	20, // 95: publira.admin.v1.AdminAuthService.BeginPasskeyRegistration:output_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyRegistrationResponse
-	22, // 96: publira.admin.v1.AdminAuthService.FinishPasskeyRegistration:output_type -> publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationResponse
-	24, // 97: publira.admin.v1.AdminAuthService.BeginPasskeyVerification:output_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyVerificationResponse
-	26, // 98: publira.admin.v1.AdminAuthService.FinishPasskeyVerification:output_type -> publira.admin.v1.AdminAuthServiceFinishPasskeyVerificationResponse
-	28, // 99: publira.admin.v1.AdminAuthService.BeginPasskeyConfirmation:output_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyConfirmationResponse
-	30, // 100: publira.admin.v1.AdminAuthService.ListPasskeys:output_type -> publira.admin.v1.AdminAuthServiceListPasskeysResponse
-	32, // 101: publira.admin.v1.AdminAuthService.RenamePasskey:output_type -> publira.admin.v1.AdminAuthServiceRenamePasskeyResponse
-	34, // 102: publira.admin.v1.AdminAuthService.DeletePasskey:output_type -> publira.admin.v1.AdminAuthServiceDeletePasskeyResponse
-	76, // [76:103] is the sub-list for method output_type
-	49, // [49:76] is the sub-list for method input_type
-	49, // [49:49] is the sub-list for extension type_name
-	49, // [49:49] is the sub-list for extension extendee
-	0,  // [0:49] is the sub-list for field type_name
+	62, // 43: publira.admin.v1.AdminAuthServiceGetTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 44: publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 45: publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 46: publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 47: publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 48: publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest.tenant:type_name -> publira.types.v1.TenantContext
+	62, // 49: publira.admin.v1.AdminAuthServiceReauthenticateRequest.tenant:type_name -> publira.types.v1.TenantContext
+	9,  // 50: publira.admin.v1.AdminAuthServiceReauthenticateRequest.confirmation:type_name -> publira.admin.v1.MfaConfirmation
+	64, // 51: publira.admin.v1.AdminAuthServiceReauthenticateResponse.step_up_token:type_name -> publira.types.v1.AccessToken
+	2,  // 52: publira.admin.v1.AdminAuthService.Login:input_type -> publira.admin.v1.AdminAuthServiceLoginRequest
+	35, // 53: publira.admin.v1.AdminAuthService.Logout:input_type -> publira.admin.v1.AdminAuthServiceLogoutRequest
+	37, // 54: publira.admin.v1.AdminAuthService.RequestPasswordReset:input_type -> publira.admin.v1.AdminAuthServiceRequestPasswordResetRequest
+	39, // 55: publira.admin.v1.AdminAuthService.ConfirmPasswordReset:input_type -> publira.admin.v1.AdminAuthServiceConfirmPasswordResetRequest
+	41, // 56: publira.admin.v1.AdminAuthService.GetMe:input_type -> publira.admin.v1.AdminAuthServiceGetMeRequest
+	43, // 57: publira.admin.v1.AdminAuthService.GetTenantByDomain:input_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainRequest
+	45, // 58: publira.admin.v1.AdminAuthService.GetTenant:input_type -> publira.admin.v1.AdminAuthServiceGetTenantRequest
+	48, // 59: publira.admin.v1.AdminAuthService.GetTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigRequest
+	50, // 60: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:input_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateRequest
+	52, // 61: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:input_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationRequest
+	54, // 62: publira.admin.v1.AdminAuthService.UpdateTenantConfig:input_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigRequest
+	56, // 63: publira.admin.v1.AdminAuthService.RequestEmailChange:input_type -> publira.admin.v1.AdminAuthServiceRequestEmailChangeRequest
+	58, // 64: publira.admin.v1.AdminAuthService.ConfirmEmailChange:input_type -> publira.admin.v1.AdminAuthServiceConfirmEmailChangeRequest
+	5,  // 65: publira.admin.v1.AdminAuthService.VerifyMfa:input_type -> publira.admin.v1.AdminAuthServiceVerifyMfaRequest
+	7,  // 66: publira.admin.v1.AdminAuthService.GetMfaStatus:input_type -> publira.admin.v1.AdminAuthServiceGetMfaStatusRequest
+	10, // 67: publira.admin.v1.AdminAuthService.StartMfaEnrollment:input_type -> publira.admin.v1.AdminAuthServiceStartMfaEnrollmentRequest
+	12, // 68: publira.admin.v1.AdminAuthService.ConfirmMfaEnrollment:input_type -> publira.admin.v1.AdminAuthServiceConfirmMfaEnrollmentRequest
+	14, // 69: publira.admin.v1.AdminAuthService.DisableMfa:input_type -> publira.admin.v1.AdminAuthServiceDisableMfaRequest
+	16, // 70: publira.admin.v1.AdminAuthService.RegenerateMfaRecoveryCodes:input_type -> publira.admin.v1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest
+	19, // 71: publira.admin.v1.AdminAuthService.BeginPasskeyRegistration:input_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyRegistrationRequest
+	21, // 72: publira.admin.v1.AdminAuthService.FinishPasskeyRegistration:input_type -> publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationRequest
+	23, // 73: publira.admin.v1.AdminAuthService.BeginPasskeyVerification:input_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyVerificationRequest
+	25, // 74: publira.admin.v1.AdminAuthService.FinishPasskeyVerification:input_type -> publira.admin.v1.AdminAuthServiceFinishPasskeyVerificationRequest
+	27, // 75: publira.admin.v1.AdminAuthService.BeginPasskeyConfirmation:input_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyConfirmationRequest
+	29, // 76: publira.admin.v1.AdminAuthService.ListPasskeys:input_type -> publira.admin.v1.AdminAuthServiceListPasskeysRequest
+	31, // 77: publira.admin.v1.AdminAuthService.RenamePasskey:input_type -> publira.admin.v1.AdminAuthServiceRenamePasskeyRequest
+	33, // 78: publira.admin.v1.AdminAuthService.DeletePasskey:input_type -> publira.admin.v1.AdminAuthServiceDeletePasskeyRequest
+	60, // 79: publira.admin.v1.AdminAuthService.Reauthenticate:input_type -> publira.admin.v1.AdminAuthServiceReauthenticateRequest
+	3,  // 80: publira.admin.v1.AdminAuthService.Login:output_type -> publira.admin.v1.AdminAuthServiceLoginResponse
+	36, // 81: publira.admin.v1.AdminAuthService.Logout:output_type -> publira.admin.v1.AdminAuthServiceLogoutResponse
+	38, // 82: publira.admin.v1.AdminAuthService.RequestPasswordReset:output_type -> publira.admin.v1.AdminAuthServiceRequestPasswordResetResponse
+	40, // 83: publira.admin.v1.AdminAuthService.ConfirmPasswordReset:output_type -> publira.admin.v1.AdminAuthServiceConfirmPasswordResetResponse
+	42, // 84: publira.admin.v1.AdminAuthService.GetMe:output_type -> publira.admin.v1.AdminAuthServiceGetMeResponse
+	44, // 85: publira.admin.v1.AdminAuthService.GetTenantByDomain:output_type -> publira.admin.v1.AdminAuthServiceGetTenantByDomainResponse
+	47, // 86: publira.admin.v1.AdminAuthService.GetTenant:output_type -> publira.admin.v1.AdminAuthServiceGetTenantResponse
+	49, // 87: publira.admin.v1.AdminAuthService.GetTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceGetTenantConfigResponse
+	51, // 88: publira.admin.v1.AdminAuthService.GetTenantAdminInvitationState:output_type -> publira.admin.v1.AdminAuthServiceGetTenantAdminInvitationStateResponse
+	53, // 89: publira.admin.v1.AdminAuthService.AcceptTenantAdminInvitation:output_type -> publira.admin.v1.AdminAuthServiceAcceptTenantAdminInvitationResponse
+	55, // 90: publira.admin.v1.AdminAuthService.UpdateTenantConfig:output_type -> publira.admin.v1.AdminAuthServiceUpdateTenantConfigResponse
+	57, // 91: publira.admin.v1.AdminAuthService.RequestEmailChange:output_type -> publira.admin.v1.AdminAuthServiceRequestEmailChangeResponse
+	59, // 92: publira.admin.v1.AdminAuthService.ConfirmEmailChange:output_type -> publira.admin.v1.AdminAuthServiceConfirmEmailChangeResponse
+	6,  // 93: publira.admin.v1.AdminAuthService.VerifyMfa:output_type -> publira.admin.v1.AdminAuthServiceVerifyMfaResponse
+	8,  // 94: publira.admin.v1.AdminAuthService.GetMfaStatus:output_type -> publira.admin.v1.AdminAuthServiceGetMfaStatusResponse
+	11, // 95: publira.admin.v1.AdminAuthService.StartMfaEnrollment:output_type -> publira.admin.v1.AdminAuthServiceStartMfaEnrollmentResponse
+	13, // 96: publira.admin.v1.AdminAuthService.ConfirmMfaEnrollment:output_type -> publira.admin.v1.AdminAuthServiceConfirmMfaEnrollmentResponse
+	15, // 97: publira.admin.v1.AdminAuthService.DisableMfa:output_type -> publira.admin.v1.AdminAuthServiceDisableMfaResponse
+	17, // 98: publira.admin.v1.AdminAuthService.RegenerateMfaRecoveryCodes:output_type -> publira.admin.v1.AdminAuthServiceRegenerateMfaRecoveryCodesResponse
+	20, // 99: publira.admin.v1.AdminAuthService.BeginPasskeyRegistration:output_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyRegistrationResponse
+	22, // 100: publira.admin.v1.AdminAuthService.FinishPasskeyRegistration:output_type -> publira.admin.v1.AdminAuthServiceFinishPasskeyRegistrationResponse
+	24, // 101: publira.admin.v1.AdminAuthService.BeginPasskeyVerification:output_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyVerificationResponse
+	26, // 102: publira.admin.v1.AdminAuthService.FinishPasskeyVerification:output_type -> publira.admin.v1.AdminAuthServiceFinishPasskeyVerificationResponse
+	28, // 103: publira.admin.v1.AdminAuthService.BeginPasskeyConfirmation:output_type -> publira.admin.v1.AdminAuthServiceBeginPasskeyConfirmationResponse
+	30, // 104: publira.admin.v1.AdminAuthService.ListPasskeys:output_type -> publira.admin.v1.AdminAuthServiceListPasskeysResponse
+	32, // 105: publira.admin.v1.AdminAuthService.RenamePasskey:output_type -> publira.admin.v1.AdminAuthServiceRenamePasskeyResponse
+	34, // 106: publira.admin.v1.AdminAuthService.DeletePasskey:output_type -> publira.admin.v1.AdminAuthServiceDeletePasskeyResponse
+	61, // 107: publira.admin.v1.AdminAuthService.Reauthenticate:output_type -> publira.admin.v1.AdminAuthServiceReauthenticateResponse
+	80, // [80:108] is the sub-list for method output_type
+	52, // [52:80] is the sub-list for method input_type
+	52, // [52:52] is the sub-list for extension type_name
+	52, // [52:52] is the sub-list for extension extendee
+	0,  // [0:52] is the sub-list for field type_name
 }
 
 func init() { file_publira_admin_v1_auth_proto_init() }
@@ -3903,7 +4031,7 @@ func file_publira_admin_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_publira_admin_v1_auth_proto_rawDesc), len(file_publira_admin_v1_auth_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   58,
+			NumMessages:   60,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

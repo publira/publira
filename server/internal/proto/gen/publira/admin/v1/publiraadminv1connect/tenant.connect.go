@@ -502,6 +502,7 @@ type TenantSettingsServiceClient interface {
 	UpdateTenantMobileAppAssociation(context.Context, *v1.UpdateTenantMobileAppAssociationRequest) (*v1.UpdateTenantMobileAppAssociationResponse, error)
 	// Minimum role: tenant_admin.
 	GetTenantSignInSettings(context.Context, *v1.GetTenantSignInSettingsRequest) (*v1.GetTenantSignInSettingsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateTenantSignInSettings(context.Context, *v1.UpdateTenantSignInSettingsRequest) (*v1.UpdateTenantSignInSettingsResponse, error)
 	// Minimum role: tenant_auditor.
@@ -607,6 +608,7 @@ type TenantSettingsServiceHandler interface {
 	UpdateTenantMobileAppAssociation(context.Context, *v1.UpdateTenantMobileAppAssociationRequest) (*v1.UpdateTenantMobileAppAssociationResponse, error)
 	// Minimum role: tenant_admin.
 	GetTenantSignInSettings(context.Context, *v1.GetTenantSignInSettingsRequest) (*v1.GetTenantSignInSettingsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateTenantSignInSettings(context.Context, *v1.UpdateTenantSignInSettingsRequest) (*v1.UpdateTenantSignInSettingsResponse, error)
 	// Minimum role: tenant_auditor.

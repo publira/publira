@@ -75,6 +75,7 @@ var (
 type AdminEmailSettingsServiceClient interface {
 	// Minimum role: tenant_admin.
 	GetTenantEmailSettings(context.Context, *v1.GetTenantEmailSettingsRequest) (*v1.GetTenantEmailSettingsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateTenantEmailSettings(context.Context, *v1.UpdateTenantEmailSettingsRequest) (*v1.UpdateTenantEmailSettingsResponse, error)
 	// Answers the address the tenant's mail is sent from, so a sender a mail
@@ -99,6 +100,7 @@ func NewAdminEmailSettingsServiceClient(client *connect.Client) AdminEmailSettin
 type AdminEmailSettingsServiceHandler interface {
 	// Minimum role: tenant_admin.
 	GetTenantEmailSettings(context.Context, *v1.GetTenantEmailSettingsRequest) (*v1.GetTenantEmailSettingsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateTenantEmailSettings(context.Context, *v1.UpdateTenantEmailSettingsRequest) (*v1.UpdateTenantEmailSettingsResponse, error)
 	// Answers the address the tenant's mail is sent from, so a sender a mail

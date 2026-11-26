@@ -100,6 +100,9 @@ const (
 	// AdminAuthServiceDeletePasskeyProcedure is the procedure name of the AdminAuthService's
 	// DeletePasskey RPC.
 	AdminAuthServiceDeletePasskeyProcedure = "/publira.admin.v1.AdminAuthService/DeletePasskey"
+	// AdminAuthServiceReauthenticateProcedure is the procedure name of the AdminAuthService's
+	// Reauthenticate RPC.
+	AdminAuthServiceReauthenticateProcedure = "/publira.admin.v1.AdminAuthService/Reauthenticate"
 )
 
 var (
@@ -292,6 +295,13 @@ var (
 			Procedure:  AdminAuthServiceDeletePasskeyProcedure,
 		}
 	})
+	adminAuthServiceReauthenticateSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_publira_admin_v1_auth_proto.Services().ByName("AdminAuthService").Methods().ByName("Reauthenticate"),
+			Procedure:  AdminAuthServiceReauthenticateProcedure,
+		}
+	})
 )
 
 // AdminAuthServiceClient is a client for the publira.admin.v1.AdminAuthService service.
@@ -351,6 +361,13 @@ type AdminAuthServiceClient interface {
 	// failed_precondition when it is the account's last second factor and the
 	// tenant requires one of its role.
 	DeletePasskey(context.Context, *v1.AdminAuthServiceDeletePasskeyRequest) (*v1.AdminAuthServiceDeletePasskeyResponse, error)
+	// Exchanges the account's password, or proof of one of its second factors,
+	// for the step-up token the RPCs that say "Requires a recent
+	// re-authentication" ask for. Those refuse a request without a valid one
+	// with permission_denied and the ErrorInfo reason REAUTHENTICATION_REQUIRED,
+	// which the console answers by asking its user for this proof and sending
+	// the request again.
+	Reauthenticate(context.Context, *v1.AdminAuthServiceReauthenticateRequest) (*v1.AdminAuthServiceReauthenticateResponse, error)
 }
 
 // NewAdminAuthServiceClient constructs a client for the publira.admin.v1.AdminAuthService service.
@@ -416,6 +433,13 @@ type AdminAuthServiceHandler interface {
 	// failed_precondition when it is the account's last second factor and the
 	// tenant requires one of its role.
 	DeletePasskey(context.Context, *v1.AdminAuthServiceDeletePasskeyRequest) (*v1.AdminAuthServiceDeletePasskeyResponse, error)
+	// Exchanges the account's password, or proof of one of its second factors,
+	// for the step-up token the RPCs that say "Requires a recent
+	// re-authentication" ask for. Those refuse a request without a valid one
+	// with permission_denied and the ErrorInfo reason REAUTHENTICATION_REQUIRED,
+	// which the console answers by asking its user for this proof and sending
+	// the request again.
+	Reauthenticate(context.Context, *v1.AdminAuthServiceReauthenticateRequest) (*v1.AdminAuthServiceReauthenticateResponse, error)
 }
 
 // RegisterAdminAuthServiceHandler registers svc as the publira.admin.v1.AdminAuthService
@@ -450,6 +474,7 @@ func RegisterAdminAuthServiceHandler(server *connect.Server, svc AdminAuthServic
 		connect.Method{Spec: adminAuthServiceListPasskeysSpec(), Handler: adapter.listPasskeys},
 		connect.Method{Spec: adminAuthServiceRenamePasskeySpec(), Handler: adapter.renamePasskey},
 		connect.Method{Spec: adminAuthServiceDeletePasskeySpec(), Handler: adapter.deletePasskey},
+		connect.Method{Spec: adminAuthServiceReauthenticateSpec(), Handler: adapter.reauthenticate},
 	)
 }
 
@@ -562,6 +587,10 @@ func (UnimplementedAdminAuthServiceHandler) RenamePasskey(context.Context, *v1.A
 
 func (UnimplementedAdminAuthServiceHandler) DeletePasskey(context.Context, *v1.AdminAuthServiceDeletePasskeyRequest) (*v1.AdminAuthServiceDeletePasskeyResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.DeletePasskey is not implemented")
+}
+
+func (UnimplementedAdminAuthServiceHandler) Reauthenticate(context.Context, *v1.AdminAuthServiceReauthenticateRequest) (*v1.AdminAuthServiceReauthenticateResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "publira.admin.v1.AdminAuthService.Reauthenticate is not implemented")
 }
 
 type adminAuthServiceClient struct {
@@ -779,6 +808,14 @@ func (c *adminAuthServiceClient) RenamePasskey(ctx context.Context, req *v1.Admi
 func (c *adminAuthServiceClient) DeletePasskey(ctx context.Context, req *v1.AdminAuthServiceDeletePasskeyRequest) (*v1.AdminAuthServiceDeletePasskeyResponse, error) {
 	var res v1.AdminAuthServiceDeletePasskeyResponse
 	if err := c.client.CallUnary(ctx, adminAuthServiceDeletePasskeySpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *adminAuthServiceClient) Reauthenticate(ctx context.Context, req *v1.AdminAuthServiceReauthenticateRequest) (*v1.AdminAuthServiceReauthenticateResponse, error) {
+	var res v1.AdminAuthServiceReauthenticateResponse
+	if err := c.client.CallUnary(ctx, adminAuthServiceReauthenticateSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1104,6 +1141,18 @@ func (h adminAuthServiceHandler) deletePasskey(ctx context.Context, _ connect.Sp
 		return err
 	}
 	res, err := h.svc.DeletePasskey(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h adminAuthServiceHandler) reauthenticate(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.AdminAuthServiceReauthenticateRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.Reauthenticate(ctx, &req)
 	if err != nil {
 		return err
 	}

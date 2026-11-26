@@ -89,6 +89,7 @@ message RevokeApiKeyResponse {
 service AdminApiKeyService {
   // Minimum role: tenant_admin.
   rpc ListApiKeys(ListApiKeysRequest) returns (ListApiKeysResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc CreateApiKey(CreateApiKeyRequest) returns (CreateApiKeyResponse) {}
   // Minimum role: tenant_admin.

@@ -780,6 +780,7 @@ export const AdminWebhookService: GenService<{
     output: typeof ListWebhookEndpointsResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminWebhookService.CreateWebhookEndpoint
@@ -790,6 +791,7 @@ export const AdminWebhookService: GenService<{
     output: typeof CreateWebhookEndpointResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminWebhookService.UpdateWebhookEndpoint
@@ -800,6 +802,7 @@ export const AdminWebhookService: GenService<{
     output: typeof UpdateWebhookEndpointResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminWebhookService.RotateWebhookSecret

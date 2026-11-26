@@ -363,18 +363,21 @@ service AdminPaymentSettingsService {
   // leaves the tenant's other providers as they are. A retired provider saved
   // switched off stays retired.
   //
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc UpdateTenantPaymentSettings(UpdateTenantPaymentSettingsRequest) returns (UpdateTenantPaymentSettingsResponse) {
     option deprecated = true;
   }
   // Minimum role: tenant_admin.
   rpc ListTenantPaymentProviders(ListTenantPaymentProvidersRequest) returns (ListTenantPaymentProvidersResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc UpsertTenantPaymentProvider(UpsertTenantPaymentProviderRequest) returns (UpsertTenantPaymentProviderResponse) {}
   // Minimum role: tenant_admin.
   rpc RemoveTenantPaymentProvider(RemoveTenantPaymentProviderRequest) returns (RemoveTenantPaymentProviderResponse) {}
   // Minimum role: tenant_admin.
   rpc GetTenantStorePaymentSettings(GetTenantStorePaymentSettingsRequest) returns (GetTenantStorePaymentSettingsResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc UpdateTenantStorePaymentSettings(UpdateTenantStorePaymentSettingsRequest) returns (UpdateTenantStorePaymentSettingsResponse) {}
   // Minimum role: tenant_admin.
