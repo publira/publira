@@ -311,4 +311,19 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     ).toBeDefined();
     expect(screen.queryByText("EEEEE-FFFFF")).toBeNull();
   });
+  it("offers no turning off while the platform requires the factor", async () => {
+    render(<MfaSettingsCard status={{ ...enabled, required: true }} />);
+
+    expect(
+      await screen.findByText(
+        "Two-step verification cannot be turned off while this platform requires it.",
+        {},
+        onScreen
+      )
+    ).toBeDefined();
+    expect(
+      await screen.findByRole("button", { name: "Regenerate" }, onScreen)
+    ).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Turn off" })).toBeNull();
+  });
 });

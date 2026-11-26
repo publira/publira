@@ -230,4 +230,21 @@ describe("disablePlatformMfa", () => {
 
     await expect(disablePlatformMfa("123456", "en")).rejects.toBe(rejected);
   });
+
+  it("says the platform requires the factor when it is refused for that", async () => {
+    mockDisableMfa.mockRejectedValueOnce(
+      reasonError(
+        Code.FailedPrecondition,
+        RPC_ERROR_REASON.mfaLastRequiredFactor
+      )
+    );
+    const t = await getMessagesFor("en");
+
+    const { disablePlatformMfa } = await import("./platform-mfa");
+
+    await expect(disablePlatformMfa("123456", "en")).resolves.toEqual({
+      message: t("platform.settings.mfa.disable_required"),
+      ok: false,
+    });
+  });
 });

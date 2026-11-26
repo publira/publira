@@ -174,6 +174,27 @@ const MfaDisableForm = ({
   </ActionForm.Root>
 );
 
+/**
+ * Stands where the disable form would while the authenticator app is the last
+ * factor of an account the tenant requires one of: the API refuses to take it
+ * off then, so the form would only fail. A passkey added beside it brings the
+ * form back.
+ */
+const MfaDisableRequired = () => (
+  <div className="grid gap-1">
+    <p className="text-sm font-medium text-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-48" />}>
+        <Message message="admin.settings.mfa.disable_title" />
+      </Suspense>
+    </p>
+    <p className="text-xs text-muted-foreground">
+      <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
+        <Message message="admin.settings.mfa.disable_required" />
+      </Suspense>
+    </p>
+  </div>
+);
+
 const MfaStatusMessage = ({ status }: { status: AdminMfaStatus }) => {
   const hasPasskey = status.passkeys.length > 0;
 
@@ -262,10 +283,14 @@ export const MfaSettingsCard = ({
         {status.enabled ? (
           <>
             <MfaRegenerateForm tenantId={tenantId} />
-            <MfaDisableForm
-              keepsPasskeys={status.passkeys.length > 0}
-              tenantId={tenantId}
-            />
+            {status.required && status.passkeys.length === 0 ? (
+              <MfaDisableRequired />
+            ) : (
+              <MfaDisableForm
+                keepsPasskeys={status.passkeys.length > 0}
+                tenantId={tenantId}
+              />
+            )}
           </>
         ) : (
           <MfaEnrollment.Root

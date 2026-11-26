@@ -493,6 +493,32 @@ describe("MfaSettingsCard", { timeout: caseTimeout }, () => {
     ).toBeDefined();
   });
 
+  it("offers no turning off while the authenticator app is the last factor the tenant requires", async () => {
+    renderCard({ ...enabled, required: true });
+
+    expect(
+      await screen.findByText(
+        "This tenant requires two-step verification for administrators, so the authenticator app cannot be turned off while it is your only second factor. Add a passkey first.",
+        {},
+        onScreen
+      )
+    ).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Turn off" })).toBeNull();
+  });
+
+  it("offers turning off a required authenticator app beside a passkey", async () => {
+    renderCard({ ...both, required: true });
+
+    expect(
+      await screen.findByRole("button", { name: "Turn off" }, onScreen)
+    ).toBeDefined();
+    expect(
+      screen.queryByText(
+        "This tenant requires two-step verification for administrators, so the authenticator app cannot be turned off while it is your only second factor. Add a passkey first."
+      )
+    ).toBeNull();
+  });
+
   // The first passkey of an account with no factor brings the recovery codes,
   // which are shown once as an enrollment's are, and the passkey is named
   // after the browser has created it.

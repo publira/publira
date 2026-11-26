@@ -3924,6 +3924,7 @@
         "disable_submit": "关闭",
         "disable_submitting": "正在关闭…",
         "disable_done": "已移除身份验证器应用。",
+        "disable_required": "该租户要求管理员启用两步验证，因此当身份验证器应用是您唯一的两步验证方式时，无法将其关闭。请先添加通行密钥。",
         "load_failed": "无法读取两步验证的状态。",
         "passkeys_title": "通行密钥",
         "passkeys_description": "使用设备的屏幕锁、密码管理器或安全密钥确认登录，无需输入验证码。",
@@ -6942,6 +6943,7 @@
       "mfa_secret_help": "如果无法扫描二维码，请在身份验证器应用中手动输入此密钥。",
       "mfa_secret_label": "设置密钥",
       "mfa_set_up_in_console": "此账户使用通行密钥登录租户的控制台，请在控制台的账户设置中设置两步验证。",
+      "mfa_disable_in_console": "该租户要求管理员启用两步验证，请在控制台的账户设置中关闭两步验证。",
       "mfa_status_disabled": "两步验证已关闭。",
       "mfa_status_enabled": "两步验证已于{$date}开启。",
       "name_help": "此名称会显示在您的个人资料上。",
@@ -8823,6 +8825,7 @@
         "disable_submit": "关闭",
         "disable_submitting": "正在关闭…",
         "disable_done": "两步验证已关闭。",
+        "disable_required": "在该平台要求启用两步验证期间，无法关闭两步验证。",
         "load_failed": "无法读取两步验证的状态。"
       },
       "password": "密码",
