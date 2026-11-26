@@ -36,7 +36,7 @@ const (
 	defaultMaxConvertedBytes = 20 << 20
 	// maxResizeDimension is the largest w or h a request may ask for, and the
 	// largest side WebP can encode. Every resize is a scale-down
-	// (scaleDownOnly), so it never grows past the original's own size; the
+	// (conversionRequest), so it never grows past the original's own size; the
 	// bound only refuses, before the original is read, a size no conversion
 	// could answer.
 	maxResizeDimension = 16383
@@ -187,7 +187,11 @@ func (h *Handler) resolveStoreVersion(w http.ResponseWriter, r *http.Request, ob
 }
 
 func (h *Handler) serveConverted(w http.ResponseWriter, r *http.Request, adminHost bool, objectKey, fallbackContentType, cacheControl string, cipher *imageCipher) {
-	r = scaleDownOnly(r)
+	r, err := conversionRequest(r, fallbackContentType)
+	if err != nil {
+		writeImage(w, "text/plain; charset=utf-8", "", "miss", http.StatusBadRequest, []byte(err.Error()+"\n"))
+		return
+	}
 	storeVersion, ok := h.resolveStoreVersion(w, r, h.site(adminHost).Objects, objectKey)
 	if !ok {
 		return
@@ -271,30 +275,6 @@ func (h *Handler) writeConvertedImage(w http.ResponseWriter, contentType, cacheC
 	w.Header().Set(imageKeyIDHeader, keyID)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	writeImage(w, "application/octet-stream", cacheControl, cacheStatus, status, encrypted)
-}
-
-// scaleDownOnly answers r as a request for fit=scale-down, whatever fit it
-// named. Manael's other fits enlarge: contain, which is also what no fit
-// means, scales a small original up to the box asked for, and cover scales it
-// up until it covers the box before cropping. Either turns a 512px logo asked
-// for at w=16000&h=16000 into a 256-megapixel conversion. scale-down never
-// answers with more than the original, and it is the fit the web apps and the
-// viewer ask for.
-func scaleDownOnly(r *http.Request) *http.Request {
-	q := r.URL.Query()
-	if q.Get("w") == "" && q.Get("h") == "" {
-		if !q.Has("fit") {
-			return r
-		}
-		q.Del("fit")
-	} else {
-		q.Set("fit", resizeFitScaleDown)
-	}
-	u := *r.URL
-	u.RawQuery = q.Encode()
-	out := r.Clone(r.Context())
-	out.URL = &u
-	return out
 }
 
 // newConversionSlots bounds how many conversions run at once. bimg runs

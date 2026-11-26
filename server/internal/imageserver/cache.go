@@ -132,6 +132,9 @@ func (c *memoryCache) removeLocked(key string) {
 	delete(c.items, key)
 }
 
+// cacheKey names the rendition r asks for of objectKey. r is the request
+// conversionRequest made, which spells each conversion one way, so the key
+// tells conversions apart rather than spellings.
 func cacheKey(storeVersion, objectKey string, r *http.Request) string {
 	q := r.URL.Query()
 	var b strings.Builder

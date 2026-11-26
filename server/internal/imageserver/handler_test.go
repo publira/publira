@@ -1895,8 +1895,8 @@ func TestServeConvertedRejectsOversizeConversion(t *testing.T) {
 	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("Cache-Control = %q, want no-store", got)
 	}
-	if _, ok := h.cache.Get(context.Background(), cacheKey("", "obj", req)); ok {
-		t.Fatal("oversized conversion was cached")
+	if n := len(h.cache.(*memoryCache).items); n != 0 {
+		t.Fatalf("cached entries = %d, want 0", n)
 	}
 }
 
