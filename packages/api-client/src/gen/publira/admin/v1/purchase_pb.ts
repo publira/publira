@@ -700,6 +700,7 @@ export const AdminPurchaseService: GenService<{
    * staff ask, so a refund the provider refuses leaves the reader's coins as
    * they were.
    *
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminPurchaseService.RefundPurchase
@@ -730,6 +731,7 @@ export const AdminPurchaseService: GenService<{
    * or above what is left to refund, is invalid_argument with a field
    * violation on amount, and an empty reason one on reason.
    *
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminPurchaseService.RefundPurchaseInPart

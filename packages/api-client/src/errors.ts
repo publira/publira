@@ -68,6 +68,7 @@ export const RPC_ERROR_REASON = {
   readerIconNotAllowed: "READER_ICON_NOT_ALLOWED",
   readerIconPresetLimit: "READER_ICON_PRESET_LIMIT",
   readerIsTenantStaff: "READER_IS_TENANT_STAFF",
+  reauthenticationRequired: "REAUTHENTICATION_REQUIRED",
   seriesHasEpisodes: "SERIES_HAS_EPISODES",
   seriesHasVolumes: "SERIES_HAS_VOLUMES",
   seriesInPromotionCode: "SERIES_IN_PROMOTION_CODE",

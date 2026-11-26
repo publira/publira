@@ -3014,6 +3014,7 @@ export const TenantSettingsService: GenService<{
     output: typeof GetTenantSignInSettingsResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.TenantSettingsService.UpdateTenantSignInSettings

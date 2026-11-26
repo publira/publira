@@ -59,6 +59,7 @@ message DeleteTenantFcmCredentialsResponse {
 service AdminFcmSettingsService {
   // Minimum role: tenant_admin.
   rpc GetTenantFcmSettings(GetTenantFcmSettingsRequest) returns (GetTenantFcmSettingsResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc SaveTenantFcmCredentials(SaveTenantFcmCredentialsRequest) returns (SaveTenantFcmCredentialsResponse) {}
   // Minimum role: tenant_admin.

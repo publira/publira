@@ -198,6 +198,7 @@ export const AdminFcmSettingsService: GenService<{
     output: typeof GetTenantFcmSettingsResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminFcmSettingsService.SaveTenantFcmCredentials

@@ -57,6 +57,12 @@ const (
 	// for that long, which is one the limit may treat as never seen.
 	LoginDeviceTTL = 90 * 24 * time.Hour
 
+	// StepUpTokenTTL is how long a console account's re-authentication keeps
+	// admitting the operations that ask for one: long enough for one task of
+	// several such steps, and short enough that a session lifted from a browser
+	// left open is unlikely to come with one.
+	StepUpTokenTTL = 15 * time.Minute
+
 	JWTIssuer = "publira"
 
 	AudiencePublic   = "public"
@@ -104,6 +110,12 @@ const (
 	// authorizes nothing: no RPC accepts it in place of a session, and its
 	// subject names an address digest rather than an account.
 	AudienceLoginDevice = "login-device"
+	// AudienceAdminStepUp marks the token a tenant console account earns by
+	// proving, on top of its session, that its owner is the one using it. It
+	// is presented beside the session rather than in its place: no RPC takes it
+	// as a session, and it admits nothing beside any session but the one it
+	// was earned on.
+	AudienceAdminStepUp = "admin-step-up"
 )
 
 // AccessTokenClaims are the claims embedded in API access tokens.
@@ -115,6 +127,9 @@ type AccessTokenClaims struct {
 	// EpisodeID scopes an AudienceMedia or AudienceAdminMedia token to one
 	// episode (primary key UUID). API access tokens leave it empty.
 	EpisodeID string `json:"eid,omitempty"`
+	// BoundSessionID names, on an AudienceAdminStepUp token, the `jti` of the
+	// session it was earned on. Every other token leaves it empty.
+	BoundSessionID string `json:"sid,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -323,6 +338,60 @@ func (m *TokenManager) VerifyLoginDeviceToken(token, subject string) (string, er
 		return "", errors.New("the device token names no device")
 	}
 	return claims.ID, nil
+}
+
+// IssueStepUpToken signs the token a tenant console account earns by proving,
+// on top of the session sessionID names, that its owner is the one using it.
+// It carries the session's subject, tenant, and credentials version too, so
+// beside another account's session, another tenant's, or a session from before
+// a password change it admits nothing.
+func (m *TokenManager) IssueStepUpToken(
+	subjectPublicID string,
+	tenantID string,
+	sessionID uuid.UUID,
+	credentialsVersion int32,
+	now time.Time,
+) (token string, expiresAt time.Time, err error) {
+	subjectPublicID = strings.TrimSpace(subjectPublicID)
+	if subjectPublicID == "" {
+		return "", time.Time{}, errors.New("subject is required")
+	}
+	tenantID = strings.TrimSpace(tenantID)
+	if tenantID == "" {
+		return "", time.Time{}, errors.New("tenant is required")
+	}
+	if sessionID == uuid.Nil {
+		return "", time.Time{}, errors.New("session is required")
+	}
+	return m.sign(AccessTokenClaims{
+		TenantID:           tenantID,
+		CredentialsVersion: credentialsVersion,
+		BoundSessionID:     sessionID.String(),
+	}, subjectPublicID, AudienceAdminStepUp, "", StepUpTokenTTL, now)
+}
+
+// VerifyStepUpToken reports whether token is a step-up token this deployment
+// signed for the session whose claims session holds, and has not expired.
+func (m *TokenManager) VerifyStepUpToken(token string, session *AccessTokenClaims) error {
+	sessionID, _, ok := session.SessionID()
+	if !ok {
+		return errors.New("the session has no id to bind a step-up to")
+	}
+	claims, err := m.Verify(token, AudienceAdminStepUp)
+	if err != nil {
+		return err
+	}
+	switch {
+	case claims.Subject != session.Subject:
+		return errors.New("the step-up token names another account")
+	case claims.TenantID != session.TenantID:
+		return errors.New("the step-up token names another tenant")
+	case claims.BoundSessionID != sessionID.String():
+		return errors.New("the step-up token names another session")
+	case claims.CredentialsVersion != session.CredentialsVersion:
+		return errors.New("the step-up token predates a credentials change")
+	}
+	return nil
 }
 
 func (m *TokenManager) issueScopedMediaToken(

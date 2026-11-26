@@ -171,14 +171,17 @@ message CancelTenantAdminInvitationResponse {
 service AdminTenantMemberService {
   // Minimum role: tenant_admin.
   rpc ListTenantMembers(ListTenantMembersRequest) returns (ListTenantMembersResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc AddTenantMember(AddTenantMemberRequest) returns (AddTenantMemberResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc UpdateTenantMemberRole(UpdateTenantMemberRoleRequest) returns (UpdateTenantMemberRoleResponse) {}
   // Minimum role: tenant_admin.
   rpc RemoveTenantMember(RemoveTenantMemberRequest) returns (RemoveTenantMemberResponse) {}
   // Minimum role: tenant_admin.
   rpc ListTenantAdminInvitations(ListTenantAdminInvitationsRequest) returns (ListTenantAdminInvitationsResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc CreateTenantAdminInvitation(CreateTenantAdminInvitationRequest) returns (CreateTenantAdminInvitationResponse) {}
   // Minimum role: tenant_admin.

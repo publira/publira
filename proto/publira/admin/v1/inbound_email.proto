@@ -107,6 +107,7 @@ service AdminInboundEmailSettingsService {
   rpc ListInboundEmailProviders(ListInboundEmailProvidersRequest) returns (ListInboundEmailProvidersResponse) {}
   // Minimum role: tenant_admin.
   rpc GetTenantInboundEmailSettings(GetTenantInboundEmailSettingsRequest) returns (GetTenantInboundEmailSettingsResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc UpdateTenantInboundEmailSettings(UpdateTenantInboundEmailSettingsRequest) returns (UpdateTenantInboundEmailSettingsResponse) {}
 }

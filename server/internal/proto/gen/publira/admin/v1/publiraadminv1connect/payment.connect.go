@@ -139,18 +139,21 @@ type AdminPaymentSettingsServiceClient interface {
 	// leaves the tenant's other providers as they are. A retired provider saved
 	// switched off stays retired.
 	//
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	//
 	// Deprecated: do not use.
 	UpdateTenantPaymentSettings(context.Context, *v1.UpdateTenantPaymentSettingsRequest) (*v1.UpdateTenantPaymentSettingsResponse, error)
 	// Minimum role: tenant_admin.
 	ListTenantPaymentProviders(context.Context, *v1.ListTenantPaymentProvidersRequest) (*v1.ListTenantPaymentProvidersResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpsertTenantPaymentProvider(context.Context, *v1.UpsertTenantPaymentProviderRequest) (*v1.UpsertTenantPaymentProviderResponse, error)
 	// Minimum role: tenant_admin.
 	RemoveTenantPaymentProvider(context.Context, *v1.RemoveTenantPaymentProviderRequest) (*v1.RemoveTenantPaymentProviderResponse, error)
 	// Minimum role: tenant_admin.
 	GetTenantStorePaymentSettings(context.Context, *v1.GetTenantStorePaymentSettingsRequest) (*v1.GetTenantStorePaymentSettingsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateTenantStorePaymentSettings(context.Context, *v1.UpdateTenantStorePaymentSettingsRequest) (*v1.UpdateTenantStorePaymentSettingsResponse, error)
 	// Minimum role: tenant_admin.
@@ -183,18 +186,21 @@ type AdminPaymentSettingsServiceHandler interface {
 	// leaves the tenant's other providers as they are. A retired provider saved
 	// switched off stays retired.
 	//
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	//
 	// Deprecated: do not use.
 	UpdateTenantPaymentSettings(context.Context, *v1.UpdateTenantPaymentSettingsRequest) (*v1.UpdateTenantPaymentSettingsResponse, error)
 	// Minimum role: tenant_admin.
 	ListTenantPaymentProviders(context.Context, *v1.ListTenantPaymentProvidersRequest) (*v1.ListTenantPaymentProvidersResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpsertTenantPaymentProvider(context.Context, *v1.UpsertTenantPaymentProviderRequest) (*v1.UpsertTenantPaymentProviderResponse, error)
 	// Minimum role: tenant_admin.
 	RemoveTenantPaymentProvider(context.Context, *v1.RemoveTenantPaymentProviderRequest) (*v1.RemoveTenantPaymentProviderResponse, error)
 	// Minimum role: tenant_admin.
 	GetTenantStorePaymentSettings(context.Context, *v1.GetTenantStorePaymentSettingsRequest) (*v1.GetTenantStorePaymentSettingsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateTenantStorePaymentSettings(context.Context, *v1.UpdateTenantStorePaymentSettingsRequest) (*v1.UpdateTenantStorePaymentSettingsResponse, error)
 	// Minimum role: tenant_admin.

@@ -54,6 +54,7 @@ var levelFreeProcedures = []string{
 	"/publira.admin.v1.AdminAuthService/ListPasskeys",
 	"/publira.admin.v1.AdminAuthService/RenamePasskey",
 	"/publira.admin.v1.AdminAuthService/DeletePasskey",
+	"/publira.admin.v1.AdminAuthService/Reauthenticate",
 }
 
 var (

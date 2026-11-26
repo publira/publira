@@ -67,6 +67,7 @@ type AdminInboundEmailSettingsServiceClient interface {
 	ListInboundEmailProviders(context.Context, *v1.ListInboundEmailProvidersRequest) (*v1.ListInboundEmailProvidersResponse, error)
 	// Minimum role: tenant_admin.
 	GetTenantInboundEmailSettings(context.Context, *v1.GetTenantInboundEmailSettingsRequest) (*v1.GetTenantInboundEmailSettingsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateTenantInboundEmailSettings(context.Context, *v1.UpdateTenantInboundEmailSettingsRequest) (*v1.UpdateTenantInboundEmailSettingsResponse, error)
 }
@@ -85,6 +86,7 @@ type AdminInboundEmailSettingsServiceHandler interface {
 	ListInboundEmailProviders(context.Context, *v1.ListInboundEmailProvidersRequest) (*v1.ListInboundEmailProvidersResponse, error)
 	// Minimum role: tenant_admin.
 	GetTenantInboundEmailSettings(context.Context, *v1.GetTenantInboundEmailSettingsRequest) (*v1.GetTenantInboundEmailSettingsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateTenantInboundEmailSettings(context.Context, *v1.UpdateTenantInboundEmailSettingsRequest) (*v1.UpdateTenantInboundEmailSettingsResponse, error)
 }

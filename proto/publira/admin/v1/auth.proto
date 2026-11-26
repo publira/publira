@@ -95,10 +95,10 @@ message AdminAuthServiceGetMfaStatusResponse {
 }
 
 // Proof that a signed-in account still holds one of its second factors, sent
-// with a request that adds a factor to the account or removes one. A session
-// shows only that the account answered its second step once; a change to what
-// that step asks for asks it again. An account that holds no second factor
-// sends none.
+// with a request that adds a factor to the account or removes one, and to
+// Reauthenticate. A session shows only that the account answered its second
+// step once; a change to what that step asks for asks it again. An account
+// that holds no second factor sends none.
 //
 // Exactly one of the two is sent. A refused code or assertion counts toward
 // the same lock a refused sign-in does.
@@ -456,6 +456,26 @@ message AdminAuthServiceConfirmEmailChangeResponse {
   string pending_confirmation_for = 3;
 }
 
+// Proof, on top of the session, that the account's owner is the one using
+// it. Exactly one of the two is sent.
+message AdminAuthServiceReauthenticateRequest {
+  publira.types.v1.TenantContext tenant = 1;
+  // The account's password. A wrong one is invalid_argument on this field,
+  // and spends the account's step-up allowance, the one RequestEmailChange
+  // spends.
+  string password = 2;
+  // A code, a recovery code, or a passkey's assertion, for an account that
+  // holds a second factor: failed_precondition for one that holds none.
+  MfaConfirmation confirmation = 3;
+}
+
+message AdminAuthServiceReauthenticateResponse {
+  // Sent as the Publira-Step-Up header, beside the session's Authorization
+  // header, to the RPCs that ask for a recent re-authentication. It admits
+  // them only beside the session it was issued on, and until its expires_at.
+  publira.types.v1.AccessToken step_up_token = 1;
+}
+
 service AdminAuthService {
   rpc Login(AdminAuthServiceLoginRequest) returns (AdminAuthServiceLoginResponse) {}
   // Ends the session the request's access token holds: that token is refused
@@ -512,4 +532,11 @@ service AdminAuthService {
   // failed_precondition when it is the account's last second factor and the
   // tenant requires one of its role.
   rpc DeletePasskey(AdminAuthServiceDeletePasskeyRequest) returns (AdminAuthServiceDeletePasskeyResponse) {}
+  // Exchanges the account's password, or proof of one of its second factors,
+  // for the step-up token the RPCs that say "Requires a recent
+  // re-authentication" ask for. Those refuse a request without a valid one
+  // with permission_denied and the ErrorInfo reason REAUTHENTICATION_REQUIRED,
+  // which the console answers by asking its user for this proof and sending
+  // the request again.
+  rpc Reauthenticate(AdminAuthServiceReauthenticateRequest) returns (AdminAuthServiceReauthenticateResponse) {}
 }

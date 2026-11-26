@@ -278,6 +278,7 @@ export const AdminApiKeyService: GenService<{
     output: typeof ListApiKeysResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminApiKeyService.CreateApiKey

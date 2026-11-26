@@ -64,6 +64,7 @@ var (
 type AdminFcmSettingsServiceClient interface {
 	// Minimum role: tenant_admin.
 	GetTenantFcmSettings(context.Context, *v1.GetTenantFcmSettingsRequest) (*v1.GetTenantFcmSettingsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	SaveTenantFcmCredentials(context.Context, *v1.SaveTenantFcmCredentialsRequest) (*v1.SaveTenantFcmCredentialsResponse, error)
 	// Minimum role: tenant_admin.
@@ -82,6 +83,7 @@ func NewAdminFcmSettingsServiceClient(client *connect.Client) AdminFcmSettingsSe
 type AdminFcmSettingsServiceHandler interface {
 	// Minimum role: tenant_admin.
 	GetTenantFcmSettings(context.Context, *v1.GetTenantFcmSettingsRequest) (*v1.GetTenantFcmSettingsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	SaveTenantFcmCredentials(context.Context, *v1.SaveTenantFcmCredentialsRequest) (*v1.SaveTenantFcmCredentialsResponse, error)
 	// Minimum role: tenant_admin.

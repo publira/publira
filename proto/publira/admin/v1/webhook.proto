@@ -258,10 +258,13 @@ message ResendWebhookDeliveryResponse {
 service AdminWebhookService {
   // Minimum role: tenant_admin.
   rpc ListWebhookEndpoints(ListWebhookEndpointsRequest) returns (ListWebhookEndpointsResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc CreateWebhookEndpoint(CreateWebhookEndpointRequest) returns (CreateWebhookEndpointResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc UpdateWebhookEndpoint(UpdateWebhookEndpointRequest) returns (UpdateWebhookEndpointResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc RotateWebhookSecret(RotateWebhookSecretRequest) returns (RotateWebhookSecretResponse) {}
   // Minimum role: tenant_admin.

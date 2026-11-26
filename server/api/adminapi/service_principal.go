@@ -43,9 +43,11 @@ func serviceProcedureDeniedError() error {
 
 // sessionContextBuilder authenticates a request carrying the service token as
 // the service principal, one carrying a tenant's API key as that key, and every
-// other request as an operator's session.
+// other request as an operator's session, which a procedure in
+// stepUpProcedures asks for a step-up token beside.
 func (s *adminServer) sessionContextBuilder() rpcmiddleware.UnaryContextBuilder {
 	operator := rpcmiddleware.BuildAdminSessionContext(s.authenticateSession)
+	steppedUp := rpcmiddleware.BuildAdminSessionContext(s.authenticateSteppedUpSession)
 	service := rpcmiddleware.BuildAdminSessionContext(s.authenticateService)
 	return func(ctx context.Context, spec connect.Spec, req proto.Message) (context.Context, error) {
 		bearer, ok := auth.BearerTokenFromHeader(rpcmiddleware.RequestHeader(ctx))
@@ -53,6 +55,9 @@ func (s *adminServer) sessionContextBuilder() rpcmiddleware.UnaryContextBuilder 
 			return s.apiKeyContext(ctx, spec, req)
 		}
 		if !ok || !s.serviceToken.Matches(bearer) {
+			if _, stepUp := stepUpProcedures[spec.Procedure]; stepUp {
+				return steppedUp(ctx, spec, req)
+			}
 			return operator(ctx, spec, req)
 		}
 		if _, allowed := serviceProcedures[spec.Procedure]; !allowed {

@@ -113,10 +113,13 @@ var (
 type AdminWebhookServiceClient interface {
 	// Minimum role: tenant_admin.
 	ListWebhookEndpoints(context.Context, *v1.ListWebhookEndpointsRequest) (*v1.ListWebhookEndpointsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	CreateWebhookEndpoint(context.Context, *v1.CreateWebhookEndpointRequest) (*v1.CreateWebhookEndpointResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateWebhookEndpoint(context.Context, *v1.UpdateWebhookEndpointRequest) (*v1.UpdateWebhookEndpointResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	RotateWebhookSecret(context.Context, *v1.RotateWebhookSecretRequest) (*v1.RotateWebhookSecretResponse, error)
 	// Minimum role: tenant_admin.
@@ -140,10 +143,13 @@ func NewAdminWebhookServiceClient(client *connect.Client) AdminWebhookServiceCli
 type AdminWebhookServiceHandler interface {
 	// Minimum role: tenant_admin.
 	ListWebhookEndpoints(context.Context, *v1.ListWebhookEndpointsRequest) (*v1.ListWebhookEndpointsResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	CreateWebhookEndpoint(context.Context, *v1.CreateWebhookEndpointRequest) (*v1.CreateWebhookEndpointResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	UpdateWebhookEndpoint(context.Context, *v1.UpdateWebhookEndpointRequest) (*v1.UpdateWebhookEndpointResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	RotateWebhookSecret(context.Context, *v1.RotateWebhookSecretRequest) (*v1.RotateWebhookSecretResponse, error)
 	// Minimum role: tenant_admin.

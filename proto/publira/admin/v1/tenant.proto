@@ -862,6 +862,7 @@ service TenantSettingsService {
   rpc UpdateTenantMobileAppAssociation(UpdateTenantMobileAppAssociationRequest) returns (UpdateTenantMobileAppAssociationResponse) {}
   // Minimum role: tenant_admin.
   rpc GetTenantSignInSettings(GetTenantSignInSettingsRequest) returns (GetTenantSignInSettingsResponse) {}
+  // Requires a recent re-authentication.
   // Minimum role: tenant_admin.
   rpc UpdateTenantSignInSettings(UpdateTenantSignInSettingsRequest) returns (UpdateTenantSignInSettingsResponse) {}
   // Minimum role: tenant_auditor.

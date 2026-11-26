@@ -63,6 +63,7 @@ var (
 type AdminApiKeyServiceClient interface {
 	// Minimum role: tenant_admin.
 	ListApiKeys(context.Context, *v1.ListApiKeysRequest) (*v1.ListApiKeysResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	CreateApiKey(context.Context, *v1.CreateApiKeyRequest) (*v1.CreateApiKeyResponse, error)
 	// Minimum role: tenant_admin.
@@ -80,6 +81,7 @@ func NewAdminApiKeyServiceClient(client *connect.Client) AdminApiKeyServiceClien
 type AdminApiKeyServiceHandler interface {
 	// Minimum role: tenant_admin.
 	ListApiKeys(context.Context, *v1.ListApiKeysRequest) (*v1.ListApiKeysResponse, error)
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	CreateApiKey(context.Context, *v1.CreateApiKeyRequest) (*v1.CreateApiKeyResponse, error)
 	// Minimum role: tenant_admin.

@@ -115,6 +115,7 @@ type AdminPurchaseServiceClient interface {
 	// staff ask, so a refund the provider refuses leaves the reader's coins as
 	// they were.
 	//
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error)
 	// Asks the provider the reader paid through to refund amount of the
@@ -137,6 +138,7 @@ type AdminPurchaseServiceClient interface {
 	// or above what is left to refund, is invalid_argument with a field
 	// violation on amount, and an empty reason one on reason.
 	//
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	RefundPurchaseInPart(context.Context, *v1.RefundPurchaseInPartRequest) (*v1.RefundPurchaseInPartResponse, error)
 }
@@ -184,6 +186,7 @@ type AdminPurchaseServiceHandler interface {
 	// staff ask, so a refund the provider refuses leaves the reader's coins as
 	// they were.
 	//
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	RefundPurchase(context.Context, *v1.RefundPurchaseRequest) (*v1.RefundPurchaseResponse, error)
 	// Asks the provider the reader paid through to refund amount of the
@@ -206,6 +209,7 @@ type AdminPurchaseServiceHandler interface {
 	// or above what is left to refund, is invalid_argument with a field
 	// violation on amount, and an empty reason one on reason.
 	//
+	// Requires a recent re-authentication.
 	// Minimum role: tenant_admin.
 	RefundPurchaseInPart(context.Context, *v1.RefundPurchaseInPartRequest) (*v1.RefundPurchaseInPartResponse, error)
 }

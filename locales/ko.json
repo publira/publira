@@ -703,6 +703,7 @@
         "admin_mfa_passkey_registered": "패스키 등록",
         "admin_mfa_passkey_renamed": "패스키 이름 변경",
         "admin_mfa_passkey_removed": "패스키 삭제",
+        "admin_reauthenticated": "본인 확인",
         "other": "기타 작업"
       },
       "outcome": {

@@ -1106,6 +1106,7 @@ export const AdminPaymentSettingsService: GenService<{
    * leaves the tenant's other providers as they are. A retired provider saved
    * switched off stays retired.
    *
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.UpdateTenantPaymentSettings
@@ -1127,6 +1128,7 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof ListTenantPaymentProvidersResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.UpsertTenantPaymentProvider
@@ -1157,6 +1159,7 @@ export const AdminPaymentSettingsService: GenService<{
     output: typeof GetTenantStorePaymentSettingsResponseSchema;
   },
   /**
+   * Requires a recent re-authentication.
    * Minimum role: tenant_admin.
    *
    * @generated from rpc publira.admin.v1.AdminPaymentSettingsService.UpdateTenantStorePaymentSettings
