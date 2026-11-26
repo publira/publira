@@ -375,10 +375,13 @@ PUBLIRA_E2E_STACK_PORT_PROJECT=""
 
 # Sets PUBLIRA_E2E_STACK_OWNER to the run directory of another run's stack under this
 # compose project and returns 0. The owner is empty when the containers carry no
-# label at all, which is a stack these scripts did not create. Returns 1 when the
-# project has no containers, or every one of them is this run's.
+# label at all, which is a stack these scripts did not create. A labelled
+# container is named in preference to an unlabelled one: teardown may remove the
+# unlabelled kind, and must not miss another run's container beside them.
+# Returns 1 when the project has no containers, or every one of them is this
+# run's.
 e2e_find_foreign_stack() {
-  local run_dir
+  local run_dir found=1
   PUBLIRA_E2E_STACK_OWNER=""
   if ! command -v docker > /dev/null 2>&1; then
     return 1
@@ -387,12 +390,27 @@ e2e_find_foreign_stack() {
     if [[ "${run_dir}" == "${PUBLIRA_E2E_RUN_DIR}" ]]; then
       continue
     fi
-    PUBLIRA_E2E_STACK_OWNER="${run_dir}"
-    return 0
+    found=0
+    if [[ -n "${run_dir}" ]]; then
+      PUBLIRA_E2E_STACK_OWNER="${run_dir}"
+      break
+    fi
   done < <(docker ps --all \
     --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}" \
     --format '{{.Label "com.publira.e2e.run-dir"}}' 2> /dev/null | sort -u)
-  return 1
+  return "${found}"
+}
+
+# Teardown removes the project's containers and volumes, so it asks the
+# containers whose they are as acquire does: a lease holder that is gone leaves
+# the stack, and the run using it, in place. Containers with no label stay
+# removable, because teardown is how require_no_foreign_stack tells the reader
+# to clear them.
+require_no_foreign_owned_stack() {
+  if e2e_find_foreign_stack && [[ -n "${PUBLIRA_E2E_STACK_OWNER}" ]]; then
+    e2e_err "compose project ${COMPOSE_PROJECT_NAME} is in use by the stack of ${PUBLIRA_E2E_STACK_OWNER}; tear it down from there, or set COMPOSE_PROJECT_NAME and PUBLIRA_E2E_*_PORT to this run's"
+    exit 1
+  fi
 }
 
 # Sets PUBLIRA_E2E_STACK_PORT and PUBLIRA_E2E_STACK_PORT_PROJECT to a data port of this run that
@@ -634,7 +652,9 @@ acquire_e2e_lock() {
   export PUBLIRA_E2E_LOCK_HELD=1
 }
 
-# stop-apps must not create a lease; it only refuses a foreign owner.
+# stop-apps must not create a lease; it only refuses a foreign owner. It removes
+# the server container, which is named after the compose project, so a foreign
+# stack is refused even with no lease holder.
 join_e2e_lease() {
   if [[ "${PUBLIRA_E2E_LOCK_HELD:-0}" == "1" ]]; then
     return 0
@@ -646,12 +666,14 @@ join_e2e_lease() {
     fi
     e2e_refuse_foreign_lease
   fi
+  require_no_foreign_owned_stack
 }
 
 require_e2e_owner_or_free() {
   if e2e_lease_holder_alive && [[ "$(e2e_lease_run_dir)" != "${PUBLIRA_E2E_RUN_DIR}" ]]; then
     e2e_refuse_foreign_lease
   fi
+  require_no_foreign_owned_stack
 }
 
 # Owner-only. A leftover `task e2e:down` matches the lease RUN_DIR and succeeds;
