@@ -76,13 +76,35 @@ Do not open the release pull request until all of these hold:
   git rev-parse origin/main
   ```
 
-- **Nothing the release waits on is open.** The release's milestone is `Post-MVP` for a `0.x` release, `1.0.0` for that release, and `Post-1.0` for a `1.x` release:
+- **Nothing the release waits on is open.** First read the open milestones. What each one covers is stated only in its description on GitHub, as the `organize-github-issues` skill says, so judge from the descriptions rather than from a name:
 
   ```bash
-  gh issue list --milestone "<milestone>" --state open --limit 200
+  gh api --paginate 'repos/publira/publira/milestones?state=open&per_page=100' --jq '.[] | "\(.title)\t\(.description)"'
   ```
 
-  For `1.0.0`, every open Issue in the milestone holds the release. `Post-MVP` and `Post-1.0` span many releases, so an open Issue there holds this one only when the release waits on it: the user or the Issue that asked for the release names it, a fix is half-landed (a stacked pull request whose lower layer is on `main` while the layer above is still open), or the documentation does not yet describe a behaviour the release changes. Report each one you find and stop until it lands or the user releases without it.
+  When one of them describes itself as this release, as `1.0.0`'s does, every open Issue in it holds the release:
+
+  ```bash
+  gh issue list --milestone "<that milestone's title>" --state open --limit 1000
+  ```
+
+  Otherwise no milestone is this release's own, so none is listed: a milestone that spans many releases holds hundreds of Issues this one does not wait on, and a closed one prints nothing whether or not anything is open. An open Issue holds the release only when the release waits on it: the user or the Issue that asked for the release names it, a fix is half-landed (a stacked pull request whose lower layer is on `main` while the layer above is still open), or the documentation does not yet describe a behaviour the release changes. Read the Issue that asked for the release, if one did, and the Issues still blocking it:
+
+  ```bash
+  gh issue view <number>
+  gh api 'repos/publira/publira/issues/<number>/dependencies/blocked_by' --jq '.[] | select(.state == "open") | "#\(.number) \(.title)"'
+  ```
+
+  Then list the open Issues blocked by an Issue that a pull request since `$previous` closes. The layer above a landed lower layer is among them, since each layer closes its own Issue and the upper one is blocked by the lower:
+
+  ```bash
+  git log --format=%s "$previous"..origin/main | sed -nE 's/.*\(#([0-9]+)\)$/\1/p' |
+    while read -r n; do gh pr view "$n" --json closingIssuesReferences --jq '.closingIssuesReferences[].number'; done |
+    while read -r i; do gh api "repos/publira/publira/issues/$i/dependencies/blocking" --jq '.[] | select(.state == "open") | "#\(.number) \(.title)"'; done |
+    sort -u
+  ```
+
+  Each of these is a candidate, not yet a reason to wait: one holds the release when it meets one of the conditions above, and an Issue that only builds on what landed does not. Report each one that holds and stop until it lands or the user releases without it.
 
 ## 4. Make the release commit and open its pull request
 
