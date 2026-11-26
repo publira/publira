@@ -1,6 +1,7 @@
 import type { Browser, Cookie, Page } from "@playwright/test";
 import { test as base } from "@playwright/test";
 
+import { answerReauthentication } from "./admin";
 import { fillLoginForm } from "./session";
 
 /** The email address and the password an account signs in to a console with. */
@@ -75,6 +76,7 @@ export const test = base.extend<
           }
 
           await page.context().addCookies(cookies);
+          await answerReauthentication(page, credentials.password);
         },
       });
     },

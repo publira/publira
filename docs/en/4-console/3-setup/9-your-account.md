@@ -121,4 +121,6 @@ The first of them you make shows **Confirm it's you**. Answer it in one of these
 - If you have an authenticator app, leave the password empty, enter a code from the app under **Or a code from your authenticator app**, and choose **Continue**. A recovery code works there too, and is spent.
 - If you have a passkey, choose **Use a passkey** and unlock one when the browser asks.
 
+![Confirm it's you, opened by Create API key: the Password field above Cancel and Continue.](./your-account-confirm-its-you.png)
+
 The change then goes ahead as you submitted it. **Cancel** leaves it unmade. For the next fifteen minutes the console does not ask again, until you sign out. A wrong password counts toward the same limit as the one **Change the email address** asks for, and a wrong code or passkey toward the same lock as a wrong code at sign-in. Each time you confirm it's you, and each refusal, is recorded in the tenant's [audit log](./8-audit-log.md).

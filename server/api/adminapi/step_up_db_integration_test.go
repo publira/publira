@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 
 	"github.com/publira/publira/server/internal/auth"
 	publiraadminv1 "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1"
+	publiraadminv1connect "github.com/publira/publira/server/internal/proto/gen/publira/admin/v1/publiraadminv1connect"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -170,5 +172,25 @@ func TestDBStepUpLeavesAWeakerRoleToTheHandler(t *testing.T) {
 	}
 	if reason := errorInfoReason(t, err); reason == rpcerrors.ReasonReauthenticationRequired {
 		t.Fatalf("CreateApiKey as an editor asked for a re-authentication, want the role's refusal")
+	}
+}
+
+// A session alone, however fresh, does not admit an operation that asks for a
+// re-authentication, and the operation changes nothing.
+func TestDBStepUpProceduresRefuseASessionAlone(t *testing.T) {
+	t.Parallel()
+
+	env := newAdminDBEnv(t)
+	tenant := env.seedTenantWithAdmin(t, "TENANTA", "tenant-a.example.com", "Tenant A", "TAUSER01", "admin@tenant-a.example.com")
+	client := publiraadminv1connect.NewAdminApiKeyServiceClient(connect.NewClient(connecthttp.NewTransport(env.sessionOnly, env.Server.URL)))
+
+	_, err := client.CreateApiKey(testutil.WithBearer(context.Background(), tenant.token()), &publiraadminv1.CreateApiKeyRequest{
+		Tenant: tenant.tenantContext(),
+		Name:   "Data warehouse",
+		Scopes: []publiraadminv1.ApiKeyScope{publiraadminv1.ApiKeyScope_API_KEY_SCOPE_CATALOG_READ},
+	})
+	assertReauthenticationRequired(t, err, "CreateApiKey on a session alone")
+	if got := env.countRows(t, "SELECT count(*) FROM tenant_api_keys WHERE tenant_id = $1", tenant.Tenant.ID); got != 0 {
+		t.Fatalf("API keys = %d, want none", got)
 	}
 }

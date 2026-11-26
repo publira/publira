@@ -82,9 +82,7 @@ func (s *adminServer) authenticateSteppedUpSession(
 	}
 	token := strings.TrimSpace(headers.Get(StepUpHeader))
 	if token == "" {
-		// The console does not send one yet, so a request without one is
-		// still taken on the session alone.
-		return session, nil
+		return rpcmiddleware.SessionContext{}, reauthenticationRequiredError(errors.New("a recent re-authentication is required"))
 	}
 	if err := s.tokens.VerifyStepUpToken(token, claims); err != nil {
 		return rpcmiddleware.SessionContext{}, reauthenticationRequiredError(err)

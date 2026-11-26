@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
-	"net/http/httptest"
 	"slices"
 	"testing"
 	"time"
@@ -865,9 +864,8 @@ func TestDBAdminDeleteReaderKeepsAnEntryStillQueuedForTheAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
-	server := httptest.NewServer(handlerFromServer(api.server))
-	t.Cleanup(server.Close)
-	env := &adminDBEnv{Server: server, PG: pg}
+	server, sessionOnly := newReauthenticatedServer(t, handlerFromServer(api.server))
+	env := &adminDBEnv{Server: server, PG: pg, sessionOnly: sessionOnly}
 
 	admin := env.seedTenantWithAdmin(t, "RAQTENANT001", "reader-queued.example.com", "Queued", "RAQADMIN0001", "admin@reader-queued.example.com")
 	second := admin.as(env.PG.SeedTenantAdmin(t, admin.Tenant.ID, "RAQADMIN0002", "second@reader-queued.example.com", "Second"))

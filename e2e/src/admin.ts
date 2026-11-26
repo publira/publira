@@ -20,6 +20,38 @@ import {
 const adminUrl = (pathname: string, baseUrl = WEB_ADMIN_BASE_URL): string =>
   `${baseUrl}${pathname}`;
 
+/**
+ * The console's Confirm it's you dialog, in whichever language it renders:
+ * the one dialog that asks for the current password.
+ */
+export const reauthenticationDialog = (page: Page): Locator =>
+  page.getByRole("dialog").filter({
+    has: page.locator(
+      'input[name="password"][autocomplete="current-password"]'
+    ),
+  });
+
+/**
+ * Answer the console's Confirm it's you with `password` whenever it opens on
+ * `page`, as the operator who just signed in would.
+ *
+ * A test of what an operation asking for a re-authentication does is not a
+ * test of the dialog in front of it, and the console sends the refused form
+ * again by itself once the password is in, so the test carries on from the
+ * click that submitted it. `admin.reauthentication.spec.ts` tests the dialog
+ * itself, on a page this was not called for.
+ */
+export const answerReauthentication = async (
+  page: Page,
+  password: string
+): Promise<void> => {
+  await page.addLocatorHandler(reauthenticationDialog(page), async (dialog) => {
+    await dialog.locator('input[name="password"]').fill(password);
+    // The dialog's own submit, after Cancel and the passkey's.
+    await dialog.locator('button[type="submit"]').last().click();
+  });
+};
+
 export const signInAsAdmin = async (
   page: Page,
   credentials: { email: string; password: string } = SEED_ADMIN,
@@ -30,6 +62,7 @@ export const signInAsAdmin = async (
   await page.goto(adminUrl(`/login?next=${next}`, baseUrl));
   await fillLoginForm(page, credentials);
   await page.waitForURL((url) => !url.pathname.endsWith("/login"));
+  await answerReauthentication(page, credentials.password);
 };
 
 /** Sign in as the dev seed tenant admin (`admin@example.com`). */
