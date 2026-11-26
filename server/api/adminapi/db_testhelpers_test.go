@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -32,6 +33,43 @@ import (
 type adminDBEnv struct {
 	Server *httptest.Server
 	PG     *testutil.PostgresEnv
+	// sessionOnly reaches Server without the step-up token
+	// reauthenticatedTransport adds, for the tests of the step-up itself.
+	sessionOnly *http.Client
+}
+
+// reauthenticatedTransport stands in for an operator who has confirmed it's
+// them. A request to one of stepUpProcedures that carries a session and no
+// step-up token goes out with one earned on that session, so a test of what
+// such an RPC does is not also a test of the re-authentication in front of it.
+// A request that names a step-up token of its own is sent as it is.
+type reauthenticatedTransport struct {
+	base http.RoundTripper
+}
+
+func (t reauthenticatedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if _, stepUp := stepUpProcedures[req.URL.Path]; !stepUp || req.Header.Get(StepUpHeader) != "" {
+		return t.base.RoundTrip(req)
+	}
+	bearer, ok := auth.BearerToken(req.Header.Get("Authorization"))
+	if !ok {
+		return t.base.RoundTrip(req)
+	}
+	claims, err := testutil.TokenManager().Verify(bearer, auth.AudienceAdmin)
+	if err != nil {
+		return t.base.RoundTrip(req)
+	}
+	sessionID, _, ok := claims.SessionID()
+	if !ok {
+		return t.base.RoundTrip(req)
+	}
+	token, _, err := testutil.TokenManager().IssueStepUpToken(claims.Subject, claims.TenantID, sessionID, claims.CredentialsVersion, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	req = req.Clone(req.Context())
+	req.Header.Set(StepUpHeader, token)
+	return t.base.RoundTrip(req)
 }
 
 // newAdminDBEnv starts a server on a database of the test's own. Nothing is
@@ -104,9 +142,22 @@ func newAdminDBEnvWith(t *testing.T, provider storage.Provider, mail *mailguard.
 	for _, configure := range configure {
 		configure(api.server)
 	}
-	server := httptest.NewServer(handlerFromServer(api.server))
+	server, sessionOnly := newReauthenticatedServer(t, handlerFromServer(api.server))
+	return &adminDBEnv{Server: server, PG: pg, sessionOnly: sessionOnly}
+}
+
+// newReauthenticatedServer serves handler to a client whose requests go
+// through reauthenticatedTransport, and answers beside it a client that sends
+// them as they are.
+func newReauthenticatedServer(t *testing.T, handler http.Handler) (*httptest.Server, *http.Client) {
+	t.Helper()
+
+	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	return &adminDBEnv{Server: server, PG: pg}
+	client := server.Client()
+	sessionOnly := &http.Client{Transport: client.Transport}
+	client.Transport = reauthenticatedTransport{base: client.Transport}
+	return server, sessionOnly
 }
 
 // adminDBTenant pairs a seeded tenant with the user that signs requests for it.

@@ -125,7 +125,35 @@ func (e *publicDBEnv) openAdminConsole(t *testing.T, tenant testutil.Tenant, sta
 		t.Fatalf("issue admin token: %v", err)
 	}
 
+	// The staff member has confirmed it's them on this session, so the
+	// operations that ask for a recent re-authentication go through as well.
+	claims, err := testutil.TokenManager().Verify(token, auth.AudienceAdmin)
+	if err != nil {
+		t.Fatalf("verify admin token: %v", err)
+	}
+	sessionID, _, _ := claims.SessionID()
+	stepUp, _, err := testutil.TokenManager().IssueStepUpToken(staff.PublicID, tenant.ID.String(), sessionID, staff.CredentialsVersion, time.Now())
+	if err != nil {
+		t.Fatalf("issue step-up token: %v", err)
+	}
+	client := adminServer.Client()
+	client.Transport = stepUpHeaderTransport{base: client.Transport, token: stepUp}
+
 	return adminConsole{server: adminServer, token: token}
+}
+
+// stepUpHeaderTransport sends token as the step-up header of every request,
+// which the admin API reads on the RPCs that ask for one and ignores on the
+// rest.
+type stepUpHeaderTransport struct {
+	base  http.RoundTripper
+	token string
+}
+
+func (t stepUpHeaderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set(adminapi.StepUpHeader, t.token)
+	return t.base.RoundTrip(req)
 }
 
 // commentID looks up the primary key the admin API addresses a comment by. The

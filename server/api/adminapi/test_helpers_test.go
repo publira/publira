@@ -67,8 +67,7 @@ func newTestAdminServerWithStorage(t *testing.T, provider storage.Provider) (*ht
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
-	server := httptest.NewServer(handlerFromServer(api.server))
-	t.Cleanup(server.Close)
+	server, _ := newReauthenticatedServer(t, handlerFromServer(api.server))
 	return server, mock
 }
 

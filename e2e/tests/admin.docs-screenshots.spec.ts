@@ -1,12 +1,13 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
-import { signInAsAdmin } from "../src/admin";
+import { reauthenticationDialog, signInAsAdmin } from "../src/admin";
 import type { ConsoleSessions } from "../src/console-sessions";
 import { test } from "../src/console-sessions";
 import { applyScenarioSql } from "../src/db";
 import {
   DOCS_LOCALES,
+  docsLabelPattern,
   docsScreenHeader,
   docsSection,
   docsText,
@@ -670,6 +671,45 @@ for (const locale of DOCS_LOCALES) {
           element: docsSection(page, t("admin.settings.email_change.title")),
           page: "console/setup/your-account",
           subject: "email-address",
+        });
+      });
+
+      test("confirming it's you", async ({ consoleSessions, page }) => {
+        await openScreen(
+          page,
+          consoleSessions,
+          locale,
+          "/integrations/api-keys-and-webhooks"
+        );
+        // The dialog is what the image shows, so it is left unanswered, and
+        // the key it stands in front of is never created.
+        await page.removeLocatorHandler(reauthenticationDialog(page));
+
+        const keys = docsSection(page, t("admin.settings.api_keys.title"));
+        await keys
+          .getByLabel(docsLabelPattern(locale, "admin.settings.api_keys.name"))
+          .fill("Data warehouse");
+        await keys
+          .getByRole("checkbox", {
+            exact: true,
+            name: t("admin.settings.api_keys.scopes.catalog_label"),
+          })
+          .check();
+        await keys
+          .getByRole("button", { name: t("admin.settings.api_keys.create") })
+          .click();
+
+        const dialog = page.getByRole("dialog", {
+          name: t("admin.reauthentication.title"),
+        });
+
+        await expect(dialog).toBeVisible();
+
+        await expectDocsScreenshot(page, {
+          locale,
+          element: dialog,
+          page: "console/setup/your-account",
+          subject: "confirm-its-you",
         });
       });
     });

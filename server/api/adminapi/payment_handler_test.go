@@ -96,8 +96,7 @@ func newPaymentAdminServer(t *testing.T, logs *bytes.Buffer) (*httptest.Server, 
 	if err != nil {
 		t.Fatalf("new admin handler: %v", err)
 	}
-	ts := httptest.NewServer(handler)
-	t.Cleanup(ts.Close)
+	ts, _ := newReauthenticatedServer(t, handler)
 	return ts, mock
 }
 
