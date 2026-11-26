@@ -339,59 +339,6 @@ func (q *Queries) LockPaymentCheckout(ctx context.Context, arg LockPaymentChecko
 	return i, err
 }
 
-const PaymentCheckoutAwaitsPayment = `-- name: PaymentCheckoutAwaitsPayment :one
-SELECT EXISTS (
-    SELECT 1
-    FROM payment_checkouts
-    WHERE tenant_id = $1
-        AND provider = $2
-        AND payment_id IS NULL
-        AND NOT payment_checkout_closed(last_started_at, $3::double precision)
-)::boolean AS awaiting
-`
-
-type PaymentCheckoutAwaitsPaymentParams struct {
-	TenantID        uuid.UUID `json:"tenant_id"`
-	Provider        string    `json:"provider"`
-	LifetimeSeconds float64   `json:"lifetime_seconds"`
-}
-
-// Whether a checkout of the tenant's through the provider can still be paid
-// and keeps no payment yet, the one a notification of a payment the server
-// has not kept could complete.
-func (q *Queries) PaymentCheckoutAwaitsPayment(ctx context.Context, arg PaymentCheckoutAwaitsPaymentParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, PaymentCheckoutAwaitsPayment, arg.TenantID, arg.Provider, arg.LifetimeSeconds)
-	var awaiting bool
-	err := row.Scan(&awaiting)
-	return awaiting, err
-}
-
-const PaymentCheckoutKeepsPayment = `-- name: PaymentCheckoutKeepsPayment :one
-SELECT EXISTS (
-    SELECT 1
-    FROM payment_checkouts
-    WHERE tenant_id = $1
-        AND provider = $2
-        AND payment_id = $3
-)::boolean AS kept
-`
-
-type PaymentCheckoutKeepsPaymentParams struct {
-	TenantID  uuid.UUID      `json:"tenant_id"`
-	Provider  string         `json:"provider"`
-	PaymentID sql.NullString `json:"payment_id"`
-}
-
-// Whether a checkout of the tenant's through the provider keeps the payment
-// as its completion, which a notification naming the payment is held to
-// before a provider that signs none is asked about it.
-func (q *Queries) PaymentCheckoutKeepsPayment(ctx context.Context, arg PaymentCheckoutKeepsPaymentParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, PaymentCheckoutKeepsPayment, arg.TenantID, arg.Provider, arg.PaymentID)
-	var kept bool
-	err := row.Scan(&kept)
-	return kept, err
-}
-
 const PaymentCheckoutStarted = `-- name: PaymentCheckoutStarted :one
 SELECT EXISTS (
     SELECT 1
@@ -416,6 +363,63 @@ func (q *Queries) PaymentCheckoutStarted(ctx context.Context, arg PaymentCheckou
 	var started bool
 	err := row.Scan(&started)
 	return started, err
+}
+
+const ProviderPaymentMayBeTenants = `-- name: ProviderPaymentMayBeTenants :one
+SELECT (
+    EXISTS (
+        SELECT 1
+        FROM purchases AS p
+        WHERE p.tenant_id = $1
+            AND p.provider = $2::text
+            AND p.provider_payment_id = $3::text
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM payment_checkouts AS c
+        WHERE c.tenant_id = $1
+            AND c.provider = $2::text
+            AND c.payment_id = $3::text
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM payment_checkouts AS c
+        WHERE c.tenant_id = $1
+            AND c.provider = $2::text
+            AND c.payment_id IS NULL
+            AND NOT payment_checkout_closed(c.last_started_at, $4::double precision)
+    )
+)::boolean AS known
+`
+
+type ProviderPaymentMayBeTenantsParams struct {
+	TenantID        uuid.UUID `json:"tenant_id"`
+	Provider        string    `json:"provider"`
+	PaymentID       string    `json:"payment_id"`
+	LifetimeSeconds float64   `json:"lifetime_seconds"`
+}
+
+// Whether the payment may be one of the tenant's through the provider: one a
+// purchase recorded, one a checkout kept as its completion, or, while a
+// checkout of the tenant's can still be paid and keeps no payment, any
+// payment, since nothing ties a payment to such a checkout before the
+// provider is asked. A notification naming the payment is held to this before
+// a provider that signs none is asked about it.
+//
+// The three are read in one statement, and so from one snapshot: a
+// completion committing the payment beside its checkout between two reads
+// would leave the payment neither awaited by the one before it nor kept by
+// the one after.
+func (q *Queries) ProviderPaymentMayBeTenants(ctx context.Context, arg ProviderPaymentMayBeTenantsParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, ProviderPaymentMayBeTenants,
+		arg.TenantID,
+		arg.Provider,
+		arg.PaymentID,
+		arg.LifetimeSeconds,
+	)
+	var known bool
+	err := row.Scan(&known)
+	return known, err
 }
 
 const RecordPaymentCheckout = `-- name: RecordPaymentCheckout :exec

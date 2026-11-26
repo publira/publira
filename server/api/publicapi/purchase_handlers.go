@@ -858,34 +858,18 @@ func (s *apiServer) holdUnsignedNotification(ctx context.Context, tenantID uuid.
 			CheckoutID: subject.CheckoutID,
 		})
 	case subject.PaymentID != "":
-		known, err = queries.PurchaseRecordsProviderPayment(ctx, dbmodels.PurchaseRecordsProviderPaymentParams{
-			TenantID:          tenantID,
-			Provider:          declaration.ID,
-			ProviderPaymentID: subject.PaymentID,
+		known, err = queries.ProviderPaymentMayBeTenants(ctx, dbmodels.ProviderPaymentMayBeTenantsParams{
+			TenantID:        tenantID,
+			Provider:        declaration.ID,
+			PaymentID:       subject.PaymentID,
+			LifetimeSeconds: declaration.CheckoutLifetime.Seconds(),
 		})
-		if err == nil && !known {
-			known, err = queries.PaymentCheckoutKeepsPayment(ctx, dbmodels.PaymentCheckoutKeepsPaymentParams{
-				TenantID:  tenantID,
-				Provider:  declaration.ID,
-				PaymentID: sql.NullString{String: subject.PaymentID, Valid: true},
-			})
-		}
-		// A payment the server has neither recorded nor kept may still be one
-		// of a checkout that can be paid, which nothing ties it to before the
-		// provider is asked: one a reader is paying right now.
-		if err == nil && !known {
-			known, err = queries.PaymentCheckoutAwaitsPayment(ctx, dbmodels.PaymentCheckoutAwaitsPaymentParams{
-				TenantID:        tenantID,
-				Provider:        declaration.ID,
-				LifetimeSeconds: declaration.CheckoutLifetime.Seconds(),
-			})
-		}
 	}
 	if err != nil {
 		return s.internalDBError(ctx, "failed to read the checkout an unsigned payment notification names", err, keyvals...)
 	}
 	if !known {
-		s.logger.WarnContext(ctx, "an unsigned payment notification names nothing the tenant known", keyvals...)
+		s.logger.WarnContext(ctx, "an unsigned payment notification names nothing the tenant knows", keyvals...)
 		return connect.NewError(connect.CodeInvalidArgument, "invalid payment webhook signature")
 	}
 	return nil

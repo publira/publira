@@ -4513,14 +4513,6 @@ type Querier interface {
 	// public series but shown on no surface is not announced later when it is
 	// shown, so it owes nothing.
 	OweEpisodeAnnouncementWhileSeriesHidden(ctx context.Context, arg OweEpisodeAnnouncementWhileSeriesHiddenParams) error
-	// Whether a checkout of the tenant's through the provider can still be paid
-	// and keeps no payment yet, the one a notification of a payment the server
-	// has not kept could complete.
-	PaymentCheckoutAwaitsPayment(ctx context.Context, arg PaymentCheckoutAwaitsPaymentParams) (bool, error)
-	// Whether a checkout of the tenant's through the provider keeps the payment
-	// as its completion, which a notification naming the payment is held to
-	// before a provider that signs none is asked about it.
-	PaymentCheckoutKeepsPayment(ctx context.Context, arg PaymentCheckoutKeepsPaymentParams) (bool, error)
 	// Whether the tenant started the checkout through the provider, which a
 	// notification naming it is held to before a provider that signs none is
 	// asked about its payment.
@@ -4603,6 +4595,18 @@ type Querier interface {
 	// running at the same time either wait for the code and see it, or delete the
 	// target first and leave nothing here to find.
 	PromotionCodeTargetExists(ctx context.Context, arg PromotionCodeTargetExistsParams) (bool, error)
+	// Whether the payment may be one of the tenant's through the provider: one a
+	// purchase recorded, one a checkout kept as its completion, or, while a
+	// checkout of the tenant's can still be paid and keeps no payment, any
+	// payment, since nothing ties a payment to such a checkout before the
+	// provider is asked. A notification naming the payment is held to this before
+	// a provider that signs none is asked about it.
+	//
+	// The three are read in one statement, and so from one snapshot: a
+	// completion committing the payment beside its checkout between two reads
+	// would leave the payment neither awaited by the one before it nor kept by
+	// the one after.
+	ProviderPaymentMayBeTenants(ctx context.Context, arg ProviderPaymentMayBeTenantsParams) (bool, error)
 	// The console's publication of an episode given a time that has already
 	// passed: what MarkEpisodePublished does once the time is reached, done in the
 	// write that saves it. An episode already published is left as it is, its
@@ -4613,10 +4617,6 @@ type Querier interface {
 	// publication on; without it the version keeps whatever request an earlier
 	// publication of it made, which is already older than this one.
 	PublishPageVersion(ctx context.Context, arg PublishPageVersionParams) (PageVersion, error)
-	// Whether a purchase of the tenant's through the provider was paid by the
-	// payment, which a notification naming the payment is held to before a
-	// provider that signs none is asked about it.
-	PurchaseRecordsProviderPayment(ctx context.Context, arg PurchaseRecordsProviderPaymentParams) (bool, error)
 	// The end of the retention window for a comment its author deleted. The inner
 	// select bounds one chunk, so a tenant with a long backlog is drained over
 	// several statements instead of one long-running delete.
