@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 
 import {
-  beginMyPasskeyRegistration,
   deleteMe,
   deleteMyPasskey,
   linkMyIdentity,
@@ -454,54 +453,18 @@ const securitySettingsOutcome = async (
 };
 
 /**
- * Begin the passkey registration the sign-in confirmed, and leave its options
- * for the security settings screen, which is the only place the browser can
- * be asked for a passkey once the reader presses a button there.
+ * Keep the sign-in that confirmed adding a passkey for the security settings
+ * screen, which is the only place the browser can be asked for a passkey, and
+ * only once the reader presses a button there. **Create the passkey** begins
+ * the registration with it.
  */
 const finishPasskeyAdd = async (
   request: SignInRequest,
   { idToken, nonce, provider }: IdTokenSignIn
 ): Promise<Response> => {
-  const { accessToken, locale, tenantId } = request;
+  const { locale, tenantId } = request;
 
-  const started = await withConfirmingSession(
-    request,
-    CONFIRMING_SCREENS.passkey_add,
-    () =>
-      beginMyPasskeyRegistration(
-        tenantId,
-        { idToken, nonce, provider },
-        accessToken
-      )
-  );
-
-  if (started instanceof Response) {
-    return started;
-  }
-
-  const t = await getMessagesFor(locale);
-
-  if (!started.ok) {
-    return failure(
-      request,
-      rpcErrorMessage(
-        started.error,
-        t("storefront.settings.passkey_add_failed"),
-        {
-          locale,
-          overrides: {
-            "invalid-argument": t("storefront.settings.confirm_unconfirmed"),
-            precondition: t("storefront.settings.passkey_limit"),
-          },
-        }
-      )
-    );
-  }
-
-  await writePendingPasskeyRegistration({
-    tenantId,
-    optionsJson: started.optionsJson,
-  });
+  await writePendingPasskeyRegistration({ idToken, nonce, provider, tenantId });
 
   return seeOther(
     await tenantLocalePath(tenantId, locale, CONFIRMING_SCREENS.passkey_add)

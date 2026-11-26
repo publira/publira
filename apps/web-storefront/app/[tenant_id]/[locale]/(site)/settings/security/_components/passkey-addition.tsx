@@ -15,6 +15,7 @@ import type { StorefrontClientMessageAccessor } from "#lib/messages";
 import { beginPasskeyConfirmationAction } from "../../_lib/passkey-confirmation-actions";
 import {
   beginPasskeyRegistrationAction,
+  beginPendingPasskeyRegistrationAction,
   finishPasskeyRegistrationAction,
   namePasskeyAction,
 } from "../_lib/passkey-actions";
@@ -158,16 +159,18 @@ const confirmWithPasskey = async (
 /**
  * Begins a registration on the server, asks the authenticator for a passkey,
  * and stores the one it created. The registration is confirmed with the
- * password the form asked for, or, with `confirmWith="passkey"`, with an
- * assertion one of the reader's other passkeys makes first. A refusal and a
- * closed prompt both stay on the form as its message.
+ * password the form asked for; with `confirmWith="passkey"`, with an
+ * assertion one of the reader's other passkeys makes first; and with
+ * `confirmWith="pending"`, with the fresh sign-in to a provider the callback
+ * left waiting, which goes back to the page when the API refuses it. A
+ * refusal and a closed prompt both stay on the form as its message.
  */
 const PasskeyAdditionAddForm = ({
   children,
   confirmWith = "password",
 }: {
   children: ReactNode;
-  confirmWith?: "passkey" | "password";
+  confirmWith?: "passkey" | "password" | "pending";
 }) => {
   const t = useClientMessages();
 
@@ -183,7 +186,9 @@ const PasskeyAdditionAddForm = ({
       }
     }
 
-    const started = await beginPasskeyRegistrationAction(formData);
+    const started = await (confirmWith === "pending"
+      ? beginPendingPasskeyRegistrationAction(formData)
+      : beginPasskeyRegistrationAction(formData));
 
     if (!started.ok) {
       return started;
@@ -194,33 +199,6 @@ const PasskeyAdditionAddForm = ({
 
   return (
     <ActionForm.Root action={add} className="grid gap-3" showSuccess={false}>
-      {children}
-    </ActionForm.Root>
-  );
-};
-
-/**
- * Finishes a registration a fresh sign-in to a provider confirmed and began,
- * over the options it left: the browser asks for a passkey only from a button
- * the reader presses, so this is that button's form.
- */
-const PasskeyAdditionResumeForm = ({
-  children,
-  optionsJson,
-}: {
-  children: ReactNode;
-  optionsJson: string;
-}) => {
-  const t = useClientMessages();
-
-  const resume = (
-    _previousState: PasskeyRegistrationState,
-    formData: FormData
-  ): Promise<PasskeyRegistrationState> =>
-    createAndFinish(optionsJson, formData, t);
-
-  return (
-    <ActionForm.Root action={resume} className="grid gap-3" showSuccess={false}>
       {children}
     </ActionForm.Root>
   );
@@ -291,6 +269,5 @@ export {
   PasskeyAdditionAddForm as AddForm,
   PasskeyAdditionNamed as Named,
   PasskeyAdditionNameForm as NameForm,
-  PasskeyAdditionResumeForm as ResumeForm,
   PasskeyAdditionSkipNaming as SkipNaming,
 };

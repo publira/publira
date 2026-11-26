@@ -15,6 +15,7 @@ import * as PasskeyAddition from "./passkey-addition";
 
 const {
   beginConfirmation,
+  beginPendingRegistration,
   beginRegistration,
   browserSupportsWebAuthn,
   finishRegistration,
@@ -24,6 +25,8 @@ const {
 } = vi.hoisted(() => ({
   beginConfirmation:
     vi.fn<(formData: FormData) => Promise<PasskeyConfirmationStartState>>(),
+  beginPendingRegistration:
+    vi.fn<(formData: FormData) => Promise<PasskeyRegistrationStartState>>(),
   beginRegistration:
     vi.fn<(formData: FormData) => Promise<PasskeyRegistrationStartState>>(),
   browserSupportsWebAuthn: vi.fn<() => boolean>(),
@@ -47,6 +50,7 @@ vi.mock("../../_lib/passkey-confirmation-actions", () => ({
 
 vi.mock("../_lib/passkey-actions", () => ({
   beginPasskeyRegistrationAction: beginRegistration,
+  beginPendingPasskeyRegistrationAction: beginPendingRegistration,
   finishPasskeyRegistrationAction: finishRegistration,
   namePasskeyAction: namePasskey,
 }));
@@ -274,16 +278,20 @@ describe("PasskeyAddition", () => {
     expect(beginRegistration).not.toHaveBeenCalled();
   });
 
-  it("creates the passkey over the options a provider sign-in left, without beginning again", async () => {
+  it("begins with the sign-in a provider confirmed, when one is waiting", async () => {
+    beginPendingRegistration.mockResolvedValueOnce({
+      message: "",
+      ok: true,
+      optionsJson: JSON.stringify(CREATION_OPTIONS),
+    });
+
     await renderWithClientMessages(
       <PasskeyAddition.Root
         add={
-          <PasskeyAddition.ResumeForm
-            optionsJson={JSON.stringify(CREATION_OPTIONS)}
-          >
+          <PasskeyAddition.AddForm confirmWith="pending">
             <PasskeyAddition.Added />
             <ActionForm.Submit>Create the passkey</ActionForm.Submit>
-          </PasskeyAddition.ResumeForm>
+          </PasskeyAddition.AddForm>
         }
         name={<p>Name this passkey</p>}
       />

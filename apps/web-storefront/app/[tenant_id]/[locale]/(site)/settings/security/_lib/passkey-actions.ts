@@ -24,9 +24,13 @@ import {
 import { assertSameOrigin } from "#lib/csrf";
 import { localeFormSchema, requireFormLocale } from "#lib/locale-form";
 import { getMessagesFor } from "#lib/messages";
-import { clearPendingPasskeyRegistration } from "#lib/pending-passkey-registration";
+import {
+  clearPendingPasskeyRegistration,
+  readPendingPasskeyRegistration,
+} from "#lib/pending-passkey-registration";
 import { SIGN_IN_PROVIDERS } from "#lib/sign-in-provider";
 import { sendToProvider } from "#lib/social-sign-in-start";
+import { tenantLocalePath } from "#lib/tenant-locale-path";
 
 import { confirmationRefusalMessage } from "./confirmation-refusal";
 import type {
@@ -150,6 +154,119 @@ export const beginPasskeyRegistrationAction = async (
 };
 
 /**
+ * Begin the registration a fresh sign-in to a provider confirmed, with the
+ * sign-in the callback left waiting. The sign-in is spent here whatever the
+ * API answers, so a refusal, or a sign-in that has expired while the page was
+ * open, goes back to the page with **Add a passkey** offered again and says
+ * why.
+ */
+export const beginPendingPasskeyRegistrationAction = async (
+  formData: FormData
+): Promise<PasskeyRegistrationStartState> => {
+  await assertSameOrigin();
+  const submittedLocale = requireFormLocale(formData.get("locale"));
+  const t = await getMessagesFor(submittedLocale);
+
+  const parsed = passkeyFormSchema.safeParse(
+    toFormDataInput(formData, { locale: "value", tenantId: "value" })
+  );
+
+  if (!parsed.success) {
+    return {
+      message: t("storefront.settings.passkey_add_failed"),
+      ok: false,
+    };
+  }
+
+  const { locale, tenantId } = parsed.data;
+
+  const [accessToken, pending] = await Promise.all([
+    requirePublicSession(locale, SECURITY_SETTINGS_RETURN_TO, tenantId),
+    readPendingPasskeyRegistration(tenantId),
+  ]);
+
+  await clearPendingPasskeyRegistration();
+
+  if (!pending) {
+    redirect(
+      await buildSecuritySettingsPath(
+        locale,
+        tenantId,
+        "error",
+        t("storefront.settings.confirm_unconfirmed")
+      )
+    );
+  }
+
+  const { idToken, nonce, provider } = pending;
+
+  const started = await withPublicSessionReauth(
+    locale,
+    SECURITY_SETTINGS_RETURN_TO,
+    () =>
+      beginMyPasskeyRegistration(
+        tenantId,
+        { idToken, nonce, provider },
+        accessToken
+      ),
+    tenantId
+  );
+
+  if (!started.ok) {
+    redirect(
+      await buildSecuritySettingsPath(
+        locale,
+        tenantId,
+        "error",
+        rpcErrorMessage(
+          started.error,
+          t("storefront.settings.passkey_add_failed"),
+          {
+            locale,
+            overrides: {
+              "invalid-argument": t("storefront.settings.confirm_unconfirmed"),
+              precondition: t("storefront.settings.passkey_limit"),
+            },
+          }
+        )
+      )
+    );
+  }
+
+  return { message: "", ok: true, optionsJson: started.optionsJson };
+};
+
+/**
+ * Drop the sign-in waiting to confirm a passkey, so the page offers **Add a
+ * passkey** again.
+ */
+export const discardPendingPasskeyRegistrationAction = async (
+  formData: FormData
+): Promise<void> => {
+  await assertSameOrigin();
+
+  const parsed = passkeyFormSchema.safeParse(
+    toFormDataInput(formData, { locale: "value", tenantId: "value" })
+  );
+
+  await clearPendingPasskeyRegistration();
+
+  // Every field is hidden, so a form that fails here was not the page's, and
+  // there is nowhere to send it back to.
+  if (!parsed.success) {
+    return;
+  }
+
+  redirect(
+    await tenantLocalePath(
+      parsed.data.tenantId,
+      parsed.data.locale,
+      SECURITY_SETTINGS_RETURN_TO
+    )
+  );
+};
+
+/**
  * Store the passkey the browser created. The list behind the form is read
  * again, so the new passkey is there, unnamed, while the reader names it.
  */
@@ -208,9 +325,6 @@ export const finishPasskeyRegistrationAction = async (
     };
   }
 
-  // A registration a provider sign-in confirmed has been finished, so the page
-  // stops offering it.
-  await clearPendingPasskeyRegistration();
   // The naming step that takes the form's place reports the addition.
   refresh();
 

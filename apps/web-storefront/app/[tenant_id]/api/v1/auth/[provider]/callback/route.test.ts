@@ -598,27 +598,17 @@ describe("Apple and Google sign-in round trip", () => {
     ).toBe("success");
   });
 
-  it("begins the registration a sign-in confirmed, and leaves its options for the page", async () => {
+  it("leaves the sign-in that confirmed adding a passkey for the page", async () => {
     const authorization = await startPasskeyChange({ intent: "passkey_add" });
-    mockBeginMyPasskeyRegistration.mockResolvedValueOnce({
-      ok: true,
-      optionsJson: '{"challenge":"abc"}',
-    });
 
     const response = await postAnswer("google", {
       id_token: "header.payload.signature",
       state: authorization.searchParams.get("state") ?? "",
     });
 
-    expect(mockBeginMyPasskeyRegistration).toHaveBeenCalledWith(
-      tenantId,
-      {
-        idToken: "header.payload.signature",
-        nonce: authorization.searchParams.get("nonce"),
-        provider: "google",
-      },
-      "access-token"
-    );
+    // Only the page can ask the browser for a passkey, so nothing is begun
+    // here.
+    expect(mockBeginMyPasskeyRegistration).not.toHaveBeenCalled();
     expect(
       new URL(response.headers.get("Location") ?? "", "https://reader.example")
         .pathname
@@ -627,9 +617,12 @@ describe("Apple and Google sign-in round trip", () => {
     const { readPendingPasskeyRegistration } =
       await import("#lib/pending-passkey-registration");
 
-    await expect(readPendingPasskeyRegistration(tenantId)).resolves.toBe(
-      '{"challenge":"abc"}'
-    );
+    await expect(readPendingPasskeyRegistration(tenantId)).resolves.toEqual({
+      idToken: "header.payload.signature",
+      nonce: authorization.searchParams.get("nonce"),
+      provider: "google",
+      tenantId,
+    });
     await expect(
       readPendingPasskeyRegistration("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
     ).resolves.toBeNull();

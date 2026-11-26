@@ -10,6 +10,7 @@ const {
   mockBeginMyPasskeyRegistration,
   mockClearPendingPasskeyRegistration,
   mockDeleteMyPasskey,
+  mockReadPendingPasskeyRegistration,
   mockFinishMyPasskeyRegistration,
   mockRedirect,
   mockRefresh,
@@ -20,6 +21,7 @@ const {
   mockAssertSameOrigin: vi.fn(),
   mockBeginMyPasskeyRegistration: vi.fn(),
   mockClearPendingPasskeyRegistration: vi.fn(),
+  mockReadPendingPasskeyRegistration: vi.fn(),
   mockDeleteMyPasskey: vi.fn(),
   mockFinishMyPasskeyRegistration: vi.fn(),
   mockRedirect: vi.fn((path: string) => {
@@ -55,6 +57,7 @@ vi.mock("#lib/csrf", () => ({ assertSameOrigin: mockAssertSameOrigin }));
 
 vi.mock("#lib/pending-passkey-registration", () => ({
   clearPendingPasskeyRegistration: mockClearPendingPasskeyRegistration,
+  readPendingPasskeyRegistration: mockReadPendingPasskeyRegistration,
 }));
 
 vi.mock("#lib/social-sign-in-start", () => ({
@@ -210,6 +213,82 @@ describe("beginPasskeyRegistrationAction", () => {
   });
 });
 
+describe("beginPendingPasskeyRegistrationAction", () => {
+  const pending = {
+    idToken: "header.payload.signature",
+    nonce: "nonce",
+    provider: "google",
+    tenantId,
+  } as const;
+
+  it("begins one with the sign-in the callback left, and spends it", async () => {
+    mockReadPendingPasskeyRegistration.mockResolvedValueOnce(pending);
+    mockBeginMyPasskeyRegistration.mockResolvedValueOnce({
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+    const { beginPendingPasskeyRegistrationAction } = await importActions();
+
+    await expect(
+      beginPendingPasskeyRegistrationAction(form({}))
+    ).resolves.toEqual({
+      message: "",
+      ok: true,
+      optionsJson: '{"challenge":"abc"}',
+    });
+    expect(mockBeginMyPasskeyRegistration).toHaveBeenCalledWith(
+      tenantId,
+      { idToken: pending.idToken, nonce: pending.nonce, provider: "google" },
+      accessToken
+    );
+    expect(mockClearPendingPasskeyRegistration).toHaveBeenCalled();
+  });
+
+  it("goes back to the page when the sign-in is gone", async () => {
+    mockReadPendingPasskeyRegistration.mockResolvedValueOnce(null);
+    const { beginPendingPasskeyRegistrationAction } = await importActions();
+
+    await expect(
+      beginPendingPasskeyRegistrationAction(form({}))
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockBeginMyPasskeyRegistration).not.toHaveBeenCalled();
+    expect(lastFlash()).toEqual({
+      message: "Your sign-in could not be confirmed. Please try again.",
+      status: "error",
+    });
+  });
+
+  it("goes back to the page, with the sign-in spent, when the API refuses it", async () => {
+    mockReadPendingPasskeyRegistration.mockResolvedValueOnce(pending);
+    mockBeginMyPasskeyRegistration.mockResolvedValueOnce({
+      error: new ConnectError("expired", Code.InvalidArgument),
+      ok: false,
+    });
+    const { beginPendingPasskeyRegistrationAction } = await importActions();
+
+    await expect(
+      beginPendingPasskeyRegistrationAction(form({}))
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockClearPendingPasskeyRegistration).toHaveBeenCalled();
+    expect(lastFlash()).toEqual({
+      message: "Your sign-in could not be confirmed. Please try again.",
+      status: "error",
+    });
+  });
+});
+
+describe("discardPendingPasskeyRegistrationAction", () => {
+  it("drops the waiting sign-in and goes back to the page", async () => {
+    const { discardPendingPasskeyRegistrationAction } = await importActions();
+
+    await expect(
+      discardPendingPasskeyRegistrationAction(form({}))
+    ).rejects.toThrow(/NEXT_REDIRECT/u);
+    expect(mockClearPendingPasskeyRegistration).toHaveBeenCalled();
+    expect(mockRedirect.mock.calls.at(-1)?.[0]).toBe("/settings/security");
+  });
+});
+
 describe("finishPasskeyRegistrationAction", () => {
   it("stores the passkey, reads the list again, and hands its id to the naming step", async () => {
     mockFinishMyPasskeyRegistration.mockResolvedValueOnce({
@@ -227,8 +306,6 @@ describe("finishPasskeyRegistrationAction", () => {
       accessToken
     );
     expect(mockRefresh).toHaveBeenCalled();
-    // A registration a provider sign-in left waiting is spent with it.
-    expect(mockClearPendingPasskeyRegistration).toHaveBeenCalled();
   });
 
   it("says when the passkey is registered already", async () => {

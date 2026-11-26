@@ -52,6 +52,7 @@ import {
   confirmPasskeyChangeWithProviderAction,
   deletePasskeyAction,
   deletePasskeyWithPasskeyAction,
+  discardPendingPasskeyRegistrationAction,
 } from "./_lib/passkey-actions";
 import { SECURITY_SETTINGS_RETURN_TO } from "./_lib/security-path";
 
@@ -740,33 +741,39 @@ const PasskeyAddStep = ({
 );
 
 /**
- * The registration a fresh sign-in to a provider confirmed, waiting for the
- * reader to press the button the browser asks for a passkey from.
+ * The fresh sign-in to a provider that confirmed adding a passkey, waiting for
+ * the reader to press the button the browser asks for a passkey from, and a
+ * way to drop it and start again.
  */
-const PasskeyResumeStep = ({
-  optionsJson,
-  tenantId,
-}: {
-  optionsJson: string;
-  tenantId: string;
-}) => (
-  <PasskeyAddition.ResumeForm optionsJson={optionsJson}>
-    <LocaleField />
-    <input name="tenantId" type="hidden" value={tenantId} />
-    <PasskeyAddition.Added />
+const PasskeyResumeStep = ({ tenantId }: { tenantId: string }) => (
+  <div className="grid gap-3">
     <p className="text-sm text-muted-foreground">
       <Suspense fallback={<SkeletonLine className="h-4 w-3/4" />}>
         <Message message="storefront.settings.passkey_add_resume_description" />
       </Suspense>
     </p>
-    <div className="flex justify-end">
-      <PasskeyAddSubmit>
-        <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
-          <Message message="storefront.settings.passkey_add_resume" />
-        </Suspense>
-      </PasskeyAddSubmit>
+    <div className="flex flex-wrap justify-end gap-2">
+      <form action={discardPendingPasskeyRegistrationAction}>
+        <LocaleField />
+        <input name="tenantId" type="hidden" value={tenantId} />
+        <button className={linkedAccountButtonClassName} type="submit">
+          <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+            <Message message="storefront.settings.cancel" />
+          </Suspense>
+        </button>
+      </form>
+      <PasskeyAddition.AddForm confirmWith="pending">
+        <LocaleField />
+        <input name="tenantId" type="hidden" value={tenantId} />
+        <PasskeyAddition.Added />
+        <PasskeyAddSubmit>
+          <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
+            <Message message="storefront.settings.passkey_add_resume" />
+          </Suspense>
+        </PasskeyAddSubmit>
+      </PasskeyAddition.AddForm>
     </div>
-  </PasskeyAddition.ResumeForm>
+  </div>
 );
 
 /**
@@ -834,7 +841,7 @@ const PasskeyNameStep = ({ tenantId }: { tenantId: string }) => (
 const PasskeysSection = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const [mine, passkeys, t, timeZone, pendingOptionsJson] = await Promise.all([
+  const [mine, passkeys, t, timeZone, pending] = await Promise.all([
     readMyIdentities(tenantId, locale),
     withPublicSessionReauth(
       locale,
@@ -967,11 +974,8 @@ const PasskeysSection = async () => {
       <div className="mt-4">
         <PasskeyAddition.Root
           add={
-            pendingOptionsJson ? (
-              <PasskeyResumeStep
-                optionsJson={pendingOptionsJson}
-                tenantId={tenantId}
-              />
+            pending ? (
+              <PasskeyResumeStep tenantId={tenantId} />
             ) : (
               <PasskeyAddStep
                 confirmations={confirmations}
