@@ -62,16 +62,17 @@ func TestAdminMfaChangesEachQueueOneNotice(t *testing.T) {
 	want = append(want, mfaflow.ChangeTotpEnabled)
 	assertMfaChangeNotices(t, env, tenant, want...)
 
-	if _, err := env.authClient().RegenerateMfaRecoveryCodes(ctx, &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest{
+	byCode, err := env.authClient().RegenerateMfaRecoveryCodes(ctx, &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest{
 		Tenant: tenant.tenantContext(),
 		Code:   mfaNextCode(t, secret),
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("RegenerateMfaRecoveryCodes: %v", err)
 	}
 	want = append(want, mfaflow.ChangeRecoveryCodesRegenerated)
 	assertMfaChangeNotices(t, env, tenant, want...)
 
-	authenticator, registered := registerPasskey(t, env, tenant, "Laptop")
+	authenticator, registered := addPasskey(t, env, tenant, "Laptop", codeConfirmation(byCode.RecoveryCodes[0]))
 	want = append(want, mfaflow.ChangePasskeyRegistered)
 	assertMfaChangeNotices(t, env, tenant, want...)
 
@@ -83,8 +84,9 @@ func TestAdminMfaChangesEachQueueOneNotice(t *testing.T) {
 	assertMfaChangeNotices(t, env, tenant, want...)
 
 	if _, err := env.authClient().DeletePasskey(ctx, &publiraadminv1.AdminAuthServiceDeletePasskeyRequest{
-		Tenant: tenant.tenantContext(),
-		Id:     registered.Passkey.Id,
+		Tenant:       tenant.tenantContext(),
+		Id:           registered.Passkey.Id,
+		Confirmation: codeConfirmation(regenerated.RecoveryCodes[0]),
 	}); err != nil {
 		t.Fatalf("DeletePasskey: %v", err)
 	}
@@ -93,7 +95,7 @@ func TestAdminMfaChangesEachQueueOneNotice(t *testing.T) {
 
 	if _, err := env.authClient().DisableMfa(ctx, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
 		Tenant: tenant.tenantContext(),
-		Code:   regenerated.RecoveryCodes[0],
+		Code:   regenerated.RecoveryCodes[1],
 	}); err != nil {
 		t.Fatalf("DisableMfa: %v", err)
 	}
@@ -121,13 +123,18 @@ func TestAdminMfaRefusedChangesQueueNoNotice(t *testing.T) {
 	}
 	assertMfaChangeNotices(t, env, tenant)
 
-	if _, err := env.authClient().ConfirmMfaEnrollment(ctx, &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
+	confirmed, err := env.authClient().ConfirmMfaEnrollment(ctx, &publiraadminv1.AdminAuthServiceConfirmMfaEnrollmentRequest{
 		Tenant: tenant.tenantContext(),
 		Code:   mfaCode(t, started.Secret),
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("ConfirmMfaEnrollment: %v", err)
 	}
-	authenticator, registered := registerPasskey(t, env, tenant, "")
+	codes := confirmed.RecoveryCodes
+	if err := finishSecondPasskey(t, env, tenant, nil); err == nil {
+		t.Fatal("FinishPasskeyRegistration added a passkey beside the authenticator without a confirmation")
+	}
+	authenticator, registered := addPasskey(t, env, tenant, "", codeConfirmation(codes[0]))
 	before := mfaChangeNotices(t, env, tenant)
 
 	if _, err := env.authClient().RegenerateMfaRecoveryCodes(ctx, &publiraadminv1.AdminAuthServiceRegenerateMfaRecoveryCodesRequest{
@@ -161,18 +168,28 @@ func TestAdminMfaRefusedChangesQueueNoNotice(t *testing.T) {
 
 	// The tenant comes to require the factor while a passkey stands beside
 	// the authenticator; taking the authenticator off is what makes the
-	// passkey the last one.
-	if _, err := env.authClient().DisableMfa(ctx, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
-		Tenant: tenant.tenantContext(),
-		Code:   mfaNextCode(t, started.Secret),
-	}); err != nil {
-		t.Fatalf("DisableMfa: %v", err)
-	}
-	before = append(before, mfaflow.ChangeTotpDisabled)
+	// passkey the last one. The server keeps the policy it read for
+	// platformpolicy.CacheTTL, so it is set before the first removal asks
+	// for it.
 	requireTenantAdminMFA(t, env)
 	if _, err := env.authClient().DeletePasskey(ctx, &publiraadminv1.AdminAuthServiceDeletePasskeyRequest{
 		Tenant: tenant.tenantContext(),
 		Id:     registered.Passkey.Id,
+	}); err == nil {
+		t.Fatal("DeletePasskey removed a passkey without a confirmation")
+	}
+	if _, err := env.authClient().DisableMfa(ctx, &publiraadminv1.AdminAuthServiceDisableMfaRequest{
+		Tenant: tenant.tenantContext(),
+		Code:   codes[1],
+	}); err != nil {
+		t.Fatalf("DisableMfa: %v", err)
+	}
+	before = append(before, mfaflow.ChangeTotpDisabled)
+	authenticator.Origin = passkeyConsoleOrigin
+	if _, err := env.authClient().DeletePasskey(ctx, &publiraadminv1.AdminAuthServiceDeletePasskeyRequest{
+		Tenant:       tenant.tenantContext(),
+		Id:           registered.Passkey.Id,
+		Confirmation: passkeyConfirmation(t, env, tenant, authenticator),
 	}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeletePasskey of the last required factor = %v, want failed_precondition", err)
 	}
