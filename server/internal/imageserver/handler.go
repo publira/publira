@@ -197,8 +197,8 @@ type imageCredential struct {
 // belong to the listener it is mounted on, which names a check per pool that
 // listener serves, and the image routes may be one of several things on it.
 //
-// reads is the read limit a storefront's images are charged to; a nil one
-// counts in this process alone.
+// reads is the read limit every host's images are charged to; a nil one
+// counts in this process alone, against the built-in policy.
 func NewHandler(public, admin SiteDB, logger *slog.Logger, tokens *auth.TokenManager, reads *readguard.Guard) (*Server, error) {
 	if logger == nil {
 		logger = slog.Default()
