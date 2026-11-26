@@ -28,27 +28,20 @@ const passkeysSection = (page: Page) =>
   page.getByRole("region", { name: "Passkeys" });
 
 /**
- * Add a passkey from **Passkeys**, confirmed in its dialog with `password` or,
- * without one, with a passkey the account holds already, and name it, or skip
- * naming it when no name is given, ending back on the add button.
+ * Add a passkey from **Passkeys**, confirmed in its dialog with `password`,
+ * and name it, or skip naming it when no name is given, ending back on the add
+ * button.
  */
 const addPasskey = async (
   page: Page,
-  { name, password }: { name?: string; password?: string }
+  { name, password }: { name?: string; password: string }
 ): Promise<void> => {
   const section = passkeysSection(page);
   await section.getByRole("button", { name: "Add a passkey" }).click();
 
   const dialog = page.getByRole("dialog", { name: "Add a passkey" });
-
-  if (password) {
-    await dialog.getByLabel("Current password").fill(password);
-    await dialog.getByRole("button", { name: "Add a passkey" }).click();
-  } else {
-    await dialog
-      .getByRole("button", { name: "Confirm with a passkey" })
-      .click();
-  }
+  await dialog.getByLabel("Current password").fill(password);
+  await dialog.getByRole("button", { name: "Add a passkey" }).click();
 
   await expect(section.getByRole("status")).toContainText(
     "The passkey has been added."
@@ -184,18 +177,29 @@ test.describe("web-storefront passkey settings", () => {
     });
     runSql(`UPDATE users SET password_hash = NULL WHERE public_id = ${reader}`);
 
+    // A second passkey the account holds, which the virtual authenticator does
+    // not: the one it holds already would be excluded from a second
+    // registration on it.
+    runSql(
+      `INSERT INTO user_webauthn_credentials (
+        id, public_id, tenant_id, user_id, relying_party, rp_id, credential_id,
+        public_key, aaguid, backup_eligible, backed_up, name
+      )
+      SELECT gen_random_uuid(), 'SparePasky12', tenant_id, user_id,
+        relying_party, rp_id, '\\x01', '\\x00', aaguid, false, false, 'Spare'
+      FROM user_webauthn_credentials
+      WHERE user_id = (SELECT id FROM users WHERE public_id = ${reader})`
+    );
     await page.goto(storefrontUrl("/settings/security"));
     await expect(
       page.getByRole("heading", { name: "Set a password" })
     ).toBeVisible();
 
-    // Without a password, the passkey it holds confirms the next one, and the
-    // removal of either.
-    await addPasskey(page, {});
+    // Without a password, the passkey the authenticator holds confirms the
+    // removal of another.
     const section = passkeysSection(page);
-    await expect(section.getByText("Unnamed passkey")).toBeVisible();
-    await section.getByRole("button", { name: "Remove First" }).click();
-    const removeDialog = page.getByRole("dialog", { name: "Remove First?" });
+    await section.getByRole("button", { name: "Remove Spare" }).click();
+    const removeDialog = page.getByRole("dialog", { name: "Remove Spare?" });
     await expect(removeDialog).toContainText(
       "Your account has no password. Confirm with a passkey or a linked account."
     );
@@ -206,7 +210,7 @@ test.describe("web-storefront passkey settings", () => {
       "The passkey has been removed."
     );
     await expect(
-      section.getByRole("button", { name: "Remove Unnamed passkey" })
+      section.getByRole("button", { name: "Remove First" })
     ).toBeDisabled();
     await expect(section).toContainText(
       "Your account has no password or linked account, so its last passkey stays registered."
