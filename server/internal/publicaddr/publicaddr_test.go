@@ -1,6 +1,7 @@
 package publicaddr
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/netip"
@@ -140,5 +141,33 @@ func TestPartialDeadlineSharesTheTimeLeft(t *testing.T) {
 		if got := partialDeadline(now, now.Add(tc.left), tc.remaining).Sub(now); got != tc.want {
 			t.Errorf("partialDeadline(%v left, %d remaining) = %v, want %v", tc.left, tc.remaining, got, tc.want)
 		}
+	}
+}
+
+// The dialer's timeout bounds the resolution too, so a resolver that never
+// answers is given up on at the timeout even when the context has no deadline.
+func TestDialBoundsTheResolutionByTheDialTimeout(t *testing.T) {
+	t.Parallel()
+
+	stalled := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		},
+	}
+	dialer := &net.Dialer{Timeout: 50 * time.Millisecond, Resolver: stalled}
+	done := make(chan error, 1)
+	go func() {
+		_, err := Dial(context.Background(), dialer, "tcp", "smtp.stalled.example:25", nil)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("Dial through a resolver that never answers connected")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Dial was still resolving after the dial timeout")
 	}
 }

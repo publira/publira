@@ -62,13 +62,19 @@ func ParseAllowed(raw string) ([]netip.Prefix, error) {
 // resolves to that are public or in allowed, and at no other: a host with
 // none is [ErrRestricted]. Each address is dialled as the IP it was checked
 // as, so a name that resolves elsewhere between a check and the dial cannot
-// slip past it. The rest follows net.Dialer: its timeout is shared between the
+// slip past it. The rest follows net.Dialer: its timeout and deadline bound
+// the resolution and the connection together, the time is shared between the
 // addresses, the other address family is raced after its fallback delay, and
 // the error of a host whose permitted addresses all fail is theirs.
 func Dial(ctx context.Context, dialer *net.Dialer, network, address string, allowed []netip.Prefix) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return nil, fmt.Errorf("split the address: %w", err)
+	}
+	if deadline, ok := dialDeadline(dialer); ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithDeadline(ctx, deadline)
+		defer cancel()
 	}
 	resolver := net.DefaultResolver
 	if dialer.Resolver != nil {
@@ -94,13 +100,8 @@ func Dial(ctx context.Context, dialer *net.Dialer, network, address string, allo
 		return nil, ErrRestricted
 	}
 
-	if dialer.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, dialer.Timeout)
-		defer cancel()
-	}
 	single := *dialer
-	single.Timeout = 0
+	single.Timeout, single.Deadline = 0, time.Time{}
 	if len(fallbacks) == 0 || dialer.FallbackDelay < 0 {
 		return dialSerial(ctx, &single, network, port, append(primaries, fallbacks...))
 	}
@@ -118,6 +119,18 @@ const defaultFallbackDelay = 300 * time.Millisecond
 // minimumAttempt is the least time net.Dialer gives one address while others
 // wait, unless less than that is left in all.
 const minimumAttempt = 2 * time.Second
+
+// dialDeadline is the earlier of dialer's Deadline and its Timeout from now,
+// the bound net.Dialer puts on a whole dial.
+func dialDeadline(dialer *net.Dialer) (time.Time, bool) {
+	deadline := dialer.Deadline
+	if dialer.Timeout > 0 {
+		if byTimeout := time.Now().Add(dialer.Timeout); deadline.IsZero() || byTimeout.Before(deadline) {
+			deadline = byTimeout
+		}
+	}
+	return deadline, !deadline.IsZero()
+}
 
 func lookupNetwork(network string) string {
 	switch network {
