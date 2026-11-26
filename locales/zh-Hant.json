@@ -8020,6 +8020,8 @@
       "not_linked": "未連結",
       "title": "已連結的帳戶",
       "unlink": "解除連結",
+      "unlink_confirm_description": "請輸入目前的密碼以解除與{$provider}帳戶的連結。",
+      "unlink_confirm_title": "要解除與{$provider}的連結嗎？",
       "unlink_failed": "無法解除連結。請稍後再試。",
       "unlinked": "已解除連結。"
     },
@@ -8027,6 +8029,7 @@
       "actions": "{$name}的操作",
       "add": "新增通行金鑰",
       "add_cancelled": "通行金鑰要求已取消或逾時。請重試。",
+      "add_confirm_description": "請輸入目前的密碼以新增通行金鑰。",
       "add_failed": "無法新增通行金鑰。請稍後再試。",
       "added": "已新增通行金鑰。現在可以使用它登入。",
       "added_at": "新增於{$date}",
@@ -8051,11 +8054,23 @@
       "never_used": "尚未使用",
       "not_found": "該通行金鑰已不再註冊到您的帳戶。",
       "remove": "移除",
+      "remove_confirm_description": "請輸入目前的密碼以刪除{$name}。",
+      "remove_confirm_title": "要刪除{$name}嗎？",
       "remove_failed": "無法移除通行金鑰。請稍後再試。",
       "removed": "已移除通行金鑰。",
       "rename": "重新命名",
       "title": "通行金鑰",
       "unnamed": "未命名的通行金鑰"
+    },
+    "step_confirmation": {
+      "no_method": "您已連結的帳戶目前都無法在此裝置上登入。請先設定密碼。",
+      "password_label": "目前的密碼",
+      "unconfirmed": "無法確認您的登入。請再試一次。",
+      "with_apple": "使用Apple確認",
+      "with_google": "使用Google確認",
+      "with_passkey": "使用通行金鑰確認",
+      "without_password": "您的帳戶沒有密碼。請使用通行金鑰或已連結的帳戶確認。",
+      "wrong_password": "密碼不正確。"
     },
     "two_step": {
       "title": "兩步驟驗證",

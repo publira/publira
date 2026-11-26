@@ -9,6 +9,7 @@ import 'package:publira/api/gen/publira/v1/tenant.pb.dart' as pb;
 import 'package:publira/api/tenant_resolver.dart';
 import 'package:publira/api/unknown_enum.dart';
 import 'package:publira/api/user_icon.dart';
+import 'package:publira/auth/step_confirmation.dart';
 import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
@@ -293,18 +294,31 @@ class HttpAuthRepository implements AuthRepository {
   Future<void> unlinkIdentity(
     AuthSession session,
     IdentityProvider provider,
+    StepConfirmation confirmation,
   ) async {
     try {
       final tenantId = await _tenants.resolve();
+      final request = pb.UnlinkIdentityRequest(
+        tenant: pb.TenantContext(tenantId: tenantId),
+        provider: provider.wire,
+      );
+      switch (confirmation) {
+        case ConfirmedByPassword(:final password):
+          request.password = password;
+        case ConfirmedBySignIn(:final credential):
+          request
+            ..confirmationProvider = credential.provider.wire
+            ..idToken = credential.idToken
+            ..nonce = credential.nonce;
+        case ConfirmedByPasskey(:final credentialJson):
+          request.passkeyCredentialJson = credentialJson;
+      }
       await _auth.unlinkIdentity(
         ConnectCallContext(
           tenantId: tenantId,
           accessToken: session.accessToken,
         ),
-        pb.UnlinkIdentityRequest(
-          tenant: pb.TenantContext(tenantId: tenantId),
-          provider: provider.wire,
-        ),
+        request,
       );
     } on ConnectException catch (error) {
       switch (error.code) {
@@ -424,14 +438,29 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<String> beginPasskeyRegistration(AuthSession session) async {
+  Future<String> beginPasskeyRegistration(
+    AuthSession session,
+    StepConfirmation confirmation,
+  ) async {
     try {
       final tenantId = await _tenants.resolve();
+      final request = pb.BeginPasskeyRegistrationRequest(
+        tenant: pb.TenantContext(tenantId: tenantId),
+      );
+      switch (confirmation) {
+        case ConfirmedByPassword(:final password):
+          request.password = password;
+        case ConfirmedBySignIn(:final credential):
+          request
+            ..provider = credential.provider.wire
+            ..idToken = credential.idToken
+            ..nonce = credential.nonce;
+        case ConfirmedByPasskey(:final credentialJson):
+          request.passkeyCredentialJson = credentialJson;
+      }
       final body = await _auth.beginPasskeyRegistration(
         _sessionContext(tenantId, session),
-        pb.BeginPasskeyRegistrationRequest(
-          tenant: pb.TenantContext(tenantId: tenantId),
-        ),
+        request,
       );
       return _requiredText(body.creationOptionsJson, 'creationOptionsJson');
     } on ConnectException catch (error) {
@@ -482,16 +511,29 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> deletePasskey(AuthSession session, String id) async {
+  Future<void> deletePasskey(
+    AuthSession session,
+    String id,
+    StepConfirmation confirmation,
+  ) async {
     try {
       final tenantId = await _tenants.resolve();
-      await _auth.deletePasskey(
-        _sessionContext(tenantId, session),
-        pb.DeletePasskeyRequest(
-          tenant: pb.TenantContext(tenantId: tenantId),
-          id: id,
-        ),
+      final request = pb.DeletePasskeyRequest(
+        tenant: pb.TenantContext(tenantId: tenantId),
+        id: id,
       );
+      switch (confirmation) {
+        case ConfirmedByPassword(:final password):
+          request.password = password;
+        case ConfirmedBySignIn(:final credential):
+          request
+            ..provider = credential.provider.wire
+            ..idToken = credential.idToken
+            ..nonce = credential.nonce;
+        case ConfirmedByPasskey(:final credentialJson):
+          request.passkeyCredentialJson = credentialJson;
+      }
+      await _auth.deletePasskey(_sessionContext(tenantId, session), request);
     } on ConnectException catch (error) {
       switch (error.code) {
         // Removed already, from another device or the site.

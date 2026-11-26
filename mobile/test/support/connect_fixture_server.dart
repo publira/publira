@@ -2194,7 +2194,7 @@ class ConnectFixtureServer {
     }
 
     if (path.endsWith('/BeginPasskeyRegistration')) {
-      recorded.decode(pb.BeginPasskeyRegistrationRequest());
+      final body = recorded.decode(pb.BeginPasskeyRegistrationRequest());
       if (!await _writeUnlessAuthorized(request)) {
         return;
       }
@@ -2205,6 +2205,16 @@ class ConnectFixtureServer {
           'failed_precondition',
           'the account holds as many passkeys as it may',
         );
+        return;
+      }
+      if (!await _writeUnlessStepConfirmed(
+        request,
+        password: body.password,
+        provider: body.hasProvider() ? body.provider : null,
+        idToken: body.idToken,
+        nonce: body.nonce,
+        passkeyCredentialJson: body.passkeyCredentialJson,
+      )) {
         return;
       }
       await _writeMessage(
@@ -2294,6 +2304,16 @@ class ConnectFixtureServer {
         );
         return;
       }
+      if (!await _writeUnlessStepConfirmed(
+        request,
+        password: body.password,
+        provider: body.hasProvider() ? body.provider : null,
+        idToken: body.idToken,
+        nonce: body.nonce,
+        passkeyCredentialJson: body.passkeyCredentialJson,
+      )) {
+        return;
+      }
       memberPasskeys.removeWhere((p) => p.id == body.id);
       await _writeMessage(request, pb.DeletePasskeyResponse());
       return;
@@ -2323,6 +2343,18 @@ class ConnectFixtureServer {
           'failed_precondition',
           'the account keeps its last linked provider',
         );
+        return;
+      }
+      if (!await _writeUnlessStepConfirmed(
+        request,
+        password: body.password,
+        provider: body.hasConfirmationProvider()
+            ? body.confirmationProvider
+            : null,
+        idToken: body.idToken,
+        nonce: body.nonce,
+        passkeyCredentialJson: body.passkeyCredentialJson,
+      )) {
         return;
       }
       memberIdentities.remove(provider);
@@ -5105,6 +5137,54 @@ class ConnectFixtureServer {
     memberDeleted = true;
     activeAccessToken = null;
     await _writeMessage(request, pb.DeleteMeResponse());
+  }
+
+  /// Checks the confirmation a step that adds or takes away a way to sign in
+  /// is sent with, as the API does: exactly one of the password, a fresh
+  /// sign-in, or a passkey assertion, and one that does not verify is
+  /// `invalid_argument` on its field. Reports whether the request may go on.
+  Future<bool> _writeUnlessStepConfirmed(
+    HttpRequest request, {
+    required String password,
+    required pb.IdentityProvider? provider,
+    required String idToken,
+    required String nonce,
+    required String passkeyCredentialJson,
+  }) async {
+    final given = [
+      password.isNotEmpty,
+      idToken.isNotEmpty,
+      passkeyCredentialJson.isNotEmpty,
+    ].where((sent) => sent).length;
+    if (given != 1) {
+      await _writeInvalidArgument(
+        request,
+        'one of password, id_token or passkey_credential_json is required',
+      );
+      return false;
+    }
+    if (idToken.isNotEmpty) {
+      return _writeUnlessConfirmedWithIdentity(
+        request,
+        provider: provider ?? pb.IdentityProvider.IDENTITY_PROVIDER_UNSPECIFIED,
+        idToken: idToken,
+        nonce: nonce,
+      );
+    }
+    if (passkeyCredentialJson.isNotEmpty) {
+      return _writeUnlessConfirmedWithPasskey(request, passkeyCredentialJson);
+    }
+    if (password != memberCurrentPassword) {
+      await _writeError(
+        request,
+        HttpStatus.badRequest,
+        'invalid_argument',
+        'invalid password',
+        details: [badRequestDetail('password')],
+      );
+      return false;
+    }
+    return true;
   }
 
   /// Checks the passkey assertion an account without a password confirms a

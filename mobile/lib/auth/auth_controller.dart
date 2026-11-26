@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:publira/auth/step_confirmation.dart';
 import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_repository.dart';
@@ -192,13 +193,36 @@ class AuthController extends ChangeNotifier {
     return _whileHeld(() => _repository.readLinkedIdentities(session));
   }
 
-  /// Unlinks [provider] from the signed-in account.
+  /// Unlinks [provider] from the signed-in account, confirmed by
+  /// [confirmation].
   ///
   /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
   /// is signed in.
-  Future<void> unlinkIdentity(IdentityProvider provider) async {
+  Future<void> unlinkIdentity(
+    IdentityProvider provider,
+    StepConfirmation confirmation,
+  ) async {
     final session = _requireSession();
-    await _whileHeld(() => _repository.unlinkIdentity(session, provider));
+    await _whileHeld(
+      () => _repository.unlinkIdentity(session, provider, confirmation),
+    );
+  }
+
+  /// The assertion one of the signed-in reader's passkeys makes over a
+  /// challenge the API begins, which [authenticator] asks them for, to
+  /// confirm a step with.
+  ///
+  /// Throws [PasskeyCancelled] or [PasskeyFailure] from [authenticator], and
+  /// [AuthFailure] from the API, [AuthFailureKind.passkeyNotFound] for a
+  /// reader who holds none.
+  Future<StepConfirmation> confirmWithPasskey(
+    PasskeyAuthenticator authenticator,
+  ) async {
+    final session = _requireSession();
+    return _whileHeld(() async {
+      final options = await _repository.beginPasskeyConfirmation(session);
+      return ConfirmedByPasskey(await authenticator.authenticate(options));
+    });
   }
 
   /// Links the provider account [credential] is a fresh sign-in to, to the
@@ -220,16 +244,23 @@ class AuthController extends ChangeNotifier {
     return _whileHeld(() => _repository.readPasskeys(session));
   }
 
-  /// Registers a passkey for the signed-in reader, which [authenticator] asks
-  /// them to make, and returns it unnamed.
+  /// Registers a passkey for the signed-in reader, confirmed by
+  /// [confirmation], which [authenticator] asks them to make, and returns it
+  /// unnamed.
   ///
   /// Throws [PasskeyCancelled], [PasskeyAlreadyRegistered], or
   /// [PasskeyFailure] from [authenticator], and [AuthFailure] from the API,
   /// with [AuthFailureKind.sessionExpired] when nobody is signed in.
-  Future<Passkey> registerPasskey(PasskeyAuthenticator authenticator) async {
+  Future<Passkey> registerPasskey(
+    PasskeyAuthenticator authenticator,
+    StepConfirmation confirmation,
+  ) async {
     final session = _requireSession();
     return _whileHeld(() async {
-      final options = await _repository.beginPasskeyRegistration(session);
+      final options = await _repository.beginPasskeyRegistration(
+        session,
+        confirmation,
+      );
       final credential = await authenticator.register(options);
       return _repository.finishPasskeyRegistration(session, credential);
     });
@@ -245,13 +276,16 @@ class AuthController extends ChangeNotifier {
     return _whileHeld(() => _repository.renamePasskey(session, id, name));
   }
 
-  /// Removes the signed-in reader's passkey [id].
+  /// Removes the signed-in reader's passkey [id], confirmed by
+  /// [confirmation].
   ///
   /// Throws [AuthFailure], with [AuthFailureKind.sessionExpired] when nobody
   /// is signed in.
-  Future<void> deletePasskey(String id) async {
+  Future<void> deletePasskey(String id, StepConfirmation confirmation) async {
     final session = _requireSession();
-    await _whileHeld(() => _repository.deletePasskey(session, id));
+    await _whileHeld(
+      () => _repository.deletePasskey(session, id, confirmation),
+    );
   }
 
   /// Whether the signed-in account holds an authenticator.

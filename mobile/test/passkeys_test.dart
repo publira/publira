@@ -9,12 +9,22 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/provider_sign_in.dart';
+import 'package:publira/auth/step_confirmation.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
 import 'support/fake_catalog_repository.dart';
 import 'support/pump_until.dart';
 import 'support/tap.dart';
+
+/// Answers the dialog a step is confirmed in with the account's password.
+Future<void> confirmWithPassword(WidgetTester tester) async {
+  final password = find.byKey(const ValueKey('step-confirmation-password'));
+  await pumpUntilFound(tester, password);
+  await tester.enterText(password, 'memberpass');
+  await tester.tap(find.byKey(const ValueKey('step-confirmation-submit')));
+  await tester.pump();
+}
 
 void main() {
   late FakeAuthRepository repository;
@@ -270,6 +280,7 @@ void main() {
       await pumpUntilFound(tester, addButton);
 
       await tapVisible(tester, addButton);
+      await confirmWithPassword(tester);
       await pumpUntilFound(tester, find.byKey(const ValueKey('passkey-name')));
 
       expect(passkeys.registered, [FakeAuthRepository.creationOptionsJson]);
@@ -289,6 +300,46 @@ void main() {
       );
     });
 
+    testWidgets('asks for the password before beginning, and a wrong one '
+        'adds nothing', (tester) async {
+      repository.stepConfirmationFailure = const AuthFailure(
+        AuthFailureKind.invalidInput,
+      );
+      await pumpApp(tester, initialLocation: AppRoutes.accountPasskeys);
+      await pumpUntilFound(tester, addButton);
+
+      await tapVisible(tester, addButton);
+      await confirmWithPassword(tester);
+      await pumpUntilFound(tester, find.text('The password is incorrect.'));
+
+      expect(
+        repository.stepConfirmations.single,
+        isA<ConfirmedByPassword>().having(
+          (confirmation) => confirmation.password,
+          'password',
+          'memberpass',
+        ),
+      );
+      expect(passkeys.registered, isEmpty);
+    });
+
+    testWidgets('a confirmation the reader cancels adds nothing', (
+      tester,
+    ) async {
+      await pumpApp(tester, initialLocation: AppRoutes.accountPasskeys);
+      await pumpUntilFound(tester, addButton);
+
+      await tapVisible(tester, addButton);
+      final cancel = find.byKey(const ValueKey('step-confirmation-cancel'));
+      await pumpUntilFound(tester, cancel);
+      await tester.tap(cancel);
+      await tester.pumpAndSettle();
+
+      expect(repository.stepConfirmations, isEmpty);
+      expect(passkeys.registered, isEmpty);
+      expect(find.byKey(const ValueKey('passkey-name')), findsNothing);
+    });
+
     testWidgets('leaves a passkey unnamed when naming is skipped', (
       tester,
     ) async {
@@ -296,6 +347,7 @@ void main() {
       await pumpUntilFound(tester, addButton);
 
       await tapVisible(tester, addButton);
+      await confirmWithPassword(tester);
       await pumpUntilFound(tester, find.byKey(const ValueKey('passkey-name')));
       await tester.tap(find.byKey(const ValueKey('passkey-name-dismiss')));
       await pumpUntilFound(tester, find.text('Unnamed passkey'));
@@ -309,6 +361,7 @@ void main() {
       await pumpUntilFound(tester, addButton);
 
       await tapVisible(tester, addButton);
+      await confirmWithPassword(tester);
       await pumpUntilFound(tester, find.byKey(const ValueKey('passkey-name')));
       await tester.enterText(
         find.byKey(const ValueKey('passkey-name')),
@@ -330,6 +383,7 @@ void main() {
       await pumpUntilFound(tester, addButton);
 
       await tapVisible(tester, addButton);
+      await confirmWithPassword(tester);
       await pumpUntilFound(
         tester,
         find.text('The passkey request was cancelled or timed out. Try again.'),
@@ -348,6 +402,7 @@ void main() {
       await pumpUntilFound(tester, addButton);
 
       await tapVisible(tester, addButton);
+      await confirmWithPassword(tester);
       await pumpUntilFound(
         tester,
         find.text(
@@ -365,6 +420,7 @@ void main() {
       await pumpUntilFound(tester, addButton);
 
       await tapVisible(tester, addButton);
+      await confirmWithPassword(tester);
       await pumpUntilFound(
         tester,
         find.text('This passkey is already registered to your account.'),
@@ -422,6 +478,7 @@ void main() {
       await tester.tap(
         find.byKey(const ValueKey('passkey-remove-passkey-iphone')),
       );
+      await confirmWithPassword(tester);
       await pumpUntilFound(tester, find.text('The passkey has been removed.'));
 
       expect(repository.passkeys.single.id, 'passkey-unnamed');
@@ -448,6 +505,7 @@ void main() {
       await tester.tap(
         find.byKey(const ValueKey('passkey-remove-passkey-iphone')),
       );
+      await confirmWithPassword(tester);
       await pumpUntilFound(
         tester,
         find.byKey(const ValueKey('passkeys-retry')),
@@ -518,9 +576,15 @@ void main() {
       expect(find.byKey(const ValueKey('linked-accounts-last')), findsNothing);
 
       await tester.tap(unlink);
+      final withPasskey = find.byKey(
+        const ValueKey('step-confirmation-with-passkey'),
+      );
+      await pumpUntilFound(tester, withPasskey);
+      await tester.tap(withPasskey);
       await pumpUntilFound(tester, find.text('The account was unlinked.'));
 
       expect(repository.identities, isEmpty);
+      expect(repository.stepConfirmations.single, isA<ConfirmedByPasskey>());
     });
   });
 

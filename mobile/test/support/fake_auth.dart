@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:publira/auth/step_confirmation.dart';
 import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_controller.dart';
 import 'package:publira/auth/auth_failure.dart';
@@ -656,6 +657,22 @@ class FakeAuthRepository implements AuthRepository {
     return session;
   }
 
+  /// The confirmations the steps that add or take away a way to sign in
+  /// were sent with, oldest first.
+  final List<StepConfirmation> stepConfirmations = [];
+
+  /// What those steps refuse a confirmation with, as the API refuses one
+  /// that does not verify, or `null` to take every one.
+  AuthFailure? stepConfirmationFailure;
+
+  void _confirm(StepConfirmation confirmation) {
+    stepConfirmations.add(confirmation);
+    final failure = stepConfirmationFailure;
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
   @override
   Future<LinkedIdentities> readLinkedIdentities(AuthSession session) async {
     await identitiesGate?.future;
@@ -674,7 +691,9 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> unlinkIdentity(
     AuthSession session,
     IdentityProvider provider,
+    StepConfirmation confirmation,
   ) async {
+    _confirm(confirmation);
     if (!hasPassword && passkeys.isEmpty && identities.length == 1) {
       throw const AuthFailure(AuthFailureKind.lastSignInMethod);
     }
@@ -726,7 +745,11 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<String> beginPasskeyRegistration(AuthSession session) async {
+  Future<String> beginPasskeyRegistration(
+    AuthSession session,
+    StepConfirmation confirmation,
+  ) async {
+    _confirm(confirmation);
     final failure = beginPasskeyRegistrationFailure;
     if (failure != null) {
       throw failure;
@@ -789,7 +812,12 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> deletePasskey(AuthSession session, String id) async {
+  Future<void> deletePasskey(
+    AuthSession session,
+    String id,
+    StepConfirmation confirmation,
+  ) async {
+    _confirm(confirmation);
     if (!hasPassword && identities.isEmpty && passkeys.length == 1) {
       throw const AuthFailure(AuthFailureKind.lastSignInMethod);
     }

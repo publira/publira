@@ -5,7 +5,10 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
+import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/signed_out_notice.dart';
+import 'package:publira/auth/step_confirmation.dart';
+import 'package:publira/auth/step_confirmation_prompt.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
@@ -107,15 +110,38 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
     final auth = AuthScope.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final messages = AppMessages.of(context);
+    final name = provider.displayName;
     setState(() {
       _busy = provider;
     });
     String copy;
+    StepConfirmation? confirmation;
     try {
-      await auth.unlinkIdentity(provider);
+      confirmation = await askStepConfirmation(
+        context,
+        title: messages.linkedAccountsUnlinkConfirmTitle(provider: name),
+        passwordDescription: messages.linkedAccountsUnlinkConfirmDescription(
+          provider: name,
+        ),
+        confirmLabel: messages.linkedAccountsUnlink,
+      );
+      if (confirmation == null) {
+        await _settle();
+        return;
+      }
+      await auth.unlinkIdentity(provider, confirmation);
       copy = messages.linkedAccountsUnlinked;
+    } on PasskeyCancelled {
+      copy = messages.passkeysConfirmCancelled;
+    } on PasskeyFailure {
+      copy = messages.passkeysConfirmFailed;
     } on AuthFailure catch (failure) {
+      final refused = confirmation == null
+          ? null
+          : refusedConfirmationCopy(messages, confirmation, failure);
       copy = switch (failure.kind) {
+        _ when refused != null => refused,
+        AuthFailureKind.passkeyNotFound => messages.passkeysConfirmNone,
         AuthFailureKind.lastSignInMethod => messages.linkedAccountsLast,
         AuthFailureKind.network => messages.errorsRpcUnavailable,
         _ => messages.linkedAccountsUnlinkFailed,

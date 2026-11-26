@@ -8020,6 +8020,8 @@
       "not_linked": "Not linked",
       "title": "Linked accounts",
       "unlink": "Unlink",
+      "unlink_confirm_description": "Enter your current password to unlink your {$provider} account.",
+      "unlink_confirm_title": "Unlink {$provider}?",
       "unlink_failed": "Could not unlink the account. Try again later.",
       "unlinked": "The account was unlinked."
     },
@@ -8027,6 +8029,7 @@
       "actions": "Actions for {$name}",
       "add": "Add a passkey",
       "add_cancelled": "The passkey request was cancelled or timed out. Try again.",
+      "add_confirm_description": "Enter your current password to add a passkey.",
       "add_failed": "Could not add the passkey. Try again later.",
       "added": "The passkey has been added. You can now sign in with it.",
       "added_at": "Added on {$date}",
@@ -8051,11 +8054,23 @@
       "never_used": "Not used yet",
       "not_found": "That passkey is no longer registered to your account.",
       "remove": "Remove",
+      "remove_confirm_description": "Enter your current password to remove {$name}.",
+      "remove_confirm_title": "Remove {$name}?",
       "remove_failed": "Could not remove the passkey. Try again later.",
       "removed": "The passkey has been removed.",
       "rename": "Rename",
       "title": "Passkeys",
       "unnamed": "Unnamed passkey"
+    },
+    "step_confirmation": {
+      "no_method": "None of your linked accounts can sign in on this device. Set a password first.",
+      "password_label": "Current password",
+      "unconfirmed": "Your sign-in could not be confirmed. Try again.",
+      "with_apple": "Confirm with Apple",
+      "with_google": "Confirm with Google",
+      "with_passkey": "Confirm with a passkey",
+      "without_password": "Your account has no password. Confirm with a passkey or a linked account.",
+      "wrong_password": "The password is incorrect."
     },
     "two_step": {
       "title": "Two-step verification",
