@@ -12,7 +12,7 @@ import { WEB_ADMIN_BASE_URL } from "../src/urls";
  * here, issuing an API key — asks the operator to confirm it's them even
  * while they are signed in: a wrong password changes nothing, the right one
  * makes the change as it was submitted, and the next such change in the same
- * session does not ask again.
+ * session, on a page loaded afresh, does not ask again.
  *
  * The page signs in through the form rather than `signInAsAdmin`, which
  * answers the dialog by itself for every other suite.
@@ -78,6 +78,8 @@ test("asks the operator to confirm it's them before an API key is issued, and no
   await expect(keys.getByText("Your new API key")).toBeVisible();
   await expect(keys.getByRole("row").filter({ hasText: first })).toBeVisible();
 
+  // A page loaded afresh still holds the step-up the first change earned.
+  await page.reload();
   await submitKey(page, second);
 
   await expect(keys.getByRole("row").filter({ hasText: second })).toBeVisible();
