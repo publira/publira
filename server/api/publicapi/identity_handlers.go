@@ -509,9 +509,9 @@ func (s *apiServer) ListMyIdentities(
 	}, nil
 }
 
-// UnlinkIdentity removes the link to one provider account, checking the
-// confirmation of the account the request sends, unless it is the last way an
-// account without a password or a passkey signs in.
+// UnlinkIdentity removes the link to one provider account, once the request
+// has confirmed the account, unless it is the last way an account without a
+// password or a passkey signs in.
 func (s *apiServer) UnlinkIdentity(
 	ctx context.Context,
 	req *publirav1.UnlinkIdentityRequest,
@@ -537,7 +537,7 @@ func (s *apiServer) UnlinkIdentity(
 		nonce:       req.Nonce,
 		passkeyJSON: req.PasskeyCredentialJson,
 	}
-	if confirmation.sent() && !confirmation.single() {
+	if !confirmation.single() {
 		return fail("invalid_input", accountConfirmationRequiredError())
 	}
 
@@ -588,10 +588,8 @@ func (s *apiServer) UnlinkIdentity(
 	// refusal above, so an unlink that does not happen spends nothing. A
 	// sign-in to the provider being unlinked confirms it as well as any other:
 	// the link is still there to check it against.
-	if confirmation.sent() {
-		if reason, err := s.confirmAccount(ctx, txq, tenant, locked, confirmation); err != nil {
-			return fail(reason, err)
-		}
+	if reason, err := s.confirmAccount(ctx, txq, tenant, locked, confirmation); err != nil {
+		return fail(reason, err)
 	}
 	if err := outbox.QueueAppleSignInTokenRevocation(ctx, txq, *target); err != nil {
 		return fail("revocation_enqueue_failed", s.internalError(ctx, "failed to queue the apple token revocation", err, "tenant_id", tenant.ID.String(), "user_id", user.ID.String()))

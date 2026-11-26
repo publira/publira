@@ -22,23 +22,14 @@ import (
 // forms DeleteMe and RequestEmailChange already take: the password, a fresh
 // sign-in to a linked provider, or an assertion made with one of the account's
 // passkeys. Each of the three steps adds or takes away a way to sign in, so a
-// session alone, which may be one left open on a shared device, should not be
-// enough to take one; a confirmation that is sent is checked and spent.
+// session alone, which may be one left open on a shared device, must not be
+// enough to take one.
 type accountConfirmation struct {
 	password    string
 	provider    publirav1.IdentityProvider
 	idToken     string
 	nonce       string
 	passkeyJSON string
-}
-
-// sent reports whether any of the three forms was sent. A client of the
-// release before this one sends none, and the step still takes it on the
-// session alone until the clients that ask for a confirmation are out.
-func (c accountConfirmation) sent() bool {
-	return strings.TrimSpace(c.password) != "" ||
-		strings.TrimSpace(c.idToken) != "" ||
-		strings.TrimSpace(c.passkeyJSON) != ""
 }
 
 // single reports whether exactly one of the three forms was sent.

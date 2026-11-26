@@ -940,8 +940,7 @@ class UnlinkIdentityRequest extends $pb.GeneratedMessage {
   /// made with one of the account's passkeys over a challenge
   /// BeginPasskeyConfirmation issued. It is checked once the refusals above
   /// have passed, and spent only by an unlink that succeeds. A request that
-  /// sends none is taken on the session alone, as a client of the previous
-  /// release sends it.
+  /// sends none is invalid_argument.
   @$pb.TagNumber(3)
   $core.String get password => $_getSZ(2);
   @$pb.TagNumber(3)
@@ -1734,8 +1733,7 @@ class BeginPasskeyRegistrationRequest extends $pb.GeneratedMessage {
   /// with one of its passkeys over a challenge BeginPasskeyConfirmation
   /// issued. It is spent here, and the ceremony it begins is what
   /// FinishPasskeyRegistration finishes, so the finish takes none of its own.
-  /// A request that sends none is taken on the session alone, as a client of
-  /// the previous release sends it.
+  /// A request that sends none is invalid_argument.
   @$pb.TagNumber(2)
   $core.String get password => $_getSZ(1);
   @$pb.TagNumber(2)
@@ -2378,8 +2376,7 @@ class DeletePasskeyRequest extends $pb.GeneratedMessage {
   /// The confirmation DeleteMeRequest takes, exactly one of the three, checked
   /// once the refusals above have passed and spent only by a removal that
   /// succeeds. An assertion may be made with the passkey being removed. A
-  /// request that sends none is taken on the session alone, as a client of the
-  /// previous release sends it.
+  /// request that sends none is invalid_argument.
   @$pb.TagNumber(3)
   $core.String get password => $_getSZ(2);
   @$pb.TagNumber(3)
