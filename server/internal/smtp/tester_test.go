@@ -384,6 +384,49 @@ func TestSendRenderedEmailTellsARefusedRecipientApart(t *testing.T) {
 	}
 }
 
+// An implicit TLS server that takes the connection and never answers the
+// handshake is given up on at the client's dial timeout, even when the
+// context has no deadline of its own.
+func TestSendTestEmailBoundsTheImplicitTLSHandshakeByTheDialTimeout(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			t.Cleanup(func() { _ = conn.Close() })
+		}
+	}()
+	addr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatalf("listener address = %T, want *net.TCPAddr", ln.Addr())
+	}
+	settings := emailsettings.SMTPSettings{
+		Host: addr.IP.String(), Port: int32(addr.Port), //nolint:gosec // a TCP port fits
+		Encryption: "tls", FromAddress: "from@example.com", Platform: true,
+	}
+
+	client := NewClient()
+	client.DialTimeout = 200 * time.Millisecond
+	done := make(chan error, 1)
+	go func() {
+		done <- client.SendTestEmail(context.Background(), settings, "to@example.com")
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("a test send to a server that never finishes the handshake = %v, want %v", err, context.DeadlineExceeded)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("SendTestEmail was still waiting for the handshake after the dial timeout")
+	}
+}
+
 // A server that takes the connection and then says nothing is given up on at
 // the context's deadline, which net/smtp would otherwise wait past.
 func TestSendRenderedEmailGivesUpAtTheContextDeadline(t *testing.T) {

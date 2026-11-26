@@ -96,7 +96,7 @@ func (c *Client) SendRenderedEmail(ctx context.Context, settings emailsettings.S
 	}
 
 	addr := net.JoinHostPort(settings.Host, fmt.Sprintf("%d", settings.Port))
-	client, conn, err := openClient(ctx, c.dialFor(settings), addr, settings)
+	client, conn, err := openClient(ctx, c.dialFor(settings), c.DialTimeout, addr, settings)
 	if err != nil {
 		return err
 	}
@@ -340,17 +340,25 @@ func (c *Client) dialFor(settings emailsettings.SMTPSettings) dialFunc {
 
 // openClient dials the server and holds the whole conversation to the
 // context's deadline, since net/smtp reads and writes the connection without
-// looking at a context.
-func openClient(ctx context.Context, dial dialFunc, addr string, settings emailsettings.SMTPSettings) (*smtp.Client, net.Conn, error) {
+// looking at a context. For implicit TLS, timeout bounds the dial and the
+// handshake together, so a server that takes the connection and never
+// finishes the handshake is given up on even when ctx has no deadline.
+func openClient(ctx context.Context, dial dialFunc, timeout time.Duration, addr string, settings emailsettings.SMTPSettings) (*smtp.Client, net.Conn, error) {
 	switch settings.Encryption {
 	case "tls":
-		raw, err := dial(ctx, "tcp", addr)
+		connectCtx := ctx
+		if timeout > 0 {
+			var cancel context.CancelFunc
+			connectCtx, cancel = context.WithTimeout(ctx, timeout)
+			defer cancel()
+		}
+		raw, err := dial(connectCtx, "tcp", addr)
 		if err != nil {
 			return nil, nil, err
 		}
 		holdToDeadline(ctx, raw)
 		conn := tls.Client(raw, &tls.Config{MinVersion: tls.VersionTLS12, ServerName: settings.Host})
-		if err := conn.HandshakeContext(ctx); err != nil {
+		if err := conn.HandshakeContext(connectCtx); err != nil {
 			_ = raw.Close()
 			return nil, nil, err
 		}
