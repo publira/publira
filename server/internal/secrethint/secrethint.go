@@ -28,11 +28,11 @@ const (
 )
 
 // typePrefix matches the leading marks the providers put on their keys to
-// say what kind of key it is: sk_live_, rk_test_, whsec_, re_. They carry
+// say what kind of key it is: sk_live_, rk_test_, whsec_, whook_, re_. They carry
 // nothing of the key itself, and they are what tells a live key from a test
 // one at a glance. The rest of a secret is masked whatever it contains,
 // underscores included, since a provider's random part may contain them too.
-var typePrefix = regexp.MustCompile(`^(?:sk|pk|rk|whsec|re)_(?:live_|test_)?`)
+var typePrefix = regexp.MustCompile(`^(?:sk|pk|rk|whsec|whook|re)_(?:live_|test_)?`)
 
 // Mask is the hint of a secret: its type prefix when it starts with one, a
 // fixed run of bullets, and its last four characters when what the bullets

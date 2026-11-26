@@ -27,6 +27,7 @@ func TestMask(t *testing.T) {
 		{name: "live key", input: "sk_live_51ABCDEFGHIJKLMN", want: "sk_live_••••••••KLMN"},
 		{name: "restricted key", input: "rk_live_51ABCDEFGHIJKLMN", want: "rk_live_••••••••KLMN"},
 		{name: "webhook secret", input: "whsec_abcdefghijklmnopqrstuv", want: "whsec_••••••••stuv"},
+		{name: "pay.jp webhook token", input: "whook_0123456789abcdefghij", want: "whook_••••••••ghij"},
 		{name: "resend key", input: "re_123abc_XYZdefghijklmnop", want: "re_••••••••mnop"},
 		{name: "underscores after the type prefix", input: "sk_test_leak_me_now_please", want: "sk_test_••••••••ease"},
 		{name: "underscores with no type prefix", input: "my_webhook_token_2026", want: "••••••••2026"},
