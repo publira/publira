@@ -12,6 +12,7 @@ const smtpTestFailureReasons = [
   RPC_ERROR_REASON.smtpTestAuthentication,
   RPC_ERROR_REASON.smtpTestConnection,
   RPC_ERROR_REASON.smtpTestRecipient,
+  RPC_ERROR_REASON.smtpTestRestrictedAddress,
   RPC_ERROR_REASON.smtpTestStartTLS,
   RPC_ERROR_REASON.smtpTestTLS,
   RPC_ERROR_REASON.smtpTestTimeout,
@@ -22,6 +23,8 @@ const smtpTestFailureMessageKeys = {
   [RPC_ERROR_REASON.smtpTestAuthentication]: "errors.smtp_test.authentication",
   [RPC_ERROR_REASON.smtpTestConnection]: "errors.smtp_test.connection",
   [RPC_ERROR_REASON.smtpTestRecipient]: "errors.smtp_test.recipient",
+  [RPC_ERROR_REASON.smtpTestRestrictedAddress]:
+    "errors.smtp_test.restricted_address",
   [RPC_ERROR_REASON.smtpTestStartTLS]: "errors.smtp_test.starttls",
   [RPC_ERROR_REASON.smtpTestTLS]: "errors.smtp_test.tls",
   [RPC_ERROR_REASON.smtpTestTimeout]: "errors.smtp_test.timeout",

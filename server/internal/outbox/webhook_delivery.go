@@ -18,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/buildinfo"
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/publicaddr"
 	"github.com/publira/publira/server/internal/tenantwebhooks"
 )
 
@@ -184,8 +185,8 @@ func sendWebhook(ctx context.Context, client *http.Client, delivery dbmodels.Get
 
 	response, err := client.Do(request)
 	if err != nil {
-		if errors.Is(err, tenantwebhooks.ErrRestrictedAddress) {
-			return 0, Permanent(tenantwebhooks.ErrRestrictedAddress)
+		if errors.Is(err, publicaddr.ErrRestricted) {
+			return 0, Permanent(publicaddr.ErrRestricted)
 		}
 		return 0, fmt.Errorf("send the webhook: %w", err)
 	}

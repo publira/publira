@@ -329,6 +329,7 @@ func (t Tester) SendSaved(ctx context.Context, q Querier, actor auditlog.Platfor
 }
 
 func (t Tester) send(ctx context.Context, actor auditlog.PlatformActor, settings emailsettings.SMTPSettings, recipient string) error {
+	settings.Platform = true
 	entry := auditlog.PlatformEntry{
 		Action:     "platform_smtp_test_email_sent",
 		TargetType: "smtp_config",

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"net/netip"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/publira/publira/server/internal/emailrenderer"
 	"github.com/publira/publira/server/internal/emailsettings"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/publicaddr"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	internalsmtp "github.com/publira/publira/server/internal/smtp"
 	"github.com/publira/publira/server/internal/tenantorigin"
@@ -434,7 +436,8 @@ func TestTenantAdminInvitationEmailGoesThroughARelayWithoutCredentials(t *testin
 }
 
 // A tenant's own SMTP server may be such a relay too, saved with no username
-// and no password.
+// and no password. The tenant chose its host, so one on the loopback address
+// is reached only once the operator allows that address.
 func TestTenantAdminInvitationEmailGoesThroughTheTenantsOwnRelay(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
@@ -455,8 +458,18 @@ func TestTenantAdminInvitationEmailGoesThroughTheTenantsOwnRelay(t *testing.T) {
 	}
 	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-tenant-relay")
 
-	handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
+	refused := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
 		DB: pg.DB, Mailer: internalsmtp.NewClient(), Renderer: invitationRendererStub{},
+	})
+	if err := refused(ctx, event); !errors.Is(err, publicaddr.ErrRestricted) {
+		t.Fatalf("handler without the relay's address allowed = %v, want %v", err, publicaddr.ErrRestricted)
+	}
+	if got := len(relay.Messages()); got != 0 {
+		t.Fatalf("messages the relay took before its address was allowed = %d, want 0", got)
+	}
+
+	handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Mailer: loopbackMailer(), Renderer: invitationRendererStub{},
 	})
 	if err := handler(ctx, event); err != nil {
 		t.Fatalf("handler: %v", err)
@@ -519,7 +532,7 @@ func TestTenantAdminInvitationEmailNamesTheTenantsOwnSender(t *testing.T) {
 			event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-sender-"+tc.publicID)
 
 			handler := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
-				DB: pg.DB, Encryptor: encryptor, Mailer: internalsmtp.NewClient(), Renderer: invitationRendererStub{},
+				DB: pg.DB, Encryptor: encryptor, Mailer: loopbackMailer(), Renderer: invitationRendererStub{},
 			})
 			if err := handler(ctx, event); err != nil {
 				t.Fatalf("handler: %v", err)
@@ -533,4 +546,12 @@ func TestTenantAdminInvitationEmailNamesTheTenantsOwnSender(t *testing.T) {
 			}
 		})
 	}
+}
+
+// loopbackMailer is the worker's sender run with the loopback address allowed,
+// where the test SMTP servers listen.
+func loopbackMailer() *internalsmtp.Client {
+	mailer := internalsmtp.NewClient()
+	mailer.AllowedAddresses = []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}
+	return mailer
 }

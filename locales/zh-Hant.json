@@ -372,6 +372,7 @@
       "authentication": "SMTP驗證失敗。",
       "connection": "無法連線到SMTP伺服器。",
       "recipient": "SMTP伺服器拒絕了收件人的電子郵件地址。",
+      "restricted_address": "SMTP伺服器的主機解析為私人位址或回送位址，因此無法傳送。",
       "starttls": "無法建立STARTTLS。",
       "timeout": "連線到SMTP伺服器逾時。",
       "tls": "無法建立TLS連線。",

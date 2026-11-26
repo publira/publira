@@ -76,6 +76,7 @@ export const RPC_ERROR_REASON = {
   smtpTestAuthentication: "SMTP_TEST_AUTHENTICATION",
   smtpTestConnection: "SMTP_TEST_CONNECTION",
   smtpTestRecipient: "SMTP_TEST_RECIPIENT",
+  smtpTestRestrictedAddress: "SMTP_TEST_RESTRICTED_ADDRESS",
   smtpTestStartTLS: "SMTP_TEST_STARTTLS",
   smtpTestTLS: "SMTP_TEST_TLS",
   smtpTestTimeout: "SMTP_TEST_TIMEOUT",

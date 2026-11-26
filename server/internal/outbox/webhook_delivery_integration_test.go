@@ -14,6 +14,7 @@ import (
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/outbox"
+	"github.com/publira/publira/server/internal/publicaddr"
 	"github.com/publira/publira/server/internal/secretcrypto"
 	"github.com/publira/publira/server/internal/tenantwebhooks"
 	"github.com/publira/publira/server/internal/testutil"
@@ -249,7 +250,7 @@ func TestWebhookDeliveryToAnAllowedAddressIsAttempted(t *testing.T) {
 		Encryptor:        env.encryptor,
 		AllowedAddresses: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
 	})(ctx, event)
-	if err == nil || outbox.IsPermanent(err) || errors.Is(err, tenantwebhooks.ErrRestrictedAddress) {
+	if err == nil || outbox.IsPermanent(err) || errors.Is(err, publicaddr.ErrRestricted) {
 		t.Fatalf("delivery to an allowed address = %v, want it tried again", err)
 	}
 	if delivery := env.delivery(t, ctx, deliveryID); delivery.Status != tenantwebhooks.StatusFailed {

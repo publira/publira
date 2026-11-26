@@ -53,6 +53,9 @@ start_server() {
 
   # Every other setting the server reads, lib.sh has already exported.
   export PUBLIRA_PUBLIC_API_ADDR=":${PUBLIRA_E2E_PUBLIC_API_PORT}"
+  # The tenants' own SMTP settings point at Mailpit on the loopback address,
+  # which a tenant's connection test reaches only once it is allowed.
+  export PUBLIRA_SMTP_ALLOWED_ADDRESSES="127.0.0.1"
 
   # The environment a process on the host would have inherited, as far as the
   # server reads it: its own settings, the AWS SDK's, and OpenTelemetry's.

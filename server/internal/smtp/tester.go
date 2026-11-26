@@ -12,12 +12,14 @@ import (
 	"mime/quotedprintable"
 	"net"
 	"net/mail"
+	"net/netip"
 	"net/smtp"
 	"net/textproto"
 	"strings"
 	"time"
 
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/publicaddr"
 	"github.com/publira/publira/server/internal/rpcerrors"
 )
 
@@ -54,6 +56,10 @@ type RenderedEmail struct {
 
 type Client struct {
 	DialTimeout time.Duration
+	// AllowedAddresses are the addresses and ranges a tenant's SMTP server may
+	// be reached at besides public ones. The platform's settings are dialled
+	// wherever they point.
+	AllowedAddresses []netip.Prefix
 }
 
 func NewClient() *Client {
@@ -90,9 +96,7 @@ func (c *Client) SendRenderedEmail(ctx context.Context, settings emailsettings.S
 	}
 
 	addr := net.JoinHostPort(settings.Host, fmt.Sprintf("%d", settings.Port))
-	dialer := &net.Dialer{Timeout: c.DialTimeout}
-
-	client, conn, err := openClient(ctx, dialer, addr, settings)
+	client, conn, err := openClient(ctx, c.dialFor(settings), c.DialTimeout, addr, settings)
 	if err != nil {
 		return err
 	}
@@ -164,6 +168,9 @@ func TestFailureReason(err error) string {
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return rpcerrors.ReasonSMTPTestTimeout
+	}
+	if errors.Is(err, publicaddr.ErrRestricted) {
+		return rpcerrors.ReasonSMTPTestRestrictedAddress
 	}
 	lower := strings.ToLower(err.Error())
 	switch {
@@ -316,36 +323,52 @@ func newMIMEBoundary(text, html string) (string, error) {
 	return "", errors.New("could not generate a MIME boundary that does not occur in the body")
 }
 
+type dialFunc func(ctx context.Context, network, address string) (net.Conn, error)
+
+// dialFor is how the server named in settings is reached: the platform's
+// wherever it points, a tenant's through [publicaddr.Dial], since the host is
+// the tenant's choice.
+func (c *Client) dialFor(settings emailsettings.SMTPSettings) dialFunc {
+	dialer := &net.Dialer{Timeout: c.DialTimeout}
+	if settings.Platform {
+		return dialer.DialContext
+	}
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		return publicaddr.Dial(ctx, dialer, network, address, c.AllowedAddresses)
+	}
+}
+
 // openClient dials the server and holds the whole conversation to the
 // context's deadline, since net/smtp reads and writes the connection without
-// looking at a context.
-func openClient(ctx context.Context, dialer *net.Dialer, addr string, settings emailsettings.SMTPSettings) (*smtp.Client, net.Conn, error) {
-	var (
-		conn net.Conn
-		err  error
-	)
-
+// looking at a context. For implicit TLS, timeout bounds the dial and the
+// handshake together, so a server that takes the connection and never
+// finishes the handshake is given up on even when ctx has no deadline.
+func openClient(ctx context.Context, dial dialFunc, timeout time.Duration, addr string, settings emailsettings.SMTPSettings) (*smtp.Client, net.Conn, error) {
 	switch settings.Encryption {
 	case "tls":
-		tlsDialer := &tls.Dialer{
-			NetDialer: dialer,
-			Config: &tls.Config{
-				MinVersion: tls.VersionTLS12,
-				ServerName: settings.Host,
-			},
+		connectCtx := ctx
+		if timeout > 0 {
+			var cancel context.CancelFunc
+			connectCtx, cancel = context.WithTimeout(ctx, timeout)
+			defer cancel()
 		}
-		conn, err = tlsDialer.DialContext(ctx, "tcp", addr)
+		raw, err := dial(connectCtx, "tcp", addr)
 		if err != nil {
 			return nil, nil, err
 		}
-		holdToDeadline(ctx, conn)
+		holdToDeadline(ctx, raw)
+		conn := tls.Client(raw, &tls.Config{MinVersion: tls.VersionTLS12, ServerName: settings.Host})
+		if err := conn.HandshakeContext(connectCtx); err != nil {
+			_ = raw.Close()
+			return nil, nil, err
+		}
 		client, err := smtp.NewClient(conn, settings.Host)
 		if err != nil {
 			return nil, conn, err
 		}
 		return client, conn, nil
 	case "starttls", "none":
-		conn, err = dialer.DialContext(ctx, "tcp", addr)
+		conn, err := dial(ctx, "tcp", addr)
 		if err != nil {
 			return nil, nil, err
 		}

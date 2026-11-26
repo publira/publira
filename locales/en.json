@@ -372,6 +372,7 @@
       "authentication": "SMTP authentication failed. Check the SMTP settings and try again.",
       "connection": "Could not connect to the SMTP server. Check the SMTP settings and try again.",
       "recipient": "The SMTP server rejected the recipient email address. Check the address and try again.",
+      "restricted_address": "The SMTP server's host resolves to a private or loopback address, which this platform does not send mail to. Use a server with a public address, or ask a platform operator to allow this address.",
       "starttls": "Could not establish STARTTLS. Check the SMTP settings and try again.",
       "timeout": "The connection to the SMTP server timed out. Check the SMTP settings and try again.",
       "tls": "Could not establish a TLS connection. Check the SMTP settings and try again.",

@@ -2,17 +2,23 @@ package smtp
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"mime/quotedprintable"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/mail"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/publira/publira/server/internal/emailsettings"
+	"github.com/publira/publira/server/internal/publicaddr"
 	"github.com/publira/publira/server/internal/rpcerrors"
 	"github.com/publira/publira/server/internal/testutil"
 )
@@ -29,6 +35,7 @@ func TestTestFailureReasonClassifiesSMTPFailures(t *testing.T) {
 		{name: "tls", err: errors.New("TLS certificate is invalid"), want: rpcerrors.ReasonSMTPTestTLS},
 		{name: "connection", err: errors.New("connection refused"), want: rpcerrors.ReasonSMTPTestConnection},
 		{name: "recipient", err: errors.New("recipient mailbox rejected"), want: rpcerrors.ReasonSMTPTestRecipient},
+		{name: "restricted address", err: fmt.Errorf("dial: %w", publicaddr.ErrRestricted), want: rpcerrors.ReasonSMTPTestRestrictedAddress},
 		{name: "unknown", err: errors.New("unexpected failure"), want: rpcerrors.ReasonSMTPTestUnknown},
 	}
 
@@ -198,6 +205,8 @@ func TestSendEmailRejectsSubjectHeaderInjection(t *testing.T) {
 	}
 }
 
+// settingsFor are the platform's settings, which reach the loopback server
+// these tests run without an allowed address.
 func settingsFor(server *testutil.SMTPServer, username, password string) emailsettings.SMTPSettings {
 	return emailsettings.SMTPSettings{
 		Host:        server.Host,
@@ -206,6 +215,70 @@ func settingsFor(server *testutil.SMTPServer, username, password string) emailse
 		Password:    password,
 		Encryption:  "none",
 		FromAddress: "from@example.com",
+		Platform:    true,
+	}
+}
+
+// A tenant's server is reached only at a public address or one the client
+// allows, whichever encryption the settings name, and a refusal comes before
+// anything is written to the server.
+func TestSendTestEmailReachesATenantsServerOnlyAtAnAllowedAddress(t *testing.T) {
+	relay := testutil.StartSMTPRelay(t)
+	tenantSettings := func(host, encryption string) emailsettings.SMTPSettings {
+		settings := settingsFor(relay, "", "")
+		settings.Host, settings.Encryption, settings.Platform = host, encryption, false
+		return settings
+	}
+
+	for _, host := range []string{relay.Host, "localhost"} {
+		for _, encryption := range []string{"none", "starttls", "tls"} {
+			for _, allowed := range [][]netip.Prefix{nil, {netip.MustParsePrefix("10.0.0.0/8")}} {
+				client := NewClient()
+				client.AllowedAddresses = allowed
+				err := client.SendTestEmail(t.Context(), tenantSettings(host, encryption), "to@example.com")
+				if !errors.Is(err, publicaddr.ErrRestricted) {
+					t.Errorf("a test send to %s over %s with %v allowed = %v, want %v", host, encryption, allowed, err, publicaddr.ErrRestricted)
+				}
+				if got := TestFailureReason(err); got != rpcerrors.ReasonSMTPTestRestrictedAddress {
+					t.Errorf("TestFailureReason(%v) = %q, want %q", err, got, rpcerrors.ReasonSMTPTestRestrictedAddress)
+				}
+			}
+		}
+	}
+	if got := len(relay.Messages()); got != 0 {
+		t.Fatalf("messages = %d, want none before the address is allowed", got)
+	}
+
+	client := NewClient()
+	client.AllowedAddresses = []netip.Prefix{netip.MustParsePrefix(relay.Host + "/32")}
+	if err := client.SendTestEmail(t.Context(), tenantSettings(relay.Host, "none"), "to@example.com"); err != nil {
+		t.Fatalf("a test send to an allowed address = %v, want it sent", err)
+	}
+	if got := len(relay.Messages()); got != 1 {
+		t.Fatalf("messages = %d, want the one sent to the allowed address", got)
+	}
+}
+
+// Implicit TLS verifies the server's certificate against the settings' host:
+// a server whose certificate no trusted authority issued is refused at the
+// handshake.
+func TestSendTestEmailVerifiesTheCertificateOfAnImplicitTLSServer(t *testing.T) {
+	server := httptest.NewTLSServer(http.NotFoundHandler())
+	t.Cleanup(server.Close)
+	addr, ok := server.Listener.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatalf("listener address = %T, want *net.TCPAddr", server.Listener.Addr())
+	}
+	settings := emailsettings.SMTPSettings{
+		Host: addr.IP.String(), Port: int32(addr.Port), //nolint:gosec // a TCP port fits
+		Encryption: "tls", FromAddress: "from@example.com", Platform: true,
+	}
+	err := NewClient().SendTestEmail(t.Context(), settings, "to@example.com")
+	if _, ok := errors.AsType[*tls.CertificateVerificationError](err); !ok {
+		t.Fatalf("a test send over implicit TLS to an untrusted server = %v, want a certificate verification error", err)
+	}
+	if got := TestFailureReason(err); got != rpcerrors.ReasonSMTPTestTLS {
+		t.Fatalf("TestFailureReason(%v) = %q, want %q", err, got, rpcerrors.ReasonSMTPTestTLS)
 	}
 }
 
@@ -311,6 +384,49 @@ func TestSendRenderedEmailTellsARefusedRecipientApart(t *testing.T) {
 	}
 }
 
+// An implicit TLS server that takes the connection and never answers the
+// handshake is given up on at the client's dial timeout, even when the
+// context has no deadline of its own.
+func TestSendTestEmailBoundsTheImplicitTLSHandshakeByTheDialTimeout(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			t.Cleanup(func() { _ = conn.Close() })
+		}
+	}()
+	addr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatalf("listener address = %T, want *net.TCPAddr", ln.Addr())
+	}
+	settings := emailsettings.SMTPSettings{
+		Host: addr.IP.String(), Port: int32(addr.Port), //nolint:gosec // a TCP port fits
+		Encryption: "tls", FromAddress: "from@example.com", Platform: true,
+	}
+
+	client := NewClient()
+	client.DialTimeout = 200 * time.Millisecond
+	done := make(chan error, 1)
+	go func() {
+		done <- client.SendTestEmail(context.Background(), settings, "to@example.com")
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("a test send to a server that never finishes the handshake = %v, want %v", err, context.DeadlineExceeded)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("SendTestEmail was still waiting for the handshake after the dial timeout")
+	}
+}
+
 // A server that takes the connection and then says nothing is given up on at
 // the context's deadline, which net/smtp would otherwise wait past.
 func TestSendRenderedEmailGivesUpAtTheContextDeadline(t *testing.T) {
@@ -331,7 +447,7 @@ func TestSendRenderedEmailGivesUpAtTheContextDeadline(t *testing.T) {
 	addr := ln.Addr().(*net.TCPAddr)
 	settings := emailsettings.SMTPSettings{
 		Host: addr.IP.String(), Port: int32(addr.Port), //nolint:gosec // a TCP port fits
-		Encryption: "none", FromAddress: "from@example.com",
+		Encryption: "none", FromAddress: "from@example.com", Platform: true,
 	}
 
 	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)

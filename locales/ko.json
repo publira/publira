@@ -372,6 +372,7 @@
       "authentication": "SMTP 인증에 실패했습니다",
       "connection": "SMTP 서버에 연결할 수 없습니다",
       "recipient": "SMTP 서버가 받는 사람 이메일 주소를 거부했습니다",
+      "restricted_address": "SMTP 서버의 호스트가 사설 주소나 루프백 주소로 확인되어 전송할 수 없습니다",
       "starttls": "STARTTLS를 설정할 수 없습니다",
       "timeout": "SMTP 서버 연결이 시간 초과되었습니다",
       "tls": "TLS 연결을 설정할 수 없습니다",

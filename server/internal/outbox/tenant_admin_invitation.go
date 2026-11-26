@@ -185,7 +185,7 @@ func tenantSMTPSettings(config dbmodels.TenantSmtpConfig, password string) email
 }
 
 func platformSMTPSettings(config dbmodels.PlatformSmtpConfig, password string) emailsettings.SMTPSettings {
-	settings := emailsettings.SMTPSettings{Host: config.Host, Port: config.Port, Username: config.Username, Password: password, Encryption: config.Encryption, FromAddress: config.FromAddress}
+	settings := emailsettings.SMTPSettings{Host: config.Host, Port: config.Port, Username: config.Username, Password: password, Encryption: config.Encryption, FromAddress: config.FromAddress, Platform: true}
 	if config.ReplyTo.Valid {
 		settings.ReplyTo = config.ReplyTo.String
 	}

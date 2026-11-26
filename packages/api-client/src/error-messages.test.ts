@@ -107,4 +107,10 @@ describe("smtpTestFailureMessage", () => {
       "SMTP認証に失敗しました。SMTPの設定を確認して再試行してください。"
     );
   });
+
+  it("tells a server on a restricted address apart from one it cannot reach", () => {
+    expect(smtpTestFailureMessage("SMTP_TEST_RESTRICTED_ADDRESS", "en")).toBe(
+      "The SMTP server's host resolves to a private or loopback address, which this platform does not send mail to. Use a server with a public address, or ask a platform operator to allow this address."
+    );
+  });
 });

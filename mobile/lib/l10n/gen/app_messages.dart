@@ -193,6 +193,11 @@ final class AppMessages {
     return _format('errors.smtp_test.recipient');
   }
 
+  /// `errors.smtp_test.restricted_address`
+  String get errorsSmtpTestRestrictedAddress {
+    return _format('errors.smtp_test.restricted_address');
+  }
+
   /// `errors.smtp_test.starttls`
   String get errorsSmtpTestStarttls {
     return _format('errors.smtp_test.starttls');
@@ -4901,6 +4906,8 @@ const _jaSources = <String, String>{
   'errors.smtp_test.authentication': 'SMTP認証に失敗しました。SMTPの設定を確認して再試行してください。',
   'errors.smtp_test.connection': 'SMTPサーバーに接続できませんでした。SMTPの設定を確認して再試行してください。',
   'errors.smtp_test.recipient': '宛先メールアドレスを受け付けられませんでした。宛先を確認して再試行してください。',
+  'errors.smtp_test.restricted_address':
+      'SMTPサーバーのホストがプライベートアドレスやループバックアドレスに解決されるため、送信できません。公開アドレスのサーバーを使うか、プラットフォームのオペレーターにこのアドレスの許可を依頼してください。',
   'errors.smtp_test.starttls': 'STARTTLSの確立に失敗しました。SMTPの設定を確認して再試行してください。',
   'errors.smtp_test.timeout': 'SMTPサーバーへの接続がタイムアウトしました。SMTPの設定を確認して再試行してください。',
   'errors.smtp_test.tls': 'TLS接続に失敗しました。SMTPの設定を確認して再試行してください。',
@@ -5956,6 +5963,8 @@ const _enSources = <String, String>{
       'Could not connect to the SMTP server. Check the SMTP settings and try again.',
   'errors.smtp_test.recipient':
       'The SMTP server rejected the recipient email address. Check the address and try again.',
+  'errors.smtp_test.restricted_address':
+      'The SMTP server\'s host resolves to a private or loopback address, which this platform does not send mail to. Use a server with a public address, or ask a platform operator to allow this address.',
   'errors.smtp_test.starttls':
       'Could not establish STARTTLS. Check the SMTP settings and try again.',
   'errors.smtp_test.timeout':
@@ -7198,6 +7207,8 @@ const _koSources = <String, String>{
   'errors.smtp_test.authentication': 'SMTP 인증에 실패했습니다',
   'errors.smtp_test.connection': 'SMTP 서버에 연결할 수 없습니다',
   'errors.smtp_test.recipient': 'SMTP 서버가 받는 사람 이메일 주소를 거부했습니다',
+  'errors.smtp_test.restricted_address':
+      'SMTP 서버의 호스트가 사설 주소나 루프백 주소로 확인되어 전송할 수 없습니다',
   'errors.smtp_test.starttls': 'STARTTLS를 설정할 수 없습니다',
   'errors.smtp_test.timeout': 'SMTP 서버 연결이 시간 초과되었습니다',
   'errors.smtp_test.tls': 'TLS 연결을 설정할 수 없습니다',
@@ -8265,6 +8276,7 @@ const _zhHansSources = <String, String>{
   'errors.smtp_test.authentication': 'SMTP认证失败。',
   'errors.smtp_test.connection': '无法连接到SMTP服务器。',
   'errors.smtp_test.recipient': 'SMTP服务器拒绝了收件人邮箱地址。',
+  'errors.smtp_test.restricted_address': 'SMTP服务器的主机解析到私有地址或环回地址，因此无法发送。',
   'errors.smtp_test.starttls': '无法建立STARTTLS。',
   'errors.smtp_test.timeout': '连接SMTP服务器超时。',
   'errors.smtp_test.tls': '无法建立TLS连接。',
@@ -9227,6 +9239,7 @@ const _zhHantSources = <String, String>{
   'errors.smtp_test.authentication': 'SMTP驗證失敗。',
   'errors.smtp_test.connection': '無法連線到SMTP伺服器。',
   'errors.smtp_test.recipient': 'SMTP伺服器拒絕了收件人的電子郵件地址。',
+  'errors.smtp_test.restricted_address': 'SMTP伺服器的主機解析為私人位址或回送位址，因此無法傳送。',
   'errors.smtp_test.starttls': '無法建立STARTTLS。',
   'errors.smtp_test.timeout': '連線到SMTP伺服器逾時。',
   'errors.smtp_test.tls': '無法建立TLS連線。',
