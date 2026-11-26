@@ -12,6 +12,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { createPortal } from "react-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLocaleTestProvider } from "#components/admin-locale-test-provider";
@@ -100,6 +101,65 @@ const renderRefusedForm = (first: ReauthenticationRequiredState) => {
 };
 
 describe("Reauthentication", () => {
+  // A refund's reason sits in a dialog that closes on submission, so the
+  // field is gone by the time the operator has confirmed it's them.
+  it("sends the refused submission again with a field that has unmounted since", async () => {
+    reauthenticate.mockResolvedValueOnce({ message: "", ok: true });
+
+    const refund = vi
+      .fn<
+        (
+          previousState: ActionForm.State,
+          formData: FormData
+        ) => Promise<ActionForm.State>
+      >()
+      .mockResolvedValueOnce(refusal())
+      .mockResolvedValue({ message: "Refunded.", ok: true });
+
+    const RefundForm = ({ dialogOpen }: { dialogOpen: boolean }) => (
+      <AdminLocaleTestProvider locale="en">
+        <Reauthentication.Root>
+          <ActionForm.Root action={refund} id="refund-form">
+            <Reauthentication.Request />
+            <input name="tenant_id" type="hidden" value="TENANT001" />
+            {dialogOpen
+              ? createPortal(
+                  <>
+                    <input
+                      aria-label="Reason"
+                      defaultValue="Bought twice"
+                      form="refund-form"
+                      name="reason"
+                    />
+                    <ActionForm.Submit form="refund-form">
+                      Refund
+                    </ActionForm.Submit>
+                  </>,
+                  document.body
+                )
+              : null}
+          </ActionForm.Root>
+        </Reauthentication.Root>
+      </AdminLocaleTestProvider>
+    );
+
+    const { rerender } = render(<RefundForm dialogOpen />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Refund" }));
+    await screen.findByRole("dialog", { name: "Confirm it's you" });
+    rerender(<RefundForm dialogOpen={false} />);
+
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "correct horse" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() => {
+      expect(refund).toHaveBeenCalledTimes(2);
+    });
+    expect(refund.mock.calls[1]?.[1].get("reason")).toBe("Bought twice");
+  });
+
   it("asks for the password when the API refuses the form, then sends the form again", async () => {
     reauthenticate.mockResolvedValueOnce({ message: "", ok: true });
     const save = renderRefusedForm(refusal());

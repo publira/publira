@@ -5,6 +5,7 @@ export {
   ActionFormIdle as Idle,
   ActionFormPending as Pending,
   ActionFormSubmit as Submit,
+  useActionFormResubmit as useResubmit,
   useActionFormSettled as useSettled,
   useActionFormState as useState,
 } from "./action-form";

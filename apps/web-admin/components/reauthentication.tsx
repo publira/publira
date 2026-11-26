@@ -6,7 +6,7 @@ import * as Dialog from "@publira/ui-components/dialog";
 import * as Field from "@publira/ui-components/field";
 import { Input } from "@publira/ui-components/input";
 import * as PasswordInput from "@publira/ui-components/password-input";
-import { createContext, use, useCallback, useRef, useState } from "react";
+import { createContext, use, useCallback, useState } from "react";
 import type { ReactNode } from "react";
 
 import { ClientMessage } from "#components/client-message";
@@ -20,8 +20,11 @@ import {
 
 type ReauthenticationAsked = ReauthenticationRequiredState["reauthentication"];
 
-/** Asks the operator to re-authenticate, then sends `form` again. */
-type Ask = (form: HTMLFormElement, request: ReauthenticationAsked) => void;
+/**
+ * Asks the operator to re-authenticate, then calls `resubmit`, which sends the
+ * refused submission again.
+ */
+type Ask = (resubmit: () => void, request: ReauthenticationAsked) => void;
 
 const ReauthenticationContext = createContext<Ask | null>(null);
 
@@ -135,7 +138,10 @@ const ReauthenticationForm = ({
 /**
  * Where a refusal for want of a re-authentication is answered: a dialog that
  * asks the operator for their password, a code, or a passkey, and then sends
- * the refused form again with the step-up token the proof earned.
+ * the refused submission again, as it was sent, with the step-up token the
+ * proof earned. It is the submission rather than the form as it now stands: a
+ * field a dialog held, such as a refund's reason, is gone once that dialog
+ * has closed.
  *
  * The signed-in layout places it once, around every screen, and each form
  * whose Action calls `withReauthentication` holds a
@@ -145,15 +151,15 @@ const ReauthenticationForm = ({
  */
 export const ReauthenticationRoot = ({ children }: { children: ReactNode }) => {
   const [pending, setPending] = useState<{
-    form: HTMLFormElement;
     request: ReauthenticationAsked;
+    resubmit: () => void;
   } | null>(null);
 
   // Every request opens on an empty form, not on what was typed last time.
   const [attempt, setAttempt] = useState(0);
 
-  const ask = useCallback<Ask>((form, request) => {
-    setPending({ form, request });
+  const ask = useCallback<Ask>((resubmit, request) => {
+    setPending({ request, resubmit });
     setAttempt((current) => current + 1);
   }, []);
 
@@ -185,7 +191,7 @@ export const ReauthenticationRoot = ({ children }: { children: ReactNode }) => {
                   key={attempt}
                   onConfirmed={() => {
                     setPending(null);
-                    pending.form.requestSubmit();
+                    pending.resubmit();
                   }}
                   request={pending.request}
                 />
@@ -200,25 +206,22 @@ export const ReauthenticationRoot = ({ children }: { children: ReactNode }) => {
 
 /**
  * Placed in a form whose Action calls `withReauthentication`: when the Action
- * answers that the API asked for a re-authentication, it hands the form to the
- * surrounding `Reauthentication.Root`.
+ * answers that the API asked for a re-authentication, it hands the surrounding
+ * `Reauthentication.Root` the way to send that submission again.
  */
 export const ReauthenticationRequest = () => {
   const ask = use(ReauthenticationContext);
-  const fieldRef = useRef<HTMLInputElement>(null);
+  const resubmit = ActionForm.useResubmit();
 
   // Outside a Root, as a form rendered on its own is, the refusal is left to
   // the form's own message: there is no dialog to ask in.
   ActionForm.useSettled((state) => {
-    const form = fieldRef.current?.form;
-
-    if (ask && form && isReauthenticationRequired(state)) {
-      ask(form, state.reauthentication);
+    if (ask && isReauthenticationRequired(state)) {
+      ask(resubmit, state.reauthentication);
     }
   });
 
-  // An unnamed field submits nothing; it is here for the form it sits in.
-  return <input ref={fieldRef} type="hidden" />;
+  return null;
 };
 
 export { ReauthenticationRequest as Request, ReauthenticationRoot as Root };
