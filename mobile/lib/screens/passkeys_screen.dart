@@ -6,6 +6,8 @@ import 'package:publira/auth/auth_scope.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/passkey.dart';
 import 'package:publira/auth/signed_out_notice.dart';
+import 'package:publira/auth/step_confirmation.dart';
+import 'package:publira/auth/step_confirmation_prompt.dart';
 import 'package:publira/l10n/formatting.dart';
 import 'package:publira/l10n/gen/app_messages.dart';
 import 'package:publira/layout/window_width.dart';
@@ -126,8 +128,19 @@ class _PasskeysScreenState extends State<PasskeysScreen> {
       _busy = _adding;
     });
     String copy;
+    StepConfirmation? confirmation;
     try {
-      final passkey = await auth.registerPasskey(authenticator);
+      confirmation = await askStepConfirmation(
+        context,
+        title: messages.passkeysAdd,
+        passwordDescription: messages.passkeysAddConfirmDescription,
+        confirmLabel: messages.passkeysAdd,
+      );
+      if (confirmation == null) {
+        await _settle();
+        return;
+      }
+      final passkey = await auth.registerPasskey(authenticator, confirmation);
       copy = messages.passkeysAdded;
       if (mounted) {
         final name = await _askName(isNew: true);
@@ -142,11 +155,23 @@ class _PasskeysScreenState extends State<PasskeysScreen> {
         }
       }
     } on PasskeyCancelled {
-      copy = messages.passkeysAddCancelled;
+      copy = confirmation == null
+          ? messages.passkeysConfirmCancelled
+          : messages.passkeysAddCancelled;
     } on PasskeyAlreadyRegistered {
       copy = messages.passkeysAlreadyRegistered;
+    } on PasskeyFailure {
+      copy = confirmation == null
+          ? messages.passkeysConfirmFailed
+          : messages.passkeysAddFailed;
     } on AuthFailure catch (failure) {
+      final refused = confirmation == null
+          ? null
+          : refusedConfirmationCopy(messages, confirmation, failure);
       copy = switch (failure.kind) {
+        _ when refused != null => refused,
+        AuthFailureKind.passkeyNotFound when confirmation == null =>
+          messages.passkeysConfirmNone,
         AuthFailureKind.passkeyAlreadyRegistered =>
           messages.passkeysAlreadyRegistered,
         AuthFailureKind.passkeyLimit => messages.passkeysLimit,
@@ -201,15 +226,38 @@ class _PasskeysScreenState extends State<PasskeysScreen> {
     final auth = AuthScope.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final messages = AppMessages.of(context);
+    final name = passkey.name.isEmpty ? messages.passkeysUnnamed : passkey.name;
     setState(() {
       _busy = passkey.id;
     });
     String copy;
+    StepConfirmation? confirmation;
     try {
-      await auth.deletePasskey(passkey.id);
+      confirmation = await askStepConfirmation(
+        context,
+        title: messages.passkeysRemoveConfirmTitle(name: name),
+        passwordDescription: messages.passkeysRemoveConfirmDescription(
+          name: name,
+        ),
+        confirmLabel: messages.passkeysRemove,
+      );
+      if (confirmation == null) {
+        await _settle();
+        return;
+      }
+      await auth.deletePasskey(passkey.id, confirmation);
       copy = messages.passkeysRemoved;
+    } on PasskeyCancelled {
+      copy = messages.passkeysConfirmCancelled;
+    } on PasskeyFailure {
+      copy = messages.passkeysConfirmFailed;
     } on AuthFailure catch (failure) {
+      final refused = confirmation == null
+          ? null
+          : refusedConfirmationCopy(messages, confirmation, failure);
       copy = switch (failure.kind) {
+        _ when refused != null => refused,
+        AuthFailureKind.passkeyNotFound => messages.passkeysConfirmNone,
         AuthFailureKind.lastSignInMethod => messages.passkeysLast,
         AuthFailureKind.rateLimited => messages.errorsRpcRateLimited,
         AuthFailureKind.network => messages.errorsRpcUnavailable,

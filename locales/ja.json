@@ -8020,6 +8020,8 @@
       "not_linked": "未連携",
       "title": "連携アカウント",
       "unlink": "連携を解除",
+      "unlink_confirm_description": "{$provider}アカウントの連携を解除するには、現在のパスワードを入力してください。",
+      "unlink_confirm_title": "{$provider}の連携を解除しますか？",
       "unlink_failed": "連携を解除できませんでした。しばらくしてからもう一度お試しください。",
       "unlinked": "連携を解除しました。"
     },
@@ -8027,6 +8029,7 @@
       "actions": "{$name}の操作",
       "add": "パスキーを追加",
       "add_cancelled": "パスキーの操作がキャンセルされたか、時間切れになりました。もう一度お試しください。",
+      "add_confirm_description": "パスキーを追加するには、現在のパスワードを入力してください。",
       "add_failed": "パスキーを追加できませんでした。しばらくしてからもう一度お試しください。",
       "added": "パスキーを追加しました。このパスキーでサインインできます。",
       "added_at": "{$date}に追加",
@@ -8051,11 +8054,23 @@
       "never_used": "未使用",
       "not_found": "そのパスキーはアカウントに登録されていません。",
       "remove": "削除",
+      "remove_confirm_description": "{$name}を削除するには、現在のパスワードを入力してください。",
+      "remove_confirm_title": "{$name}を削除しますか？",
       "remove_failed": "パスキーを削除できませんでした。しばらくしてからもう一度お試しください。",
       "removed": "パスキーを削除しました。",
       "rename": "名前を変更",
       "title": "パスキー",
       "unnamed": "名前のないパスキー"
+    },
+    "step_confirmation": {
+      "no_method": "連携アカウントのどれも、この端末ではいまログインできません。先にパスワードを設定してください。",
+      "password_label": "現在のパスワード",
+      "unconfirmed": "ログインを確認できませんでした。もう一度お試しください。",
+      "with_apple": "Appleで確認",
+      "with_google": "Googleで確認",
+      "with_passkey": "パスキーで確認",
+      "without_password": "アカウントにパスワードがありません。パスキーか連携アカウントで確認してください。",
+      "wrong_password": "パスワードが正しくありません。"
     },
     "two_step": {
       "title": "2段階認証",

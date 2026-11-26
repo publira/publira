@@ -9,6 +9,7 @@ import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
 import 'package:publira/auth/sign_up_requirements.dart';
+import 'package:publira/auth/step_confirmation.dart';
 import 'package:publira/router.dart';
 
 import 'support/fake_auth.dart';
@@ -400,6 +401,12 @@ void main() {
       await tester.tap(
         find.byKey(const ValueKey('linked-account-unlink-google')),
       );
+      // Nothing is unlinked until the password the dialog asks for is given.
+      final password = find.byKey(const ValueKey('step-confirmation-password'));
+      await pumpUntilFound(tester, password);
+      expect(repository.identities, [google]);
+      await tester.enterText(password, 'memberpass');
+      await tester.tap(find.byKey(const ValueKey('step-confirmation-submit')));
       await pumpUntilFound(
         tester,
         find.byKey(const ValueKey('linked-account-link-google')),
@@ -407,6 +414,14 @@ void main() {
 
       expect(find.text('The account was unlinked.'), findsOneWidget);
       expect(repository.identities, isEmpty);
+      expect(
+        repository.stepConfirmations.single,
+        isA<ConfirmedByPassword>().having(
+          (confirmation) => confirmation.password,
+          'password',
+          'memberpass',
+        ),
+      );
     });
 
     testWidgets('offers to link each provider the device offers that the '

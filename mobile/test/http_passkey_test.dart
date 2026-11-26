@@ -3,6 +3,7 @@ import 'package:publira/api/gen/publira/v1/auth.pb.dart' as pb;
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/http_auth_repository.dart';
+import 'package:publira/auth/step_confirmation.dart';
 import 'package:publira/config.dart';
 
 import 'support/connect_fixture_server.dart';
@@ -16,6 +17,9 @@ void main() {
     userPublicId: ConnectFixtureServer.memberPublicId,
     userName: ConnectFixtureServer.memberName,
   );
+
+  /// The member's password, which confirms adding and removing a passkey.
+  const password = ConfirmedByPassword(ConnectFixtureServer.memberPassword);
 
   const stranger = AuthSession(
     accessToken: 'not-a-token-the-api-issued',
@@ -102,7 +106,7 @@ void main() {
 
     test('gain one registered over the options the API answers', () async {
       expect(
-        await auth.beginPasskeyRegistration(member),
+        await auth.beginPasskeyRegistration(member, password),
         ConnectFixtureServer.passkeyCreationOptionsJson,
       );
       final passkey = await auth.finishPasskeyRegistration(
@@ -116,11 +120,26 @@ void main() {
       expect(server.memberPasskeys.single.id, 'passkey-1');
     });
 
+    test('are neither begun nor removed without the password', () async {
+      server.memberPasskeys.add(pb.Passkey(id: 'passkey-a'));
+      const wrong = ConfirmedByPassword('not-the-password');
+
+      await expectLater(
+        auth.beginPasskeyRegistration(member, wrong),
+        failsWith(AuthFailureKind.invalidInput),
+      );
+      await expectLater(
+        auth.deletePasskey(member, 'passkey-a', wrong),
+        failsWith(AuthFailureKind.invalidInput),
+      );
+      expect(server.memberPasskeys.single.id, 'passkey-a');
+    });
+
     test('refuse another once the account holds as many as it may', () {
       server.passkeyLimit = 0;
 
       expect(
-        auth.beginPasskeyRegistration(member),
+        auth.beginPasskeyRegistration(member, password),
         failsWith(AuthFailureKind.passkeyLimit),
       );
     });
@@ -159,13 +178,13 @@ void main() {
         pb.Passkey(id: 'passkey-b'),
       ]);
 
-      await auth.deletePasskey(member, 'passkey-a');
-      await auth.deletePasskey(member, 'passkey-a');
+      await auth.deletePasskey(member, 'passkey-a', password);
+      await auth.deletePasskey(member, 'passkey-a', password);
       expect(server.memberPasskeys.single.id, 'passkey-b');
 
       server.memberHasPassword = false;
       await expectLater(
-        auth.deletePasskey(member, 'passkey-b'),
+        auth.deletePasskey(member, 'passkey-b', password),
         failsWith(AuthFailureKind.lastSignInMethod),
       );
       expect(server.memberPasskeys.single.id, 'passkey-b');

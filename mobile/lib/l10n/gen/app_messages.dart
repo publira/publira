@@ -2695,6 +2695,20 @@ final class AppMessages {
     return _format('mobile.linked_accounts.unlink');
   }
 
+  /// `mobile.linked_accounts.unlink_confirm_description`
+  String linkedAccountsUnlinkConfirmDescription({required String provider}) {
+    return _format('mobile.linked_accounts.unlink_confirm_description', {
+      'provider': provider,
+    });
+  }
+
+  /// `mobile.linked_accounts.unlink_confirm_title`
+  String linkedAccountsUnlinkConfirmTitle({required String provider}) {
+    return _format('mobile.linked_accounts.unlink_confirm_title', {
+      'provider': provider,
+    });
+  }
+
   /// `mobile.linked_accounts.unlink_failed`
   String get linkedAccountsUnlinkFailed {
     return _format('mobile.linked_accounts.unlink_failed');
@@ -2975,6 +2989,11 @@ final class AppMessages {
     return _format('mobile.passkeys.add_cancelled');
   }
 
+  /// `mobile.passkeys.add_confirm_description`
+  String get passkeysAddConfirmDescription {
+    return _format('mobile.passkeys.add_confirm_description');
+  }
+
   /// `mobile.passkeys.add_failed`
   String get passkeysAddFailed {
     return _format('mobile.passkeys.add_failed');
@@ -3093,6 +3112,18 @@ final class AppMessages {
   /// `mobile.passkeys.remove`
   String get passkeysRemove {
     return _format('mobile.passkeys.remove');
+  }
+
+  /// `mobile.passkeys.remove_confirm_description`
+  String passkeysRemoveConfirmDescription({required String name}) {
+    return _format('mobile.passkeys.remove_confirm_description', {
+      'name': name,
+    });
+  }
+
+  /// `mobile.passkeys.remove_confirm_title`
+  String passkeysRemoveConfirmTitle({required String name}) {
+    return _format('mobile.passkeys.remove_confirm_title', {'name': name});
   }
 
   /// `mobile.passkeys.remove_failed`
@@ -4246,6 +4277,46 @@ final class AppMessages {
   /// `mobile.sign_up_pending.title`
   String get signUpPendingTitle {
     return _format('mobile.sign_up_pending.title');
+  }
+
+  /// `mobile.step_confirmation.no_method`
+  String get stepConfirmationNoMethod {
+    return _format('mobile.step_confirmation.no_method');
+  }
+
+  /// `mobile.step_confirmation.password_label`
+  String get stepConfirmationPasswordLabel {
+    return _format('mobile.step_confirmation.password_label');
+  }
+
+  /// `mobile.step_confirmation.unconfirmed`
+  String get stepConfirmationUnconfirmed {
+    return _format('mobile.step_confirmation.unconfirmed');
+  }
+
+  /// `mobile.step_confirmation.with_apple`
+  String get stepConfirmationWithApple {
+    return _format('mobile.step_confirmation.with_apple');
+  }
+
+  /// `mobile.step_confirmation.with_google`
+  String get stepConfirmationWithGoogle {
+    return _format('mobile.step_confirmation.with_google');
+  }
+
+  /// `mobile.step_confirmation.with_passkey`
+  String get stepConfirmationWithPasskey {
+    return _format('mobile.step_confirmation.with_passkey');
+  }
+
+  /// `mobile.step_confirmation.without_password`
+  String get stepConfirmationWithoutPassword {
+    return _format('mobile.step_confirmation.without_password');
+  }
+
+  /// `mobile.step_confirmation.wrong_password`
+  String get stepConfirmationWrongPassword {
+    return _format('mobile.step_confirmation.wrong_password');
   }
 
   /// `mobile.tag.load_failed`
@@ -5450,6 +5521,9 @@ const _jaSources = <String, String>{
   'mobile.linked_accounts.not_linked': '未連携',
   'mobile.linked_accounts.title': '連携アカウント',
   'mobile.linked_accounts.unlink': '連携を解除',
+  'mobile.linked_accounts.unlink_confirm_description':
+      '{\$provider}アカウントの連携を解除するには、現在のパスワードを入力してください。',
+  'mobile.linked_accounts.unlink_confirm_title': '{\$provider}の連携を解除しますか？',
   'mobile.linked_accounts.unlink_failed': '連携を解除できませんでした。しばらくしてからもう一度お試しください。',
   'mobile.linked_accounts.unlinked': '連携を解除しました。',
   'mobile.navigation.account': 'アカウント',
@@ -5510,6 +5584,7 @@ const _jaSources = <String, String>{
   'mobile.passkeys.actions': '{\$name}の操作',
   'mobile.passkeys.add': 'パスキーを追加',
   'mobile.passkeys.add_cancelled': 'パスキーの操作がキャンセルされたか、時間切れになりました。もう一度お試しください。',
+  'mobile.passkeys.add_confirm_description': 'パスキーを追加するには、現在のパスワードを入力してください。',
   'mobile.passkeys.add_failed': 'パスキーを追加できませんでした。しばらくしてからもう一度お試しください。',
   'mobile.passkeys.added': 'パスキーを追加しました。このパスキーでサインインできます。',
   'mobile.passkeys.added_at': '{\$date}に追加',
@@ -5538,6 +5613,9 @@ const _jaSources = <String, String>{
   'mobile.passkeys.never_used': '未使用',
   'mobile.passkeys.not_found': 'そのパスキーはアカウントに登録されていません。',
   'mobile.passkeys.remove': '削除',
+  'mobile.passkeys.remove_confirm_description':
+      '{\$name}を削除するには、現在のパスワードを入力してください。',
+  'mobile.passkeys.remove_confirm_title': '{\$name}を削除しますか？',
   'mobile.passkeys.remove_failed': 'パスキーを削除できませんでした。しばらくしてからもう一度お試しください。',
   'mobile.passkeys.removed': 'パスキーを削除しました。',
   'mobile.passkeys.rename': '名前を変更',
@@ -5787,6 +5865,16 @@ const _jaSources = <String, String>{
   'mobile.sign_up.title': '新規登録',
   'mobile.sign_up_pending.sent': '入力されたメールアドレス宛にメールを送信しました。続きはメールをご確認ください。',
   'mobile.sign_up_pending.title': 'メールの確認',
+  'mobile.step_confirmation.no_method':
+      '連携アカウントのどれも、この端末ではいまログインできません。先にパスワードを設定してください。',
+  'mobile.step_confirmation.password_label': '現在のパスワード',
+  'mobile.step_confirmation.unconfirmed': 'ログインを確認できませんでした。もう一度お試しください。',
+  'mobile.step_confirmation.with_apple': 'Appleで確認',
+  'mobile.step_confirmation.with_google': 'Googleで確認',
+  'mobile.step_confirmation.with_passkey': 'パスキーで確認',
+  'mobile.step_confirmation.without_password':
+      'アカウントにパスワードがありません。パスキーか連携アカウントで確認してください。',
+  'mobile.step_confirmation.wrong_password': 'パスワードが正しくありません。',
   'mobile.tag.load_failed': 'タグを表示できませんでした。もう一度お試しください。',
   'mobile.tag.not_found': 'タグが見つかりません ({\$slug})',
   'mobile.tag.series_empty': 'このタグのシリーズはまだ公開されていません。',
@@ -6615,6 +6703,9 @@ const _enSources = <String, String>{
   'mobile.linked_accounts.not_linked': 'Not linked',
   'mobile.linked_accounts.title': 'Linked accounts',
   'mobile.linked_accounts.unlink': 'Unlink',
+  'mobile.linked_accounts.unlink_confirm_description':
+      'Enter your current password to unlink your {\$provider} account.',
+  'mobile.linked_accounts.unlink_confirm_title': 'Unlink {\$provider}?',
   'mobile.linked_accounts.unlink_failed':
       'Could not unlink the account. Try again later.',
   'mobile.linked_accounts.unlinked': 'The account was unlinked.',
@@ -6685,6 +6776,8 @@ const _enSources = <String, String>{
   'mobile.passkeys.add': 'Add a passkey',
   'mobile.passkeys.add_cancelled':
       'The passkey request was cancelled or timed out. Try again.',
+  'mobile.passkeys.add_confirm_description':
+      'Enter your current password to add a passkey.',
   'mobile.passkeys.add_failed': 'Could not add the passkey. Try again later.',
   'mobile.passkeys.added':
       'The passkey has been added. You can now sign in with it.',
@@ -6719,6 +6812,9 @@ const _enSources = <String, String>{
   'mobile.passkeys.not_found':
       'That passkey is no longer registered to your account.',
   'mobile.passkeys.remove': 'Remove',
+  'mobile.passkeys.remove_confirm_description':
+      'Enter your current password to remove {\$name}.',
+  'mobile.passkeys.remove_confirm_title': 'Remove {\$name}?',
   'mobile.passkeys.remove_failed':
       'Could not remove the passkey. Try again later.',
   'mobile.passkeys.removed': 'The passkey has been removed.',
@@ -7010,6 +7106,17 @@ const _enSources = <String, String>{
   'mobile.sign_up_pending.sent':
       'We sent an email to the address you entered. Open it to continue.',
   'mobile.sign_up_pending.title': 'Check your email',
+  'mobile.step_confirmation.no_method':
+      'None of your linked accounts can sign in on this device. Set a password first.',
+  'mobile.step_confirmation.password_label': 'Current password',
+  'mobile.step_confirmation.unconfirmed':
+      'Your sign-in could not be confirmed. Try again.',
+  'mobile.step_confirmation.with_apple': 'Confirm with Apple',
+  'mobile.step_confirmation.with_google': 'Confirm with Google',
+  'mobile.step_confirmation.with_passkey': 'Confirm with a passkey',
+  'mobile.step_confirmation.without_password':
+      'Your account has no password. Confirm with a passkey or a linked account.',
+  'mobile.step_confirmation.wrong_password': 'The password is incorrect.',
   'mobile.tag.load_failed': 'Could not show the tag. Try again.',
   'mobile.tag.not_found': 'Tag not found ({\$slug})',
   'mobile.tag.series_empty': 'No published series carry this tag yet.',
@@ -7765,6 +7872,9 @@ const _koSources = <String, String>{
   'mobile.linked_accounts.not_linked': '연결되지 않음',
   'mobile.linked_accounts.title': '연결된 계정',
   'mobile.linked_accounts.unlink': '연결 해제',
+  'mobile.linked_accounts.unlink_confirm_description':
+      '{\$provider} 계정의 연결을 해제하려면 현재 비밀번호를 입력해 주세요.',
+  'mobile.linked_accounts.unlink_confirm_title': '{\$provider} 연결을 해제할까요?',
   'mobile.linked_accounts.unlink_failed': '연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.linked_accounts.unlinked': '연결을 해제했습니다.',
   'mobile.navigation.account': '계정',
@@ -7827,6 +7937,7 @@ const _koSources = <String, String>{
   'mobile.passkeys.actions': '{\$name} 작업',
   'mobile.passkeys.add': '패스키 추가',
   'mobile.passkeys.add_cancelled': '패스키 요청이 취소되었거나 시간이 초과되었습니다. 다시 시도해 주세요.',
+  'mobile.passkeys.add_confirm_description': '패스키를 추가하려면 현재 비밀번호를 입력해 주세요.',
   'mobile.passkeys.add_failed': '패스키를 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.passkeys.added': '패스키를 추가했습니다. 이제 이 패스키로 로그인할 수 있습니다.',
   'mobile.passkeys.added_at': '{\$date}에 추가',
@@ -7855,6 +7966,9 @@ const _koSources = <String, String>{
   'mobile.passkeys.never_used': '아직 사용하지 않음',
   'mobile.passkeys.not_found': '그 패스키는 더 이상 계정에 등록되어 있지 않습니다.',
   'mobile.passkeys.remove': '삭제',
+  'mobile.passkeys.remove_confirm_description':
+      '{\$name}을(를) 삭제하려면 현재 비밀번호를 입력해 주세요.',
+  'mobile.passkeys.remove_confirm_title': '{\$name}을(를) 삭제할까요?',
   'mobile.passkeys.remove_failed': '패스키를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   'mobile.passkeys.removed': '패스키를 삭제했습니다.',
   'mobile.passkeys.rename': '이름 변경',
@@ -8109,6 +8223,16 @@ const _koSources = <String, String>{
   'mobile.sign_up.title': '회원가입',
   'mobile.sign_up_pending.sent': '입력하신 이메일 주소로 메일을 보냈습니다. 메일을 열어 계속 진행해 주세요.',
   'mobile.sign_up_pending.title': '메일 확인',
+  'mobile.step_confirmation.no_method':
+      '연결된 계정 중 지금 이 기기에서 로그인할 수 있는 계정이 없습니다. 먼저 비밀번호를 설정해 주세요.',
+  'mobile.step_confirmation.password_label': '현재 비밀번호',
+  'mobile.step_confirmation.unconfirmed': '로그인을 확인하지 못했습니다. 다시 시도해 주세요.',
+  'mobile.step_confirmation.with_apple': 'Apple로 확인',
+  'mobile.step_confirmation.with_google': 'Google로 확인',
+  'mobile.step_confirmation.with_passkey': '패스키로 확인',
+  'mobile.step_confirmation.without_password':
+      '계정에 비밀번호가 없습니다. 패스키나 연결된 계정으로 확인해 주세요.',
+  'mobile.step_confirmation.wrong_password': '비밀번호가 올바르지 않습니다.',
   'mobile.tag.load_failed': '태그를 표시할 수 없습니다. 다시 시도해 주세요.',
   'mobile.tag.not_found': '태그를 찾을 수 없습니다 ({\$slug})',
   'mobile.tag.series_empty': '이 태그의 시리즈는 아직 공개되지 않았습니다.',
@@ -8780,6 +8904,9 @@ const _zhHansSources = <String, String>{
   'mobile.linked_accounts.not_linked': '未关联',
   'mobile.linked_accounts.title': '关联账户',
   'mobile.linked_accounts.unlink': '解除关联',
+  'mobile.linked_accounts.unlink_confirm_description':
+      '请输入当前密码以解除与{\$provider}账户的关联。',
+  'mobile.linked_accounts.unlink_confirm_title': '要解除与{\$provider}的关联吗？',
   'mobile.linked_accounts.unlink_failed': '无法解除关联。请稍后重试。',
   'mobile.linked_accounts.unlinked': '已解除关联。',
   'mobile.navigation.account': '账户',
@@ -8835,6 +8962,7 @@ const _zhHansSources = <String, String>{
   'mobile.passkeys.actions': '{\$name}的操作',
   'mobile.passkeys.add': '添加通行密钥',
   'mobile.passkeys.add_cancelled': '通行密钥请求已取消或超时。请重试。',
+  'mobile.passkeys.add_confirm_description': '请输入当前密码以添加通行密钥。',
   'mobile.passkeys.add_failed': '无法添加通行密钥。请稍后重试。',
   'mobile.passkeys.added': '已添加通行密钥。现在可以使用它登录。',
   'mobile.passkeys.added_at': '添加于{\$date}',
@@ -8859,6 +8987,8 @@ const _zhHansSources = <String, String>{
   'mobile.passkeys.never_used': '尚未使用',
   'mobile.passkeys.not_found': '该通行密钥已不再注册到您的账户。',
   'mobile.passkeys.remove': '移除',
+  'mobile.passkeys.remove_confirm_description': '请输入当前密码以删除{\$name}。',
+  'mobile.passkeys.remove_confirm_title': '要删除{\$name}吗？',
   'mobile.passkeys.remove_failed': '无法移除通行密钥。请稍后重试。',
   'mobile.passkeys.removed': '已移除通行密钥。',
   'mobile.passkeys.rename': '重命名',
@@ -9087,6 +9217,14 @@ const _zhHansSources = <String, String>{
   'mobile.sign_up.title': '注册',
   'mobile.sign_up_pending.sent': '我们已向您输入的邮箱地址发送邮件。请打开它继续注册。',
   'mobile.sign_up_pending.title': '请查收邮件',
+  'mobile.step_confirmation.no_method': '您的关联账户目前都无法在此设备上登录。请先设置密码。',
+  'mobile.step_confirmation.password_label': '当前密码',
+  'mobile.step_confirmation.unconfirmed': '无法确认您的登录。请重试。',
+  'mobile.step_confirmation.with_apple': '使用Apple确认',
+  'mobile.step_confirmation.with_google': '使用Google确认',
+  'mobile.step_confirmation.with_passkey': '使用通行密钥确认',
+  'mobile.step_confirmation.without_password': '您的账户没有密码。请使用通行密钥或关联账户确认。',
+  'mobile.step_confirmation.wrong_password': '密码不正确。',
   'mobile.tag.load_failed': '无法显示该标签。请重试。',
   'mobile.tag.not_found': '找不到该标签（{\$slug}）',
   'mobile.tag.series_empty': '尚无带有该标签的已发布系列。',
@@ -9745,6 +9883,9 @@ const _zhHantSources = <String, String>{
   'mobile.linked_accounts.not_linked': '未連結',
   'mobile.linked_accounts.title': '已連結的帳戶',
   'mobile.linked_accounts.unlink': '解除連結',
+  'mobile.linked_accounts.unlink_confirm_description':
+      '請輸入目前的密碼以解除與{\$provider}帳戶的連結。',
+  'mobile.linked_accounts.unlink_confirm_title': '要解除與{\$provider}的連結嗎？',
   'mobile.linked_accounts.unlink_failed': '無法解除連結。請稍後再試。',
   'mobile.linked_accounts.unlinked': '已解除連結。',
   'mobile.navigation.account': '帳戶',
@@ -9800,6 +9941,7 @@ const _zhHantSources = <String, String>{
   'mobile.passkeys.actions': '{\$name}的操作',
   'mobile.passkeys.add': '新增通行金鑰',
   'mobile.passkeys.add_cancelled': '通行金鑰要求已取消或逾時。請重試。',
+  'mobile.passkeys.add_confirm_description': '請輸入目前的密碼以新增通行金鑰。',
   'mobile.passkeys.add_failed': '無法新增通行金鑰。請稍後再試。',
   'mobile.passkeys.added': '已新增通行金鑰。現在可以使用它登入。',
   'mobile.passkeys.added_at': '新增於{\$date}',
@@ -9824,6 +9966,8 @@ const _zhHantSources = <String, String>{
   'mobile.passkeys.never_used': '尚未使用',
   'mobile.passkeys.not_found': '該通行金鑰已不再註冊到您的帳戶。',
   'mobile.passkeys.remove': '移除',
+  'mobile.passkeys.remove_confirm_description': '請輸入目前的密碼以刪除{\$name}。',
+  'mobile.passkeys.remove_confirm_title': '要刪除{\$name}嗎？',
   'mobile.passkeys.remove_failed': '無法移除通行金鑰。請稍後再試。',
   'mobile.passkeys.removed': '已移除通行金鑰。',
   'mobile.passkeys.rename': '重新命名',
@@ -10052,6 +10196,14 @@ const _zhHantSources = <String, String>{
   'mobile.sign_up.title': '註冊',
   'mobile.sign_up_pending.sent': '我們已向您輸入的電子郵件地址寄出郵件。請開啟它繼續註冊。',
   'mobile.sign_up_pending.title': '請查收郵件',
+  'mobile.step_confirmation.no_method': '您已連結的帳戶目前都無法在此裝置上登入。請先設定密碼。',
+  'mobile.step_confirmation.password_label': '目前的密碼',
+  'mobile.step_confirmation.unconfirmed': '無法確認您的登入。請再試一次。',
+  'mobile.step_confirmation.with_apple': '使用Apple確認',
+  'mobile.step_confirmation.with_google': '使用Google確認',
+  'mobile.step_confirmation.with_passkey': '使用通行金鑰確認',
+  'mobile.step_confirmation.without_password': '您的帳戶沒有密碼。請使用通行金鑰或已連結的帳戶確認。',
+  'mobile.step_confirmation.wrong_password': '密碼不正確。',
   'mobile.tag.load_failed': '無法顯示該標籤。請重試。',
   'mobile.tag.not_found': '找不到該標籤（{\$slug}）',
   'mobile.tag.series_empty': '尚無帶有該標籤的已發布系列。',

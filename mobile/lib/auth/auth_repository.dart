@@ -1,3 +1,4 @@
+import 'package:publira/auth/step_confirmation.dart';
 import 'package:publira/auth/account_icon.dart';
 import 'package:publira/auth/auth_failure.dart';
 import 'package:publira/auth/auth_session.dart';
@@ -62,11 +63,17 @@ abstract class AuthRepository {
   /// Throws [AuthFailure].
   Future<LinkedIdentities> readLinkedIdentities(AuthSession session);
 
-  /// Unlinks [provider] from the account behind [session].
+  /// Unlinks [provider] from the account behind [session], once
+  /// [confirmation] has confirmed the account.
   ///
   /// Throws [AuthFailure]; [AuthFailureKind.lastSignInMethod] where it is the
-  /// last way an account without a password or a passkey signs in.
-  Future<void> unlinkIdentity(AuthSession session, IdentityProvider provider);
+  /// last way an account without a password or a passkey signs in, and
+  /// [AuthFailureKind.invalidInput] where [confirmation] does not verify.
+  Future<void> unlinkIdentity(
+    AuthSession session,
+    IdentityProvider provider,
+    StepConfirmation confirmation,
+  );
 
   /// Links the provider account [credential] is a fresh sign-in to, to the
   /// account behind [session], whatever address the provider carries, so it
@@ -102,13 +109,18 @@ abstract class AuthRepository {
   /// Throws [AuthFailure].
   Future<List<Passkey>> readPasskeys(AuthSession session);
 
-  /// Begins registering a passkey for the reader behind [session] and returns
-  /// the `PublicKeyCredentialCreationOptionsJSON` the authenticator makes it
+  /// Begins registering a passkey for the reader behind [session], once
+  /// [confirmation] has confirmed the account, and returns the
+  /// `PublicKeyCredentialCreationOptionsJSON` the authenticator makes it
   /// over.
   ///
   /// Throws [AuthFailure]; [AuthFailureKind.passkeyLimit] once the account
-  /// holds as many as it may.
-  Future<String> beginPasskeyRegistration(AuthSession session);
+  /// holds as many as it may, and [AuthFailureKind.invalidInput] where
+  /// [confirmation] does not verify.
+  Future<String> beginPasskeyRegistration(
+    AuthSession session,
+    StepConfirmation confirmation,
+  );
 
   /// Stores [credentialJson], the passkey the authenticator made over the
   /// options [beginPasskeyRegistration] answered, unnamed.
@@ -129,15 +141,22 @@ abstract class AuthRepository {
   /// no longer the reader's.
   Future<Passkey> renamePasskey(AuthSession session, String id, String name);
 
-  /// Removes the reader's passkey [id], which stops signing them in. One
-  /// removed already is answered as removed.
+  /// Removes the reader's passkey [id], which stops signing them in, once
+  /// [confirmation] has confirmed the account. One removed already is
+  /// answered as removed.
   ///
   /// Throws [AuthFailure]; [AuthFailureKind.lastSignInMethod] where it is the
-  /// last way an account without a password or a linked provider signs in.
-  Future<void> deletePasskey(AuthSession session, String id);
+  /// last way an account without a password or a linked provider signs in,
+  /// and [AuthFailureKind.invalidInput] where [confirmation] does not verify.
+  Future<void> deletePasskey(
+    AuthSession session,
+    String id,
+    StepConfirmation confirmation,
+  );
 
   /// Begins the assertion that confirms [requestEmailChangeWithPasskey],
-  /// [deleteAccountWithPasskey], or [disableMfaWithPasskey] for the reader
+  /// [deleteAccountWithPasskey], [disableMfaWithPasskey], or a
+  /// [ConfirmedByPasskey] for the reader
   /// behind [session], and returns
   /// the `PublicKeyCredentialRequestOptionsJSON` the authenticator signs,
   /// which allows that reader's passkeys alone.

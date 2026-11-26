@@ -7,6 +7,7 @@ import 'package:publira/auth/auth_session.dart';
 import 'package:publira/auth/http_auth_repository.dart';
 import 'package:publira/auth/identity_provider.dart';
 import 'package:publira/auth/provider_sign_in.dart';
+import 'package:publira/auth/step_confirmation.dart';
 import 'package:publira/auth/two_step_verification.dart';
 import 'package:publira/config.dart';
 
@@ -21,6 +22,9 @@ void main() {
     userPublicId: ConnectFixtureServer.memberPublicId,
     userName: ConnectFixtureServer.memberName,
   );
+
+  /// The member's password, which confirms an unlink.
+  const password = ConfirmedByPassword(ConnectFixtureServer.memberPassword);
 
   /// A Google token for [email] the fixture accepts once, for its nonce.
   ProviderCredential issueGoogleToken({
@@ -322,13 +326,13 @@ void main() {
           );
 
     await expectLater(
-      auth.unlinkIdentity(member, IdentityProvider.google),
+      auth.unlinkIdentity(member, IdentityProvider.google, password),
       failsWith(AuthFailureKind.lastSignInMethod),
     );
-    await auth.unlinkIdentity(member, IdentityProvider.apple);
+    await auth.unlinkIdentity(member, IdentityProvider.apple, password);
 
     server.memberHasPassword = true;
-    await auth.unlinkIdentity(member, IdentityProvider.google);
+    await auth.unlinkIdentity(member, IdentityProvider.google, password);
     expect(server.memberIdentities, isEmpty);
   });
 
