@@ -405,14 +405,19 @@ type Querier interface {
 	//
 	// category is which of the recipient's notification preferences the row
 	// answers to, and the row is listed in their inbox unless that preference's
-	// inbox cell is off; a recipient who saved nothing holds every cell on, and
-	// the staff, everyone, and account categories have no cell. The cell is read
+	// inbox cell is off, which notification_in_inbox answers. The cell is read
 	// here rather than passed in, so no writer can file a row past it. Reading it
 	// needs a connection that sees the recipient's settings, which the worker's
 	// do: the settings are isolated to the reader they belong to, so a
 	// tenant-scoped API connection reads no row and would list every notification
 	// it filed, which is why the reader-facing types are filed by the worker.
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) error
+	// CreateNotification for a page of recipients in one statement, which is how
+	// a fan-out to a tenant's readership files them: one insert per reader is a
+	// round trip per reader, and a page of them is what one outbox job can afford
+	// to write before it records how far it got. The recipients and their payloads
+	// are paired by position, and everything else is the same for the whole page.
+	CreateNotificationsForRecipients(ctx context.Context, arg CreateNotificationsForRecipientsParams) error
 	// Grants the reader the coins a pack purchase bought, less what a shortfall
 	// took of them as they were granted. A purchase grants once, so a grant made
 	// already is no row.

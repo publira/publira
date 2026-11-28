@@ -86,17 +86,7 @@ VALUES (
     $6,
     COALESCE($7::text, 'all'),
     $8::text,
-    COALESCE((
-        SELECT CASE $8::text
-            WHEN 'followed_episodes' THEN s.followed_episodes_inbox_enabled
-            WHEN 'followed_creators' THEN s.followed_creators_inbox_enabled
-            WHEN 'comments' THEN s.comments_inbox_enabled
-            WHEN 'announcements' THEN s.announcements_inbox_enabled
-        END
-        FROM user_notification_settings s
-        WHERE s.tenant_id = $2
-            AND s.user_id = $3
-    ), true)
+    notification_in_inbox($2, $3, $8::text)
 )
 ON CONFLICT DO NOTHING
 `
@@ -123,8 +113,7 @@ type CreateNotificationParams struct {
 //
 // category is which of the recipient's notification preferences the row
 // answers to, and the row is listed in their inbox unless that preference's
-// inbox cell is off; a recipient who saved nothing holds every cell on, and
-// the staff, everyone, and account categories have no cell. The cell is read
+// inbox cell is off, which notification_in_inbox answers. The cell is read
 // here rather than passed in, so no writer can file a row past it. Reading it
 // needs a connection that sees the recipient's settings, which the worker's
 // do: the settings are isolated to the reader they belong to, so a
@@ -140,6 +129,61 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 		arg.Payload,
 		arg.Availability,
 		arg.Category,
+	)
+	return err
+}
+
+const CreateNotificationsForRecipients = `-- name: CreateNotificationsForRecipients :exec
+INSERT INTO notifications (
+    id,
+    tenant_id,
+    user_id,
+    notification_type,
+    subject_key,
+    payload,
+    availability,
+    category,
+    in_inbox
+)
+SELECT
+    uuidv7(),
+    $1::uuid,
+    r.user_id,
+    $2::text,
+    $3::text,
+    p.payload::jsonb,
+    COALESCE($4::text, 'all'),
+    $5::text,
+    notification_in_inbox($1::uuid, r.user_id, $5::text)
+FROM unnest($6::uuid[]) WITH ORDINALITY AS r(user_id, ordinality)
+    JOIN unnest($7::text[]) WITH ORDINALITY AS p(payload, ordinality) USING (ordinality)
+ON CONFLICT DO NOTHING
+`
+
+type CreateNotificationsForRecipientsParams struct {
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	NotificationType string         `json:"notification_type"`
+	SubjectKey       string         `json:"subject_key"`
+	Availability     sql.NullString `json:"availability"`
+	Category         string         `json:"category"`
+	UserIds          []uuid.UUID    `json:"user_ids"`
+	Payloads         []string       `json:"payloads"`
+}
+
+// CreateNotification for a page of recipients in one statement, which is how
+// a fan-out to a tenant's readership files them: one insert per reader is a
+// round trip per reader, and a page of them is what one outbox job can afford
+// to write before it records how far it got. The recipients and their payloads
+// are paired by position, and everything else is the same for the whole page.
+func (q *Queries) CreateNotificationsForRecipients(ctx context.Context, arg CreateNotificationsForRecipientsParams) error {
+	_, err := q.db.ExecContext(ctx, CreateNotificationsForRecipients,
+		arg.TenantID,
+		arg.NotificationType,
+		arg.SubjectKey,
+		arg.Availability,
+		arg.Category,
+		pq.Array(arg.UserIds),
+		pq.Array(arg.Payloads),
 	)
 	return err
 }
