@@ -8,7 +8,7 @@ import {
   TenantLocalesProvider,
 } from "#components/locale-provider";
 import { getLocale } from "#lib/locale";
-import { getTenantSiteCopy } from "#lib/tenant";
+import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 const AuthFooter = ({ copyrightText }: { copyrightText?: string }) => {
@@ -52,11 +52,16 @@ const AuthShell = ({ children }: { children: ReactNode }) => (
  */
 export const ensureStatic = "shell";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Publira",
-    template: "%s | Publira",
-  },
+export const generateMetadata = async (): Promise<Metadata> => {
+  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
+  const siteLabel = await getTenantSiteLabel(tenantId, locale);
+
+  return {
+    title: {
+      default: siteLabel,
+      template: `%s | ${siteLabel}`,
+    },
+  };
 };
 
 /**
