@@ -3,7 +3,7 @@
 import { Toast as BaseToast } from "@base-ui/react/toast";
 import { CloseIcon } from "@publira/icons/close-icon";
 import { cn } from "@publira/utils";
-import type { JSX, ReactElement, ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { FLOATING_FADE } from "../motion";
 
@@ -89,14 +89,23 @@ export const ToastClose = ({
   </BaseToast.Close>
 );
 
-const ToastStack = ({ close }: { close: ReactElement }) => {
+/**
+ * The toasts the manager holds, in the bottom-right corner. Its children are
+ * drawn in every toast beside the title and the description: the close
+ * control, which the app writes so that it can name it.
+ */
+export const ToastStack = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => {
   const { toasts } = useToastManager();
 
   return (
     <ToastViewport>
       {toasts.map((toast) => (
         <ToastRoot key={toast.id} toast={toast}>
-          {close}
+          {children}
           <ToastContent>
             {toast.title ? <ToastTitle>{toast.title}</ToastTitle> : null}
             {toast.description ? (
@@ -111,23 +120,16 @@ const ToastStack = ({ close }: { close: ReactElement }) => {
 
 interface ToastProviderProps {
   children: ReactNode;
-  /**
-   * The close control drawn in every toast, a `Toast.Close` carrying the app's
-   * label for it.
-   */
-  close: ReactElement;
   limit?: number;
   timeout?: number;
 }
 
 export const ToastProvider = ({
   children,
-  close,
   limit = 3,
   timeout = 4000,
 }: ToastProviderProps): JSX.Element => (
   <BaseToast.Provider limit={limit} timeout={timeout}>
     {children}
-    <ToastStack close={close} />
   </BaseToast.Provider>
 );

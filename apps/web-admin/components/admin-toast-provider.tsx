@@ -6,9 +6,9 @@ import type { ReactNode } from "react";
 import { useClientMessages } from "./client-message";
 
 /**
- * Reads the catalog itself rather than taking the label from the provider:
- * the provider wraps every signed-in route, and a read there would hold back
- * each route's static shell, while a toast is only drawn once one is raised.
+ * Reads the catalog inside the toast rather than in the provider: the provider
+ * wraps every signed-in route, and a read there would hold back each route's
+ * static shell, while a toast is only drawn once one is raised.
  */
 const AdminToastClose = () => {
   const t = useClientMessages();
@@ -17,5 +17,10 @@ const AdminToastClose = () => {
 };
 
 export const AdminToastProvider = ({ children }: { children: ReactNode }) => (
-  <Toast.Provider close={<AdminToastClose />}>{children}</Toast.Provider>
+  <Toast.Provider>
+    {children}
+    <Toast.Stack>
+      <AdminToastClose />
+    </Toast.Stack>
+  </Toast.Provider>
 );

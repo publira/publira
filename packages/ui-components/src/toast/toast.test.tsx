@@ -16,10 +16,13 @@ const RaiseButton = () => {
 };
 
 describe("Toast", () => {
-  it("draws the close control the provider is given, named by its label once the stack is expanded, and closes the toast with it", async () => {
+  it("draws the close control written in the stack in every toast, named by its label once the stack is expanded, and closes the toast with it", async () => {
     render(
-      <Toast.Provider close={<Toast.Close aria-label="Close" />}>
+      <Toast.Provider>
         <RaiseButton />
+        <Toast.Stack>
+          <Toast.Close aria-label="Close" />
+        </Toast.Stack>
       </Toast.Provider>
     );
 

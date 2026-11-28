@@ -145,8 +145,11 @@ const render = (ui: ReactNode) =>
   renderBase(ui, {
     wrapper: ({ children }) => (
       <AdminLocaleTestProvider locale="en">
-        <Toast.Provider close={<Toast.Close aria-label="Close" />}>
+        <Toast.Provider>
           {children}
+          <Toast.Stack>
+            <Toast.Close aria-label="Close" />
+          </Toast.Stack>
         </Toast.Provider>
       </AdminLocaleTestProvider>
     ),
