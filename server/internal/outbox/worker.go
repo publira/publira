@@ -3,10 +3,12 @@ package outbox
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
+	"runtime/debug"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -42,6 +44,11 @@ const (
 	defaultUnknownTypeWait = time.Minute
 	defaultBlockedWait     = 10 * time.Minute
 	maxLastErrorBytes      = 2048
+
+	// outcomeTimeout bounds the write that records how an attempt ended. It
+	// runs after the job's own context may already be cancelled, so it has a
+	// deadline of its own instead.
+	outcomeTimeout = 10 * time.Second
 
 	// unknownTypeWindow is how long after an event is written a worker that
 	// has no handler for its type keeps leaving it for one that has. It
@@ -93,6 +100,10 @@ type Config struct {
 	// BlockedWait is how long an event whose handler answered [Blocked] waits
 	// before it can be claimed again. Zero uses the 10m default.
 	BlockedWait time.Duration
+	// JobTimeout is how long one attempt of a handler may run before its
+	// context is cancelled and the attempt counts as failed. Zero uses the 30s
+	// default.
+	JobTimeout time.Duration
 	// FetchCooldown / FetchPollInterval are forwarded to River so tests
 	// can pick jobs up without waiting on the production 1s poll.
 	FetchCooldown     time.Duration
@@ -164,6 +175,9 @@ func (c Config) withDefaults() Config {
 	}
 	if c.BlockedWait <= 0 {
 		c.BlockedWait = defaultBlockedWait
+	}
+	if c.JobTimeout <= 0 {
+		c.JobTimeout = defaultJobTimeout
 	}
 	return c
 }
@@ -385,7 +399,9 @@ type processWorker struct {
 	worker *Worker
 }
 
-func (p *processWorker) Timeout(*river.Job[ProcessArgs]) time.Duration { return defaultJobTimeout }
+func (p *processWorker) Timeout(*river.Job[ProcessArgs]) time.Duration {
+	return p.worker.cfg.JobTimeout
+}
 
 func (p *processWorker) Work(ctx context.Context, job *river.Job[ProcessArgs]) error {
 	return p.worker.process(ctx, job.Args.EventID)
@@ -494,28 +510,20 @@ func (w *Worker) drain(ctx context.Context) error {
 	return nil
 }
 
-// recoverStale re-queues rows a dead worker left in processing and returns the
-// auth-mail rows it touched. Those go through their own statement: a crash
-// records no failure, so without charging the reclaim to the retry budget an
-// event whose worker dies on every attempt would keep its raw token in payload
-// for as long as the crash loop lasts. The reclaim that exhausts MaxAttempts
-// marks the row dead and strips the token, which bounds the plaintext window at
-// MaxAttempts times StaleProcessing.
+// recoverStale re-queues the rows a worker left in processing, charging each
+// the attempt nothing recorded: a worker that dies on every attempt records no
+// failure, and without the charge its event would be re-queued for ever and
+// never reach dead. The reclaim that exhausts an event's retry budget marks it
+// dead, and for an auth-mail event strips the token, which bounds the
+// plaintext window at the budget times StaleProcessing.
 func (w *Worker) recoverStale(ctx context.Context, qtx *dbmodels.Queries) ([]dbmodels.OutboxEvent, error) {
 	staleBefore := time.Now().UTC().Add(-w.cfg.StaleProcessing)
-
-	recovered, err := qtx.RecoverStaleProcessingOutboxEvents(ctx, staleBefore)
+	budgets, err := json.Marshal(w.cfg.Handlers.attemptBudgets())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("outbox: encode retry budgets: %w", err)
 	}
-	if len(recovered) > 0 {
-		w.cfg.Logger.InfoContext(ctx, "recovered stale processing outbox events",
-			"count", len(recovered),
-			"stale_before", staleBefore,
-		)
-	}
-
-	authMail, err := qtx.RecoverStaleProcessingAuthMailOutboxEvents(ctx, dbmodels.RecoverStaleProcessingAuthMailOutboxEventsParams{
+	return qtx.RecoverStaleProcessingOutboxEvents(ctx, dbmodels.RecoverStaleProcessingOutboxEventsParams{
+		Budgets:     budgets,
 		MaxAttempts: int32(w.cfg.MaxAttempts),
 		LastError: sql.NullString{
 			String: fmt.Sprintf("reclaimed from processing after a stall of at least %s", w.cfg.StaleProcessing),
@@ -523,15 +531,11 @@ func (w *Worker) recoverStale(ctx context.Context, qtx *dbmodels.Queries) ([]dbm
 		},
 		StaleBefore: staleBefore,
 	})
-	if err != nil {
-		return nil, err
-	}
-	return authMail, nil
 }
 
-// reportReclaimed logs the auth-mail rows the reclaim charged and counts the
-// ones it killed. It runs after the drain transaction commits, so a rolled-back
-// drain does not report deaths that never happened.
+// reportReclaimed logs the rows the reclaim charged and counts the ones it
+// killed. It runs after the drain transaction commits, so a rolled-back drain
+// does not report deaths that never happened.
 func (w *Worker) reportReclaimed(ctx context.Context, reclaimed []dbmodels.OutboxEvent) {
 	for _, event := range reclaimed {
 		attrs := []any{
@@ -541,7 +545,7 @@ func (w *Worker) reportReclaimed(ctx context.Context, reclaimed []dbmodels.Outbo
 			"attempts", event.Attempts,
 		}
 		if event.Status != StatusDead {
-			w.cfg.Logger.InfoContext(ctx, "recovered stale processing auth mail outbox event", attrs...)
+			w.cfg.Logger.InfoContext(ctx, "recovered stale processing outbox event", attrs...)
 			continue
 		}
 		w.metrics.recordDead(ctx, event.EventType)
@@ -595,8 +599,11 @@ func (w *Worker) process(ctx context.Context, eventID uuid.UUID) error {
 	}
 
 	started := time.Now()
-	herr := handler(ctx, event)
+	herr := w.runHandler(ctx, handler, event)
 	w.metrics.recordHandlerDuration(ctx, event.EventType, time.Since(started))
+	if herr != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		herr = fmt.Errorf("handler ran past the %s job timeout: %w", w.cfg.JobTimeout, herr)
+	}
 	if errors.Is(herr, ErrResume) {
 		return w.resume(ctx, event)
 	}
@@ -606,7 +613,42 @@ func (w *Worker) process(ctx context.Context, eventID uuid.UUID) error {
 	if herr != nil {
 		return w.finishFailed(ctx, event, herr)
 	}
+	return w.finishDone(ctx, span, event)
+}
 
+// runHandler runs handler, answering a panic as the error of an ordinary failed
+// attempt. Left to River, the panic would fail the job without the outbox row
+// recording anything, and an event whose handler always panics would never
+// spend its retry budget.
+func (w *Worker) runHandler(ctx context.Context, handler Handler, event dbmodels.OutboxEvent) (err error) {
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			return
+		}
+		w.cfg.Logger.ErrorContext(ctx, "outbox handler panicked",
+			"event_id", event.ID,
+			"event_type", event.EventType,
+			"idempotency_key", event.IdempotencyKey,
+			"panic", recovered,
+			"stack", string(debug.Stack()),
+		)
+		err = fmt.Errorf("handler panicked: %v", recovered)
+	}()
+	return handler(ctx, event)
+}
+
+// outcomeContext answers the context the write recording an attempt's outcome
+// runs with. River cancels the job's context once the job timeout passes, and
+// an outcome written with it would fail, leaving the row in processing with no
+// attempt charged.
+func outcomeContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), outcomeTimeout)
+}
+
+func (w *Worker) finishDone(ctx context.Context, span trace.Span, event dbmodels.OutboxEvent) error {
+	ctx, cancel := outcomeContext(ctx)
+	defer cancel()
 	if _, err := w.queries.MarkOutboxEventDone(ctx, event.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
@@ -645,6 +687,8 @@ func (w *Worker) tenantSuspended(ctx context.Context, event dbmodels.OutboxEvent
 // finishDropped marks a message to a suspended tenant's readers or staff done
 // without sending it, which is what [Registry.RegisterMessage] promises.
 func (w *Worker) finishDropped(ctx context.Context, event dbmodels.OutboxEvent) error {
+	ctx, cancel := outcomeContext(ctx)
+	defer cancel()
 	if _, err := w.queries.MarkOutboxEventDone(ctx, event.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
@@ -662,6 +706,8 @@ func (w *Worker) finishDropped(ctx context.Context, event dbmodels.OutboxEvent) 
 }
 
 func (w *Worker) resume(ctx context.Context, event dbmodels.OutboxEvent) error {
+	ctx, cancel := outcomeContext(ctx)
+	defer cancel()
 	if _, err := w.queries.ResumeOutboxEvent(ctx, event.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
@@ -685,6 +731,8 @@ func (w *Worker) resume(ctx context.Context, event dbmodels.OutboxEvent) error {
 // [unknownTypeWindow] after it was written has a type no running release
 // handles, and dies as a permanent failure.
 func (w *Worker) deferUnknown(ctx context.Context, event dbmodels.OutboxEvent) error {
+	ctx, cancel := outcomeContext(ctx)
+	defer cancel()
 	unknown := fmt.Errorf("unknown outbox event type %q", event.EventType)
 	if time.Since(event.CreatedAt) >= unknownTypeWindow {
 		return w.finishFailed(ctx, event, Permanent(unknown))
@@ -714,6 +762,8 @@ func (w *Worker) deferUnknown(ctx context.Context, event dbmodels.OutboxEvent) e
 // outside the outbox changes, charging it no attempt: spending the retry budget
 // on it would mark it dead minutes into an outage nobody had yet noticed.
 func (w *Worker) deferBlocked(ctx context.Context, event dbmodels.OutboxEvent, herr error) error {
+	ctx, cancel := outcomeContext(ctx)
+	defer cancel()
 	wait := w.cfg.BlockedWait
 	if _, err := w.queries.DeferOutboxEvent(ctx, dbmodels.DeferOutboxEventParams{
 		ID:          event.ID,
@@ -736,6 +786,8 @@ func (w *Worker) deferBlocked(ctx context.Context, event dbmodels.OutboxEvent, h
 }
 
 func (w *Worker) finishFailed(ctx context.Context, event dbmodels.OutboxEvent, herr error) error {
+	ctx, cancel := outcomeContext(ctx)
+	defer cancel()
 	nextAttempts := event.Attempts + 1
 	lastErr := lastErrorValue(herr)
 	logAttrs := []any{

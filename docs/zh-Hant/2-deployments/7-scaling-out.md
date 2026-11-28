@@ -2,8 +2,8 @@
 title: 水平擴展
 description: 安裝實例超出起初的規模時該多執行哪些處理程序、每個副本必須共用什麼，以及哪些部分無法水平擴展。
 published: 2026-11-03
-updated: 2026-11-24
-source_updated: 2026-11-24
+updated: 2026-11-28
+source_updated: 2026-11-28
 ---
 
 安裝實例變慢或即將成長時，要增加的是它原本就在執行的處理程序：繁忙的處理程序多執行幾個副本，`publira server`依其回應的流量拆分，`publira worker`依其負責的工作拆分。本頁說明哪些處理程序可以執行多個副本、在那之前必須先準備好什麼、安裝實例的負載落在哪裡、`publira server`可以拆分到什麼程度、`publira worker`如何拆分、副本增加時資料庫必須能接受什麼、如何把讀者的目錄讀取與worker處理程序的每日重建移到資料庫的複本上，以及哪些部分無論增加多少副本都無法減輕負擔。本頁適用於任何平台，[Kubernetes](./5-kubernetes/index.md)與[在AWS Fargate上執行Amazon ECS](./6-ecs-fargate/index.md)頁面備有對應的資訊清單與指令。
@@ -172,7 +172,7 @@ worker處理程序做的其他所有事都留在主要資料庫上：重建寫�
 
 ### 停止副本
 
-`publira server`與`publira worker`會在收到`SIGTERM`後30秒內停止：它們最多等待這麼久讓進行中的請求與作業完成，屆時仍在執行的則會被中斷。請給平台一段比這更長的寬限期再終止處理程序，例如在Kubernetes上把`terminationGracePeriodSeconds`設為45（預設為30），或在ECS的容器定義中把`stopTimeout`設為45秒（預設同樣為30）。在期限時被中斷的請求會失敗，呼叫端會看到連線關閉。被中斷的作業會重新執行：作業佇列會在一小時後把仍在執行的排程工作視為卡住並再次執行，而每項工作都可以安全地重複執行。仍在處理中的outbox項目會在`PUBLIRA_OUTBOX_STALE_PROCESSING`（未設定時為十五分鐘）之後回到佇列，並在那時寄送：投遞至少會進行一次，因此若郵件或推播通知在副本被終止前剛好寄出，該項目會被寄送第二次。
+`publira server`與`publira worker`會在收到`SIGTERM`後30秒內停止：它們最多等待這麼久讓進行中的請求與作業完成，屆時仍在執行的則會被中斷。請給平台一段比這更長的寬限期再終止處理程序，例如在Kubernetes上把`terminationGracePeriodSeconds`設為45（預設為30），或在ECS的容器定義中把`stopTimeout`設為45秒（預設同樣為30）。在期限時被中斷的請求會失敗，呼叫端會看到連線關閉。被中斷的作業會重新執行：作業佇列會在一小時後把仍在執行的排程工作視為卡住並再次執行，而每項工作都可以安全地重複執行。仍在處理中的outbox項目會在`PUBLIRA_OUTBOX_STALE_PROCESSING`（未設定時為十五分鐘）之後回到佇列，算作已用掉一次嘗試，並在那時寄送：投遞至少會進行一次，因此若郵件或推播通知在副本被終止前剛好寄出，該項目會被寄送第二次。
 
 `publira server`一收到停止指示就會停止接受連線，而不會先讓`/readyz`回應未就緒。因此，邊緣必須在副本停止之前就停止把請求送給它。ECS會這樣做：服務會先把工作從其Application Load Balancer目標群組中移除，並等待目標排空，再停止工作。在Kubernetes上，Pod會在收到`SIGTERM`的同時離開其Service的端點，因此在這項變更傳到邊緣的期間，請求仍可能送達；等待幾秒的`preStop` hook（例如使用`sleep`動作的hook）能在處理程序停止接受連線之前給這項變更一些時間，這可以縮小這段空隙，但無法保證不會有請求在其中抵達。新的副本在其`/readyz`回應就緒後，邊緣才會把請求送給它，詳見[健康檢查](../3-operations/11-monitoring.md#健康檢查)。
 

@@ -1952,12 +1952,10 @@ type Querier interface {
 	// those keys on the event types below so a processed row keeps neither
 	// a usable secret nor the form's contents. Other event types keep
 	// payload.token, if they have one. Keep this list in
-	// sync with MarkOutboxEventDone, MarkOutboxEventDead, both halves
-	// of the stale reclaim (RecoverStaleProcessingOutboxEvents excludes the
-	// list, RecoverStaleProcessingAuthMailOutboxEvents selects it), and
-	// RequeueDeadOutboxEvents, which leaves these types dead. The
-	// terminal-token data migration covers the types that existed when it
-	// ran:
+	// sync with MarkOutboxEventDone, MarkOutboxEventDead,
+	// RecoverStaleProcessingOutboxEvents, and RequeueDeadOutboxEvents,
+	// which leaves these types dead. The terminal-token data migration
+	// covers the types that existed when it ran:
 	//   admin_email_change_confirmation_email
 	//   admin_password_reset_email
 	//   admin_password_reset_request
@@ -4391,9 +4389,8 @@ type Querier interface {
 	// 1h, about four hours), or the token's own lifetime where that is
 	// shorter: a handler that finds the token expired finishes the event
 	// without sending it. A worker that dies mid-attempt records no
-	// failure, so
-	// RecoverStaleProcessingAuthMailOutboxEvents charges the reclaim to
-	// the same budget and every window ends here.
+	// failure, so RecoverStaleProcessingOutboxEvents charges the reclaim
+	// to the same budget and every window ends here.
 	//
 	// A finished event has nowhere left to resume from, so its progress
 	// cursor goes too: a paged handler's cursor names one of the rows it
@@ -4797,21 +4794,21 @@ type Querier interface {
 	// never sent again — only a dead one can be resent — so its payload, which may
 	// carry a reader's address or what they wrote, is dropped once it has arrived.
 	RecordWebhookDeliveryAttempt(ctx context.Context, arg RecordWebhookDeliveryAttemptParams) error
-	// The same reclaim for the events whose payload holds a secret. A crash
-	// records no failure, so an event whose worker dies on every attempt would
-	// be re-queued forever and never reach the terminal update that drops the
-	// secret. The reclaim therefore counts as a failed attempt, and the one that
-	// exhausts max_attempts marks the row dead and strips the secret exactly as
-	// MarkOutboxEventDead does. The plaintext window is bounded by max_attempts
-	// reclaims of the stale-processing grace period.
-	RecoverStaleProcessingAuthMailOutboxEvents(ctx context.Context, arg RecoverStaleProcessingAuthMailOutboxEventsParams) ([]OutboxEvent, error)
-	// Re-queue rows left in processing after a worker crash. updated_at is the
-	// claim time; callers pass now minus the stale-processing grace period.
-	// Auth-mail types are excluded here and reclaimed by
-	// RecoverStaleProcessingAuthMailOutboxEvents instead: they are the ones
-	// holding a secret, and only they pay for the reclaim. A crash loop costs
-	// these rows no retry budget.
-	RecoverStaleProcessingOutboxEvents(ctx context.Context, staleBefore time.Time) ([]OutboxEvent, error)
+	// Re-queue rows left in processing by a worker that stopped mid-attempt
+	// without recording how it ended: one that crashed or was killed, or
+	// could not write the outcome. updated_at is the claim time; callers
+	// pass now minus the stale-processing grace period. Nothing recorded a
+	// failure, so the reclaim counts as one: an event whose worker dies on
+	// every attempt would otherwise be re-queued forever, never reach dead,
+	// and, for an auth-mail event, never reach the terminal update that
+	// drops the secret.
+	//
+	// budgets is a JSON object mapping each event type with a retry budget
+	// of its own to that budget; every other type has max_attempts. The
+	// reclaim that exhausts the budget marks the row dead and strips the
+	// secret exactly as MarkOutboxEventDead does, which bounds the plaintext
+	// window at the budget's reclaims of the grace period.
+	RecoverStaleProcessingOutboxEvents(ctx context.Context, arg RecoverStaleProcessingOutboxEventsParams) ([]OutboxEvent, error)
 	// The episodes a series becoming public owes an announcement: published while
 	// no reader could open them, so their followers were never told, and open to a
 	// reader now. Each is dated from the series' publication instant, because no

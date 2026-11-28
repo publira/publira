@@ -270,11 +270,137 @@ func TestWorkerRecoversStaleProcessing(t *testing.T) {
 
 	startTestWorker(t, pg.DB, outbox.Config{StaleProcessing: 50 * time.Millisecond})
 	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDone)
-	// An event whose payload holds no secret pays nothing for someone else's
-	// crash: the reclaim leaves its retry budget alone.
-	if got.Attempts != 0 {
-		t.Fatalf("attempts = %d, want 0", got.Attempts)
+	// Nothing recorded how the stalled attempt ended, so the reclaim charges
+	// it: otherwise a worker that dies on every attempt would never spend the
+	// event's budget.
+	if got.Attempts != 1 {
+		t.Fatalf("attempts = %d, want 1", got.Attempts)
 	}
+}
+
+// River cancels a handler's context once the job timeout passes. The worker
+// still records the attempt as failed, with a context of its own, so a handler
+// that always outlasts the timeout spends its budget and dies instead of
+// leaving the row in processing for the stale reclaim.
+func TestWorkerMarksAHandlerThatOutlastsTheJobTimeoutDead(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXWK001", "outbox-worker.example.com", "Outbox Worker Tenant")
+	queries := dbmodels.New(pg.DB)
+	event := insertUnknownTypeEvent(t, ctx, queries, tenant.ID, "test:timeout")
+
+	var calls atomic.Int64
+	handlers := outbox.NewRegistry()
+	handlers.Register(unknownEventType, func(ctx context.Context, _ dbmodels.OutboxEvent) error {
+		calls.Add(1)
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	// Reclaim is off, so only the attempts the worker records can kill it.
+	w := startTestWorker(t, pg.DB, outbox.Config{
+		Handlers:        handlers,
+		MaxAttempts:     3,
+		JobTimeout:      100 * time.Millisecond,
+		StaleProcessing: -1,
+	})
+
+	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDead)
+	if got.Attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", got.Attempts)
+	}
+	if !strings.Contains(got.LastError.String, "job timeout") {
+		t.Fatalf("last_error = %q, want the job timeout", got.LastError.String)
+	}
+	if n := calls.Load(); n != 3 {
+		t.Fatalf("handler ran %d times, want 3", n)
+	}
+	waitMetric(t, ctx, "dead", &w.Metrics().Dead, 1)
+}
+
+// A handler that panics fails its attempt like one that returns an error. Left
+// to River, the panic would fail the job without the row recording anything.
+func TestWorkerMarksAPanickingHandlerDead(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXWK001", "outbox-worker.example.com", "Outbox Worker Tenant")
+	queries := dbmodels.New(pg.DB)
+	event := insertUnknownTypeEvent(t, ctx, queries, tenant.ID, "test:panic")
+
+	var calls atomic.Int64
+	handlers := outbox.NewRegistry()
+	handlers.Register(unknownEventType, func(context.Context, dbmodels.OutboxEvent) error {
+		calls.Add(1)
+		panic("handler bug")
+	})
+	w := startTestWorker(t, pg.DB, outbox.Config{
+		Handlers:        handlers,
+		MaxAttempts:     3,
+		StaleProcessing: -1,
+	})
+
+	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDead)
+	if got.Attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", got.Attempts)
+	}
+	if !strings.Contains(got.LastError.String, "handler panicked: handler bug") {
+		t.Fatalf("last_error = %q, want the panic", got.LastError.String)
+	}
+	if n := calls.Load(); n != 3 {
+		t.Fatalf("handler ran %d times, want 3", n)
+	}
+	waitMetric(t, ctx, "dead", &w.Metrics().Dead, 1)
+}
+
+// A worker that dies on every attempt records no failure. The reclaim charges
+// each stall to the event's budget, its own where it was registered with one,
+// and the reclaim that exhausts it marks the event dead.
+func TestWorkerStaleReclaimMarksACrashLoopDead(t *testing.T) {
+	pg := testutil.StartPostgres(t)
+	pg.Reset(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXWK001", "outbox-worker.example.com", "Outbox Worker Tenant")
+	queries := dbmodels.New(pg.DB)
+	event := insertUnknownTypeEvent(t, ctx, queries, tenant.ID, "test:crash-loop")
+
+	if _, err := pg.DB.ExecContext(ctx, `
+		UPDATE outbox_events
+		SET status = 'processing', attempts = 1, updated_at = NOW() - interval '1 minute'
+		WHERE id = $1
+	`, event.ID); err != nil {
+		t.Fatalf("stick processing: %v", err)
+	}
+
+	handlers := outbox.NewRegistry()
+	handlers.RegisterWithAttempts(unknownEventType, func(context.Context, dbmodels.OutboxEvent) error {
+		return nil
+	}, 2)
+	// The default budget would leave the event pending; its own is spent by
+	// this reclaim.
+	w := startTestWorker(t, pg.DB, outbox.Config{
+		Handlers:        handlers,
+		MaxAttempts:     16,
+		StaleProcessing: 50 * time.Millisecond,
+	})
+
+	got := waitStatus(t, ctx, queries, event.ID, outbox.StatusDead)
+	if got.Attempts != 2 {
+		t.Fatalf("attempts = %d, want 2", got.Attempts)
+	}
+	if !strings.Contains(got.LastError.String, "reclaimed from processing") {
+		t.Fatalf("last_error = %q, want the stale reclaim reason", got.LastError.String)
+	}
+	waitMetric(t, ctx, "dead", &w.Metrics().Dead, 1)
 }
 
 func TestWorkerKeepsNonAuthTokenWhenDone(t *testing.T) {

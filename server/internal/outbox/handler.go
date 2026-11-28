@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -187,6 +188,20 @@ func (r *Registry) MaxAttempts(eventType string, fallback int) int {
 		return n
 	}
 	return fallback
+}
+
+// attemptBudgets answers the retry budget of every event type registered with
+// one of its own, keyed by type. It is never nil, so it encodes as a JSON
+// object.
+func (r *Registry) attemptBudgets() map[string]int {
+	if r == nil {
+		return map[string]int{}
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	budgets := make(map[string]int, len(r.attempts))
+	maps.Copy(budgets, r.attempts)
+	return budgets
 }
 
 // Lookup returns the handler for eventType.
