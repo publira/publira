@@ -42,6 +42,12 @@ const linesOf = (
     .findings.filter((finding) => message.test(finding.message))
     .map((finding) => finding.line ?? 0);
 
+// The lines of the findings about an image's name, in a page of docs/en/.
+const imageLines = (body: string[]): number[] =>
+  checkPage("docs/en/1-page.md", page(VALID, body))
+    .findings.filter((finding) => /registry/u.test(finding.message))
+    .map((finding) => finding.line ?? 0);
+
 describe("checkPage", () => {
   it("accepts a page with every required key", () => {
     assert.deepEqual(messages(page(VALID)), []);
@@ -296,6 +302,34 @@ describe("checkPage", () => {
   it("does not read a `#` inside a code block as a heading", () => {
     assert.deepEqual(
       messages(page(VALID, ["```bash", "# A shell comment", "```"])),
+      []
+    );
+  });
+
+  it("reports an image named without its registry, and not one built from the checkout", () => {
+    assert.deepEqual(
+      imageLines([
+        "```bash",
+        "docker run --rm \\",
+        "  publira/publiractl:<tag> job purge-content-events",
+        "docker pull publira/web-admin:0.7.5",
+        "```",
+        "",
+        "Pull `publira/publira:<tag>` first.",
+      ]),
+      [9, 10, 13]
+    );
+    assert.deepEqual(
+      imageLines([
+        "```bash",
+        "docker run --rm ghcr.io/publira/publiractl:<tag> job purge-content-events",
+        "docker build -t publira/web-admin:local .",
+        "docker pull ghcr.io/publira/publira@sha256:0123",
+        "```",
+        "",
+        "See [the repository](https://github.com/publira/publira/blob/main/README.md).",
+        "The `publira/publira` repository: its README says more.",
+      ]),
       []
     );
   });

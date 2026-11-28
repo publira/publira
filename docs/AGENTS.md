@@ -23,3 +23,9 @@ How a page is written in a translated tree's language — its register, its spac
 CommonMark does not close `**` between punctuation and a letter, nor open it between a letter and punctuation, and it reads a CJK character as a letter. A bold label that starts or ends with punctuation, such as `**理由 (任意)**`, therefore renders only when a space or punctuation sets it off from the word beside it: `**理由 (任意)** に` and `**理由 (任意)**、`, not `**理由 (任意)**に`, which stays as literal asterisks. `pnpm docs:check` fails on a `**` a page leaves as text.
 
 `pnpm docs:check` checks the shape a translation keeps — the pages and images it mirrors, the `source_updated` it records, and the links and anchors it resolves. Whether its text says what the English page says is a review judgement.
+
+## Images: named with their registry
+
+A page names a release image as `ghcr.io/publira/<name>:<tag>`, in a command as in prose. Without the registry, Docker looks `publira/<name>:<tag>` up on Docker Hub, where no release is published, so the reader's pull fails or fetches whatever someone else publishes under that name. `publira/<name>:local` is the name of an image built from the checkout and stays as it is.
+
+`pnpm docs:check` fails on a page that names an image `publira/<name>:<tag>` with nothing in front of it.

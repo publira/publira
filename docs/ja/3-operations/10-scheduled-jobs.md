@@ -2,8 +2,8 @@
 title: 定期ジョブとメンテナンスジョブ
 description: publira workerが自動で実行する処理と、停止後の追いつき方、メールやプッシュ通知やキャッシュの再検証の再試行、publiractl jobで手動実行すべき場面を説明します。
 published: 2026-10-29
-updated: 2026-11-26
-source_updated: 2026-11-26
+updated: 2026-11-28
+source_updated: 2026-11-28
 ---
 
 リクエストを受けずにPubliraが行う処理は、すべて`publira worker`が担います。予約時刻を迎えたエピソードの公開、変更によって古くなったキャッシュのWebアプリへの通知、メールとプッシュ通知の送信、統計とランキングの再構築、保持期間を過ぎたデータの削除です。ほかにタイマーで動かすものはなく、ホストのcronもKubernetesのCronJobも要りません。このページでは、どの処理がいつ動くか、症状からどのジョブを調べればよいか、`publiractl job`でジョブを手動で実行する方法を説明します。
@@ -234,7 +234,7 @@ deadのエントリーをキューに戻すまでの影響は、`event_type`に�
 
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job purge-content-events
+  ghcr.io/publira/publiractl:<tag> job purge-content-events
 ```
 
 [Docker Compose](../2-deployments/3-docker-compose.md)で動かしている場合は、接続が設定済みなので、`docker compose run --rm publiractl job purge-content-events`だけで実行できます。画像のパージ、データのダウンロードとそのパージ、Google Playの返金の同期、決済の照合、検索インデックスの構築、テナントの消去では、使う認証情報がPubliraに保存されている場合、`PUBLIRA_SECRET_ENCRYPTION_KEYS`と`PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`も必要です。バケットのアクセスキー、テナントの決済プロバイダとストアの認証情報、検索エンジンのパスワードがこうした認証情報にあたります。テナントの消去は、Valkeyの変換済みの画像とカウンターに届くよう、`publira server`と同じ`PUBLIRA_REDIS_URL`も受け取ります。
@@ -248,7 +248,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   -e PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true \
-  publira/publiractl:<tag> job purge-content-events
+  ghcr.io/publira/publiractl:<tag> job purge-content-events
 ```
 
 パージは開始時に保持期間を読み込むので、ドライランでは、現在保存されている保持期間で削除される件数がわかります。保持期間を大幅に短くしたときは、本番の実行の前にドライランをして、どれだけ削除されるかを確認してください。`purge-orphan-images`のドライランは、バケット内のオブジェクトのうち、どの画像の行からも参照されておらず、1日以上たったものを報告します。[復元](../2-deployments/9-backup-and-restore.md#ワーカーが取り戻す処理)したあとは、バックアップを取ったあとにアップロードされた画像もここに含まれます。
@@ -259,14 +259,14 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
 
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job project-episode-reads
+  ghcr.io/publira/publiractl:<tag> job project-episode-reads
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   -e PUBLIRA_CONTENT_STATS_DATE=2026-10-01 \
-  publira/publiractl:<tag> job aggregate-content-stats
+  ghcr.io/publira/publiractl:<tag> job aggregate-content-stats
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job aggregate-rankings
+  ghcr.io/publira/publiractl:<tag> job aggregate-rankings
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job build-recommend-features
+  ghcr.io/publira/publiractl:<tag> job build-recommend-features
 ```
 
 1回の実行で、すべてのテナントについてその日が作り直されます。ここでランキングとおすすめは、各テナントの昨日の分が作り直されます。公開サイトに表示されるのは最新のランキングだけで、昨日までの週間ランキングに直近7日間が含まれるからです。それより古いランキングを作り直す場合に限り、`PUBLIRA_CONTENT_RANKING_DATE`と`PUBLIRA_RECOMMEND_FEATURES_DATE`で日付を指定してください。

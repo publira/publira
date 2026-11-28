@@ -2,8 +2,8 @@
 title: 예약 작업과 유지 관리 작업
 description: publira worker가 자체 일정에 따라 하는 일, 중단 후 밀린 작업을 따라잡는 방식, 보내는 메일·푸시·캐시 재검증을 다시 시도하는 방식, 그리고 publiractl job으로 작업을 직접 실행할 때를 설명합니다.
 published: 2026-11-03
-updated: 2026-11-26
-source_updated: 2026-11-26
+updated: 2026-11-28
+source_updated: 2026-11-28
 ---
 
 설치 환경이 요청 없이 하는 일은 모두 `publira worker`가 합니다. 지금 시각으로 예약된 에피소드를 공개하고, 변경으로 오래된 캐시 페이지를 웹 앱에 알리고, 메일과 푸시 알림을 보내고, 통계와 랭킹을 다시 만들고, 보존 기간이 지난 것을 삭제합니다. 그 밖에 타이머로 실행해야 하는 것은 없으며, 호스트의 cron이나 Kubernetes CronJob도 필요 없습니다. 이 페이지에서는 무엇이 언제 실행되는지, 어떤 증상의 원인이 되는 작업이 무엇인지 알아내는 방법, 그리고 `publiractl job`으로 작업을 직접 실행하는 방법을 설명합니다.
@@ -213,7 +213,7 @@ dead 상태의 항목이 다시 큐에 들어갈 때까지의 영향은 `event_t
 
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job purge-content-events
+  ghcr.io/publira/publiractl:<tag> job purge-content-events
 ```
 
 [Docker Compose](../2-deployments/3-docker-compose.md) 설치 환경에서는 `docker compose run --rm publiractl job purge-content-events`에 이미 연결이 설정되어 있습니다. 이미지 삭제, 데이터 다운로드와 그 삭제, Google Play 환불 동기화, 결제 대사, 검색 인덱스 구축, 테넌트 소거는 사용하는 자격 증명이 설치 환경에 저장되어 있을 때(버킷의 액세스 키, 테넌트의 결제 제공자와 스토어 자격 증명, 검색 엔진의 비밀번호처럼) `PUBLIRA_SECRET_ENCRYPTION_KEYS`와 `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`도 필요합니다. 테넌트 소거는 Valkey의 변환된 이미지와 카운터에 닿을 수 있도록 `publira server`와 같은 `PUBLIRA_REDIS_URL`도 받습니다.
@@ -227,7 +227,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   -e PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true \
-  publira/publiractl:<tag> job purge-content-events
+  ghcr.io/publira/publiractl:<tag> job purge-content-events
 ```
 
 삭제 작업은 시작할 때 보존 기간을 읽으므로, 드라이 런은 지금 저장된 기간으로 삭제될 양을 셉니다. 훨씬 짧은 기간을 저장한 후에는 실제 실행 전에 드라이 런을 실행해 삭제 작업이 얼마나 많이 지울지 확인하세요. `purge-orphan-images`의 드라이 런은 버킷에 있는 오브젝트 중 어느 이미지 행도 가리키지 않으며 하루 이상 지난 것을 보고합니다. [복원](../2-deployments/9-backup-and-restore.md#워커가-따라잡는-것) 후에는 백업을 만든 후에 업로드된 이미지도 여기에 포함됩니다.
@@ -238,14 +238,14 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
 
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job project-episode-reads
+  ghcr.io/publira/publiractl:<tag> job project-episode-reads
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   -e PUBLIRA_CONTENT_STATS_DATE=2026-10-01 \
-  publira/publiractl:<tag> job aggregate-content-stats
+  ghcr.io/publira/publiractl:<tag> job aggregate-content-stats
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job aggregate-rankings
+  ghcr.io/publira/publiractl:<tag> job aggregate-rankings
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job build-recommend-features
+  ghcr.io/publira/publiractl:<tag> job build-recommend-features
 ```
 
 한 번 실행하면 모든 테넌트의 그 날짜를 다시 만듭니다. 사이트는 가장 최근 순위표만 표시하고 어제 끝난 주간 순위표가 최근 7일을 포함하므로, 랭킹과 추천은 여기서 모든 테넌트의 어제 날짜로 다시 만들어집니다. 더 오래된 순위표를 다시 만들 때만 `PUBLIRA_CONTENT_RANKING_DATE`와 `PUBLIRA_RECOMMEND_FEATURES_DATE`로 날짜를 지정하세요.
