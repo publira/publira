@@ -19,6 +19,7 @@ import { getLocale } from "#lib/locale";
 import { getPlatformDisplayTimeZone } from "#lib/platform-settings";
 
 import { SetupStatusSection } from "./_components/setup-status";
+import { buildRecentEventHref } from "./_lib/recent-event-href";
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const t = await getMessages();
@@ -59,25 +60,6 @@ const RecentEventMessage = ({
 
     default: {
       return event.action;
-    }
-  }
-};
-
-const buildTargetHref = (
-  event: PlatformDashboardRecentEvent
-): string | null => {
-  switch (event.eventType) {
-    case "tenant_created": {
-      return event.target ? `/tenants/${event.target}` : null;
-    }
-
-    case "operator_role_granted":
-    case "end_user_created": {
-      return event.target ? `/users/${event.target}` : null;
-    }
-
-    default: {
-      return null;
     }
   }
 };
@@ -228,7 +210,7 @@ const DashboardContent = async () => {
               </Table.EmptyRow>
             ) : (
               summary.recentEvents.map((event) => {
-                const href = buildTargetHref(event);
+                const href = buildRecentEventHref(event);
 
                 return (
                   <Table.Row
