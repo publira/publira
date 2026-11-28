@@ -148,6 +148,74 @@ const eyeCatch = (url: string) => [
   },
 ];
 
+/**
+ * Thirteen series published a day apart, where only the oldest has released
+ * an episode lately: the list is answered in the order asked for, so a read
+ * of the newest series would leave that episode out of both shelves.
+ */
+const longRunningCatalogue = () => {
+  const series = Array.from({ length: 13 }, (_, index) => {
+    const day = String(index + 1).padStart(2, "0");
+    const publicId = `SERIES_${day}`;
+
+    return {
+      item: {
+        publicId,
+        credits: [],
+        labelName: "",
+        synopsis: "",
+        title: `Series ${day}`,
+      },
+      latestEpisodeAt:
+        index === 0 ? "2026-04-01T00:00:00Z" : `2026-03-${day}T12:00:00Z`,
+      publishedAt: `2026-03-${day}T00:00:00Z`,
+    };
+  });
+
+  mockListPublishedSeries.mockImplementation(
+    (
+      _tenantId: string,
+      { limit, order = "newest" }: { limit: number; order?: string }
+    ) => {
+      const key = order === "updated" ? "latestEpisodeAt" : "publishedAt";
+
+      return Promise.resolve({
+        ok: true,
+        value: {
+          nextToken: "",
+          previousToken: "",
+          series: series
+            .toSorted((left, right) => right[key].localeCompare(left[key]))
+            .slice(0, limit)
+            .map(({ item }) => item),
+        },
+      });
+    }
+  );
+  mockGetSeriesDetail.mockImplementation(
+    (_tenantId: string, seriesId: string) => {
+      const entry = series.find(({ item }) => item.publicId === seriesId);
+
+      return Promise.resolve({
+        ok: true,
+        value: entry && {
+          episodes: [
+            {
+              orderIndex: 1,
+              price: 0,
+              publicId: `EP_${seriesId}`,
+              publishedAt: entry.latestEpisodeAt,
+              status: "published",
+              title: "Episode 1",
+            },
+          ],
+          series: { ...entry.item, readingPeriodHours: 0 },
+        },
+      });
+    }
+  );
+};
+
 describe("catalog-top section loaders", () => {
   beforeEach(() => {
     mockGetSeriesDetail.mockReset();
@@ -601,7 +669,6 @@ describe("catalog-top section loaders", () => {
       detailFetchLimit: 4,
       locale: "en",
       maxNewEpisodes: 4,
-      seriesLimit: 10,
     });
 
     expect(result.ok && result.value.map((item) => item.episodeId)).toEqual([
@@ -644,7 +711,6 @@ describe("catalog-top section loaders", () => {
       detailFetchLimit: 4,
       locale: "en",
       maxNewEpisodes: 4,
-      seriesLimit: 10,
     });
 
     expect(
@@ -702,7 +768,6 @@ describe("catalog-top section loaders", () => {
       detailFetchLimit: 4,
       locale: "en",
       maxNewEpisodes: 4,
-      seriesLimit: 10,
     });
 
     expect(
@@ -737,12 +802,45 @@ describe("catalog-top section loaders", () => {
       detailFetchLimit: 4,
       locale: "en",
       maxUpdatedSeries: 4,
-      seriesLimit: 10,
     });
 
     expect(result.ok && result.value.map((item) => item.seriesId)).toEqual([
       "SERIES_2",
       "SERIES_1",
+    ]);
+  });
+
+  it("getCatalogTopNewEpisodes finds a new episode of the oldest of thirteen series", async () => {
+    longRunningCatalogue();
+
+    const result = await getCatalogTopNewEpisodes("TENANT_001", {
+      locale: "en",
+    });
+
+    expect(result.ok && result.value.map((item) => item.episodeId)).toEqual([
+      "EP_SERIES_01",
+      "EP_SERIES_13",
+      "EP_SERIES_12",
+      "EP_SERIES_11",
+      "EP_SERIES_10",
+      "EP_SERIES_09",
+    ]);
+  });
+
+  it("getCatalogTopUpdatedSeries finds the oldest of thirteen series when it updates", async () => {
+    longRunningCatalogue();
+
+    const result = await getCatalogTopUpdatedSeries("TENANT_001", {
+      locale: "en",
+    });
+
+    expect(result.ok && result.value.map((item) => item.seriesId)).toEqual([
+      "SERIES_01",
+      "SERIES_13",
+      "SERIES_12",
+      "SERIES_11",
+      "SERIES_10",
+      "SERIES_09",
     ]);
   });
 
@@ -928,7 +1026,6 @@ describe("catalog-top section loaders", () => {
       locale: "en",
       maxNewEpisodes: 10,
       maxUpdatedSeries: 10,
-      seriesLimit: 10,
     } as const;
 
     await expect(

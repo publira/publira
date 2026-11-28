@@ -103,7 +103,6 @@ interface CatalogTopDataOptions {
   maxRecommended?: number;
   maxScheduledSeries?: number;
   maxUpdatedSeries?: number;
-  seriesLimit?: number;
 }
 
 /**
@@ -160,6 +159,17 @@ interface SeriesDetailRow {
 }
 
 /**
+ * The series that released an episode most recently, each with its episodes.
+ *
+ * The list is read in the order of each series' latest episode, so the head of
+ * it holds the newest episodes of the whole catalogue: every series with an
+ * episode newer than one of the `n` newest has to sort ahead of that
+ * episode's series, which puts all `n` within the first `n` series. The
+ * shelves read twice as many series as they show by default, because a series
+ * with no episode published yet sorts by its own publication instead, and a
+ * series can be unpublished between the list read and its detail read; either
+ * takes a place in the list without adding a row.
+ *
  * The reads this builds on answer with results instead of throwing, so
  * a failure is carried through here as a result too — a section that could not
  * be built must say so, not quietly render the rows that happened to load.
@@ -171,11 +181,11 @@ interface SeriesDetailRow {
 const loadSeriesDetailRows = async (
   tenantId: string,
   locale: Locale,
-  seriesLimit: number,
   detailFetchLimit: number
 ): Promise<CachedReadResult<SeriesDetailRow[]>> => {
   const seriesPage = await listPublishedSeries(tenantId, {
-    limit: seriesLimit,
+    limit: detailFetchLimit,
+    order: "updated",
     locale,
   });
 
@@ -183,10 +193,8 @@ const loadSeriesDetailRows = async (
     return cachedReadFailure(seriesPage.message);
   }
 
-  const seriesForDetails = seriesPage.value.series.slice(0, detailFetchLimit);
-
   const seriesDetails = await Promise.all(
-    seriesForDetails.map(async (seriesItem) => ({
+    seriesPage.value.series.map(async (seriesItem) => ({
       detail: await getSeriesDetail(tenantId, seriesItem.publicId, locale),
       seriesItem,
     }))
@@ -225,10 +233,9 @@ const loadSeriesDetailRows = async (
 /**
  * The recommendation slot: the first page of the recommendation order.
  *
- * `seriesLimit` is not part of this read. The server orders the whole
- * catalogue, so the slot asks for one page of it rather than slicing a list
- * fetched here, and a screen that wants more keeps paging with the tokens
- * {@link listRecommendedSeries} returns.
+ * The server orders the whole catalogue, so the slot asks for one page of it
+ * rather than slicing a list fetched here, and a screen that wants more keeps
+ * paging with the tokens {@link listRecommendedSeries} returns.
  */
 export const getCatalogTopRecommendedSeries = async (
   tenantId: string,
@@ -523,12 +530,7 @@ export const getCatalogTopFeaturedWork = async (
 
 export const getCatalogTopNewEpisodes = async (
   tenantId: string,
-  {
-    detailFetchLimit = 12,
-    locale,
-    maxNewEpisodes = 6,
-    seriesLimit = 24,
-  }: CatalogTopDataOptions
+  { detailFetchLimit = 12, locale, maxNewEpisodes = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<CatalogTopEpisodeItem[]>> => {
   "use cache";
 
@@ -539,7 +541,6 @@ export const getCatalogTopNewEpisodes = async (
   const detailRows = await loadSeriesDetailRows(
     tenantId,
     locale,
-    seriesLimit,
     detailFetchLimit
   );
 
@@ -584,12 +585,7 @@ export const getCatalogTopNewEpisodes = async (
 
 export const getCatalogTopUpdatedSeries = async (
   tenantId: string,
-  {
-    detailFetchLimit = 12,
-    locale,
-    maxUpdatedSeries = 6,
-    seriesLimit = 24,
-  }: CatalogTopDataOptions
+  { detailFetchLimit = 12, locale, maxUpdatedSeries = 6 }: CatalogTopDataOptions
 ): Promise<CachedReadResult<CatalogTopUpdatedSeriesItem[]>> => {
   "use cache";
 
@@ -600,7 +596,6 @@ export const getCatalogTopUpdatedSeries = async (
   const detailRows = await loadSeriesDetailRows(
     tenantId,
     locale,
-    seriesLimit,
     detailFetchLimit
   );
 
