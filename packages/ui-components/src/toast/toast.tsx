@@ -1,6 +1,7 @@
 "use client";
 
 import { Toast as BaseToast } from "@base-ui/react/toast";
+import { CloseIcon } from "@publira/icons/close-icon";
 import { cn } from "@publira/utils";
 import type { JSX, ReactNode } from "react";
 
@@ -64,11 +65,19 @@ export const ToastDescription = ({
   <BaseToast.Description {...props} className={cn("text-xs", className)} />
 );
 
+interface ToastCloseProps extends BaseToast.Close.Props {
+  /**
+   * Names the button. Its default content is an icon, which a screen reader
+   * does not announce, and the copy is the app's, in the reader's language.
+   */
+  "aria-label": string;
+}
+
 export const ToastClose = ({
   className,
-  children = "\u00D7",
+  children,
   ...props
-}: BaseToast.Close.Props): JSX.Element => (
+}: ToastCloseProps): JSX.Element => (
   <BaseToast.Close
     {...props}
     className={cn(
@@ -76,18 +85,27 @@ export const ToastClose = ({
       className
     )}
   >
-    {children}
+    {children ?? <CloseIcon className="size-4" />}
   </BaseToast.Close>
 );
 
-const ToastStack = () => {
+/**
+ * The toasts the manager holds, in the bottom-right corner. Its children are
+ * drawn in every toast beside the title and the description: the close
+ * control, which the app writes so that it can name it.
+ */
+export const ToastStack = ({
+  children,
+}: {
+  children: ReactNode;
+}): JSX.Element => {
   const { toasts } = useToastManager();
 
   return (
     <ToastViewport>
       {toasts.map((toast) => (
         <ToastRoot key={toast.id} toast={toast}>
-          <ToastClose />
+          {children}
           <ToastContent>
             {toast.title ? <ToastTitle>{toast.title}</ToastTitle> : null}
             {toast.description ? (
@@ -113,6 +131,5 @@ export const ToastProvider = ({
 }: ToastProviderProps): JSX.Element => (
   <BaseToast.Provider limit={limit} timeout={timeout}>
     {children}
-    <ToastStack />
   </BaseToast.Provider>
 );

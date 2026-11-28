@@ -59,6 +59,9 @@ const renderButton = (bounds: RefundAmountBounds | null = null) =>
           tenantId="TENANT001"
         />
         <Toast.Viewport />
+        <Toast.Stack>
+          <Toast.Close aria-label="Close" />
+        </Toast.Stack>
       </Toast.Provider>
     </AdminLocaleTestProvider>
   );

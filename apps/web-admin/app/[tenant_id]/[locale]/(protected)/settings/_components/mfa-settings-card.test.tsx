@@ -215,7 +215,12 @@ const Card = ({ status }: { status: AdminMfaStatus }) => (
 /** The ceremony reads the client catalog, and a settled row raises a toast. */
 const Providers = ({ children }: { children: ReactNode }) => (
   <AdminLocaleTestProvider locale="en">
-    <Toast.Provider>{children}</Toast.Provider>
+    <Toast.Provider>
+      {children}
+      <Toast.Stack>
+        <Toast.Close aria-label="Close" />
+      </Toast.Stack>
+    </Toast.Provider>
   </AdminLocaleTestProvider>
 );
 

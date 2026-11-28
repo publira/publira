@@ -1221,6 +1221,7 @@
         "unset": "无角色"
       },
       "cancel": "取消",
+      "close": "关闭",
       "show_password": "显示密码",
       "sortable": {
         "instructions": "按空格键或Enter键拿起一行。用方向键移动，再按一次空格键或Enter键放到新位置，按Esc键取消。",

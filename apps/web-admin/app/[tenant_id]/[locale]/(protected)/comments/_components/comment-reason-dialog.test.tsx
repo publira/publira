@@ -81,6 +81,9 @@ const renderRows = (secondCommentId = "COMMENT002") =>
         </li>
       </ul>
       <Toast.Viewport />
+      <Toast.Stack>
+        <Toast.Close aria-label="Close" />
+      </Toast.Stack>
     </Toast.Provider>
   );
 

@@ -58,7 +58,7 @@ The props types, hooks, and helpers of a tree are in the same namespace (`Field.
 | [`section-error-fallback`](./src/section-error-fallback) | `SectionErrorCatch` | `Root`, `Retry`, `Digest` | a section-level error boundary |
 | [`table`](./src/table) | `Table` | `Root`, `Header`, `Body`, `Row`, `Head`, `Cell`, `EmptyRow`, `LoadingRow`, `Skeleton` | the table primitives |
 | [`tabs`](./src/tabs) | `Tabs` | `Root`, `List`, `Tab`, `Panel` | one panel at a time, with the row of tabs that switches them |
-| [`toast`](./src/toast) | `Toast` | `Provider`, `useManager`, `Viewport`, `Root`, `Content`, `Title`, `Description`, `Close` | the toasts a screen raises after an action |
+| [`toast`](./src/toast) | `Toast` | `Provider`, `Stack`, `useManager`, `Viewport`, `Root`, `Content`, `Title`, `Description`, `Close` | the toasts a screen raises after an action |
 
 ### Single elements
 
