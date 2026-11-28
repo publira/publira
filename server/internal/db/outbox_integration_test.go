@@ -668,10 +668,11 @@ func TestOutboxEventsCascadeOnTenantDelete(t *testing.T) {
 }
 
 // A worker that dies mid-attempt records no failure, so the reclaim is the
-// only thing that can end the row's life. It charges the retry budget for the
-// event types whose payload holds a raw token, and the reclaim that exhausts
-// the budget strips the token; every other type is re-queued untouched.
-func TestRecoverStaleProcessingOutboxEventsBoundsAuthMailToken(t *testing.T) {
+// only thing that can end the row's life. It charges every event type's retry
+// budget, its own where it has one, and the reclaim that exhausts the budget
+// marks the row dead; for the event types whose payload holds a raw token it
+// strips the token too, and every other type keeps its payload.
+func TestRecoverStaleProcessingOutboxEventsChargesTheRetryBudget(t *testing.T) {
 	pg := testutil.StartPostgres(t)
 	pg.Reset(t)
 
@@ -708,15 +709,23 @@ func TestRecoverStaleProcessingOutboxEventsBoundsAuthMailToken(t *testing.T) {
 	}
 
 	const (
-		maxAttempts   = 3
-		authToken     = "raw-stale-auth-token"
-		nonAuthToken  = "keep-stale-token"
-		reclaimReason = "reclaimed from processing after a stalled worker"
+		maxAttempts    = 3
+		ownBudget      = 2
+		ownBudgetType  = "outbox_test_own_budget"
+		authToken      = "raw-stale-auth-token"
+		nonAuthToken   = "keep-stale-token"
+		ownBudgetToken = "keep-own-budget-token"
+		reclaimReason  = "reclaimed from processing after a stalled worker"
 	)
 	authEvent := insert(outboxEventType, "stale:auth", authToken)
 	nonAuthEvent := insert("outbox_test", "stale:non-auth", nonAuthToken)
+	ownBudgetEvent := insert(ownBudgetType, "stale:own-budget", ownBudgetToken)
+	budgets, err := json.Marshal(map[string]int{ownBudgetType: ownBudget})
+	if err != nil {
+		t.Fatalf("marshal budgets: %v", err)
+	}
 
-	var lastAuth dbmodels.OutboxEvent
+	last := map[uuid.UUID]dbmodels.OutboxEvent{}
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if _, err := queries.ClaimPendingOutboxEvents(ctx, 10); err != nil {
 			t.Fatalf("attempt %d claim: %v", attempt, err)
@@ -726,54 +735,62 @@ func TestRecoverStaleProcessingOutboxEventsBoundsAuthMailToken(t *testing.T) {
 		if _, err := pg.DB.ExecContext(ctx, ageProcessingOutboxClaimsSQL); err != nil {
 			t.Fatalf("attempt %d age claims: %v", attempt, err)
 		}
-		staleBefore := time.Now().UTC()
 
-		recovered, err := queries.RecoverStaleProcessingOutboxEvents(ctx, staleBefore)
+		recovered, err := queries.RecoverStaleProcessingOutboxEvents(ctx, dbmodels.RecoverStaleProcessingOutboxEventsParams{
+			Budgets:     budgets,
+			MaxAttempts: maxAttempts,
+			LastError:   sql.NullString{String: reclaimReason, Valid: true},
+			StaleBefore: time.Now().UTC(),
+		})
 		if err != nil {
 			t.Fatalf("attempt %d RecoverStaleProcessingOutboxEvents: %v", attempt, err)
 		}
-		if len(recovered) != 1 || recovered[0].ID != nonAuthEvent.ID {
-			t.Fatalf("attempt %d recovered %d rows, want only the non-auth event", attempt, len(recovered))
+		// The event with the smaller budget of its own died on the reclaim
+		// before this one, so it is no longer claimed.
+		wantRecovered := 3
+		if attempt > ownBudget {
+			wantRecovered = 2
 		}
-		if recovered[0].Status != "pending" {
-			t.Fatalf("attempt %d non-auth status = %q, want pending", attempt, recovered[0].Status)
+		if len(recovered) != wantRecovered {
+			t.Fatalf("attempt %d recovered %d rows, want %d", attempt, len(recovered), wantRecovered)
 		}
-		if recovered[0].Attempts != 0 {
-			t.Fatalf("attempt %d non-auth attempts = %d, want 0", attempt, recovered[0].Attempts)
+		for _, event := range recovered {
+			if event.Attempts != int32(attempt) {
+				t.Fatalf("attempt %d %s attempts = %d, want %d", attempt, event.EventType, event.Attempts, attempt)
+			}
+			if event.LastError.String != reclaimReason {
+				t.Fatalf("attempt %d %s last_error = %q, want %q", attempt, event.EventType, event.LastError.String, reclaimReason)
+			}
+			last[event.ID] = event
 		}
-		assertOutboxPayloadKeepsToken(t, recovered[0].Payload, nonAuthToken, tenantID.String())
 
-		authRecovered, err := queries.RecoverStaleProcessingAuthMailOutboxEvents(ctx, dbmodels.RecoverStaleProcessingAuthMailOutboxEventsParams{
-			MaxAttempts: maxAttempts,
-			LastError:   sql.NullString{String: reclaimReason, Valid: true},
-			StaleBefore: staleBefore,
-		})
-		if err != nil {
-			t.Fatalf("attempt %d RecoverStaleProcessingAuthMailOutboxEvents: %v", attempt, err)
+		own := last[ownBudgetEvent.ID]
+		switch {
+		case attempt < ownBudget && own.Status != "pending":
+			t.Fatalf("attempt %d own-budget status = %q, want pending", attempt, own.Status)
+		case attempt >= ownBudget && own.Status != "dead":
+			t.Fatalf("attempt %d own-budget status = %q, want dead", attempt, own.Status)
 		}
-		if len(authRecovered) != 1 || authRecovered[0].ID != authEvent.ID {
-			t.Fatalf("attempt %d auth recovered %d rows, want only the auth-mail event", attempt, len(authRecovered))
-		}
-		lastAuth = authRecovered[0]
-		if lastAuth.Attempts != int32(attempt) {
-			t.Fatalf("attempt %d auth attempts = %d, want %d", attempt, lastAuth.Attempts, attempt)
-		}
-		if lastAuth.LastError.String != reclaimReason {
-			t.Fatalf("attempt %d auth last_error = %q, want %q", attempt, lastAuth.LastError.String, reclaimReason)
+		assertOutboxPayloadKeepsToken(t, own.Payload, ownBudgetToken, tenantID.String())
+
+		for _, id := range []uuid.UUID{authEvent.ID, nonAuthEvent.ID} {
+			if attempt < maxAttempts && last[id].Status != "pending" {
+				t.Fatalf("attempt %d %s status = %q, want pending", attempt, last[id].EventType, last[id].Status)
+			}
 		}
 		if attempt < maxAttempts {
-			if lastAuth.Status != "pending" {
-				t.Fatalf("attempt %d auth status = %q, want pending", attempt, lastAuth.Status)
-			}
 			// The event is still deliverable, so the link's secret has to stay.
-			assertOutboxPayloadKeepsToken(t, lastAuth.Payload, authToken, tenantID.String())
+			assertOutboxPayloadKeepsToken(t, last[authEvent.ID].Payload, authToken, tenantID.String())
 		}
+		assertOutboxPayloadKeepsToken(t, last[nonAuthEvent.ID].Payload, nonAuthToken, tenantID.String())
 	}
 
-	if lastAuth.Status != "dead" {
-		t.Fatalf("auth status after %d reclaims = %q, want dead", maxAttempts, lastAuth.Status)
+	for _, id := range []uuid.UUID{authEvent.ID, nonAuthEvent.ID} {
+		if last[id].Status != "dead" {
+			t.Fatalf("%s status after %d reclaims = %q, want dead", last[id].EventType, maxAttempts, last[id].Status)
+		}
 	}
-	assertOutboxPayloadDroppedToken(t, lastAuth.Payload, authToken, tenantID.String(), invitationID)
+	assertOutboxPayloadDroppedToken(t, last[authEvent.ID].Payload, authToken, tenantID.String(), invitationID)
 
 	stored, err := queries.GetOutboxEvent(ctx, authEvent.ID)
 	if err != nil {
