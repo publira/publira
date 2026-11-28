@@ -1,5 +1,6 @@
 "use client";
 
+import { Field as BaseField } from "@base-ui/react/field";
 import type { JSX, ReactNode, SubmitEvent } from "react";
 import {
   createContext,
@@ -17,6 +18,7 @@ import { requestFormReset, useFormStatus } from "react-dom";
 
 import { Button } from "../button/button";
 import type { ButtonProps } from "../button/button";
+import { useFieldErrorRegistration } from "../field/field";
 import { Fieldset } from "../fieldset/fieldset";
 import type { FieldsetProps } from "../fieldset/fieldset";
 import { FormMessage } from "../form-message";
@@ -165,20 +167,42 @@ export interface ActionFormFieldErrorProps {
 /**
  * What a refused submission says about one field, placed next to that field.
  * Renders nothing until the Action returns `{ ok: false, fieldErrors }` with an
- * entry under `name`.
+ * entry under `name`. Inside a `Field`, the message is the field's error: its
+ * control is marked invalid and described by the message while it is shown.
  */
 export const ActionFormFieldError = ({
   className,
   name,
 }: ActionFormFieldErrorProps): JSX.Element | null => {
   const state = useActionFormState();
+  const registerError = useFieldErrorRegistration();
   const error = state && !state.ok ? state.fieldErrors?.[name] : undefined;
 
-  return error ? (
-    <FormMessage className={className} variant="destructive">
+  // Registered from the ref, so the field is invalid exactly while the
+  // message is in the document.
+  const errorRef = useCallback(() => registerError?.(), [registerError]);
+
+  if (!error) {
+    return null;
+  }
+
+  if (!registerError) {
+    return (
+      <FormMessage className={className} variant="destructive">
+        {error}
+      </FormMessage>
+    );
+  }
+
+  return (
+    <BaseField.Error
+      match
+      ref={errorRef}
+      render={<FormMessage className={className} variant="destructive" />}
+    >
       {error}
-    </FormMessage>
-  ) : null;
+    </BaseField.Error>
+  );
 };
 
 /** The Action of the control a slot sits in, `null` for the form's own. */

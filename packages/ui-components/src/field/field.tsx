@@ -26,10 +26,29 @@ const FieldPopupTriggerContext = createContext<FieldPopupTriggerContextValue>({
   hasPopupTrigger: false,
 });
 
+/**
+ * Marks the surrounding `Field` invalid until the returned function is called,
+ * for an error message shown from outside the field's own validation, such as
+ * one a Server Action returned. `null` outside a `Field`.
+ */
+type FieldErrorRegistration = () => () => void;
+
+const FieldErrorRegistrationContext =
+  createContext<FieldErrorRegistration | null>(null);
+
+/** How an error message inside a `Field` marks it invalid while it is shown. */
+export const useFieldErrorRegistration = (): FieldErrorRegistration | null =>
+  use(FieldErrorRegistrationContext);
+
 export type FieldProps = BaseField.Root.Props;
 
-export const Field = ({ className, ...props }: FieldProps): JSX.Element => {
+export const Field = ({
+  className,
+  invalid,
+  ...props
+}: FieldProps): JSX.Element => {
   const [hasPopupTrigger, setHasPopupTrigger] = useState(false);
+  const [errorCount, setErrorCount] = useState(0);
 
   const registerPopupTrigger = useCallback(() => {
     setHasPopupTrigger(true);
@@ -42,12 +61,21 @@ export const Field = ({ className, ...props }: FieldProps): JSX.Element => {
     [hasPopupTrigger, registerPopupTrigger]
   );
 
+  const registerError = useCallback(() => {
+    setErrorCount((count) => count + 1);
+
+    return () => setErrorCount((count) => count - 1);
+  }, []);
+
   return (
     <FieldPopupTriggerContext value={popupTrigger}>
-      <BaseField.Root
-        {...props}
-        className={cn("grid content-start gap-2", className)}
-      />
+      <FieldErrorRegistrationContext value={registerError}>
+        <BaseField.Root
+          {...props}
+          className={cn("grid content-start gap-2", className)}
+          invalid={invalid === true || errorCount > 0}
+        />
+      </FieldErrorRegistrationContext>
     </FieldPopupTriggerContext>
   );
 };
