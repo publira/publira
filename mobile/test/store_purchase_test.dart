@@ -234,6 +234,42 @@ void main() {
       expect(purchases.confirmed, ['jws-2000000000000001']);
     });
 
+    testWidgets('sends on sign-in a transaction whose retry was waiting', (
+      tester,
+    ) async {
+      purchases.confirmFailure = const PurchaseFailure(
+        PurchaseFailureKind.network,
+      );
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+      await tester.tap(buy);
+      await pumpUntilFound(tester, confirming);
+
+      // Checked again before the wait is over, with a session the API no
+      // longer takes.
+      purchases.confirmFailure = const PurchaseFailure(
+        PurchaseFailureKind.sessionExpired,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('episode-purchase-check-again')),
+      );
+      await pumpUntilTrue(tester, () => purchases.confirmAttempts.length == 2);
+
+      purchases.confirmFailure = null;
+      await auth.signOut();
+      await tester.pump();
+      await auth.signIn(email: 'member@example.com', password: 'memberpass');
+      await pumpUntilFound(tester, pages);
+
+      expect(purchases.confirmAttempts, hasLength(3));
+      expect(purchases.confirmed, ['jws-2000000000000001']);
+      expect(platform.finished, hasLength(1));
+      // The read the expired check started still polls for the purchase.
+      for (final delay in checkoutConfirmationDelays) {
+        await tester.pump(delay);
+      }
+    });
+
     testWidgets('sends a transaction refused for one reader again only for '
         'another', (tester) async {
       const anotherReader = AuthSession(

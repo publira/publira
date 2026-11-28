@@ -405,7 +405,9 @@ class StorePurchaser {
           _refused[transaction] = reader;
           _fail(purchase, failure);
         case PurchaseFailureKind.sessionExpired:
-          // Signing in sends it again.
+          // Signing in sends it again, with no wait left from an earlier
+          // failure.
+          _retries.remove(transaction);
           _fail(purchase, failure);
         case PurchaseFailureKind.notSettled || PurchaseFailureKind.network:
           _spaceOut(transaction);
