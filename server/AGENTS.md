@@ -200,6 +200,21 @@ The other direction is the worker's own. A worker that meets an event type it ha
 
 No lint covers this: nothing records which release last wrote an event type.
 
+## An outbox handler's failure says who can clear it
+
+What a handler returns decides what the worker does with the event, and the choice is made by asking who or what can make the next attempt succeed:
+
+| Return | When | What the worker does |
+| --- | --- | --- |
+| `nil` | The work is done, or the install has switched it off for good, so nothing on the other end would ever take it: revalidation without `PUBLIRA_REVALIDATE_TOKEN`, the search index on the `sql` backend | Marks the event done |
+| `Permanent(err)` | Nothing will ever make it succeed: a payload that does not decode, a row the event is about that is gone, an answer from the other end that refuses it for good, a deadline that has passed | Marks the event dead at once |
+| `Blocked(err)` | It cannot go on until an operator or a tenant changes something, and the event stays owed until they do: a dependency the worker was started without, such as its database, the SMTP client, or a store's or a payment provider's client; a tenant's settings or credentials that are missing, switched off, or do not decrypt | Hands it back after `BlockedWait`, charging no attempt, for as long as that takes |
+| a plain error | The next attempt might succeed on its own: a database that did not answer, a network failure, a timeout, a `5xx` from the other end | Spends an attempt, retries with backoff, and marks it dead once the budget is spent |
+
+A tenant's setting with a deadline behind it is `Blocked` only while waiting can still pay off: a Google Play acknowledgement waits for the tenant's key until Google Play's three days are out and is `Permanent` after, and an Apple authorization code, which expires within minutes, is `Permanent` as soon as the tenant's key is found missing. A missing dependency or setting is never a plain error: the budget is spent within hours, an outage nobody has noticed yet outlasts that, and the event is dead by the time the operator or the tenant has put it right.
+
+`TestWorkerWithoutItsDependenciesBlocksEveryEvent` runs every registered handler on a worker built with none of its dependencies, and fails on one that answers anything but `Blocked`, or anything but done for the work an install switches off. The rest of the choice is a review judgement.
+
 ## Verification after Go changes
 
 Run verification from the **repository root** unless noted. Prefer Task targets so commands stay consistent with CI.

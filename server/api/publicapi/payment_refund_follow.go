@@ -50,7 +50,7 @@ func NewPaymentRefundFollowHandler(cfg PaymentFollowConfig) outbox.Handler {
 	}
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil || cfg.Providers == nil {
-			return errors.New("payment refund follow handler is not configured")
+			return outbox.Blocked(errors.New("payment refund follow handler is not configured"))
 		}
 		tenantID, payload, err := outbox.DecodePaymentRefundFollow(event)
 		if err != nil {

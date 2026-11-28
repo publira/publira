@@ -511,22 +511,26 @@ func resolvePlatformDelivery(
 
 // resolvePlatformSMTPSettings is the platform-only half of resolveSMTPSettings:
 // mail that belongs to no tenant can never be sent through a tenant override.
+// It classifies its failures the same way.
 func resolvePlatformSMTPSettings(
 	ctx context.Context,
 	queries *dbmodels.Queries,
 	encryptor emailsettings.SecretManager,
 ) (emailsettings.SMTPSettings, error) {
 	config, err := queries.GetPlatformSMTPConfig(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return emailsettings.SMTPSettings{}, Blocked(errors.New("the platform's smtp settings are not saved"))
+	}
 	if err != nil {
 		return emailsettings.SMTPSettings{}, err
 	}
 	password, err := emailsettings.DecryptPassword(config.PasswordEncrypted, encryptor)
 	if err != nil {
-		return emailsettings.SMTPSettings{}, err
+		return emailsettings.SMTPSettings{}, Blocked(fmt.Errorf("open the platform's smtp password: %w", err))
 	}
 	settings := platformSMTPSettings(config, password)
 	if err := emailsettings.Validate(settings, true); err != nil {
-		return emailsettings.SMTPSettings{}, err
+		return emailsettings.SMTPSettings{}, Blocked(fmt.Errorf("the platform's smtp settings: %w", err))
 	}
 	return settings, nil
 }

@@ -32,15 +32,17 @@ type CacheInvalidator interface {
 
 // NewNextCacheRevalidationHandler drops the tags an event names.
 //
-// A nil invalidator is reported per event, and as a plain error rather than a
-// [Permanent] one: a worker started without PUBLIRA_REVALIDATE_TOKEN cannot
-// send anything, and an operator restarting it with one makes every pending
-// drop deliverable. Pass the interface as nil rather than a nil
-// *revalidate.Client, which would be a non-nil interface that silently drops.
+// A nil invalidator completes every event without sending it. A worker
+// started without PUBLIRA_REVALIDATE_TOKEN belongs to an install with
+// revalidation turned off, whose web apps refuse every drop and keep their
+// entries until they expire, so there is nobody to send one to. The events
+// arrive anyway, because revalidate.RecordDeferred cannot tell whether
+// revalidation is on and records either way; left waiting, they would pile up
+// for as long as the install runs.
 func NewNextCacheRevalidationHandler(invalidator CacheInvalidator) Handler {
 	if invalidator == nil {
 		return func(context.Context, dbmodels.OutboxEvent) error {
-			return errors.New("next cache revalidation handler has no revalidate client configured")
+			return nil
 		}
 	}
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {

@@ -128,7 +128,7 @@ func QueueAppleSignInTokenRevocationsForUser(ctx context.Context, queries dbmode
 func NewAppleSignInCodeExchangeHandler(cfg AppleSignInHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil || cfg.Tokens == nil {
-			return errors.New("apple sign-in handler is not configured")
+			return Blocked(errors.New("apple sign-in handler is not configured"))
 		}
 		var payload AppleSignInCodeExchangePayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
@@ -203,7 +203,7 @@ func NewAppleSignInCodeExchangeHandler(cfg AppleSignInHandlerConfig) Handler {
 func NewAppleSignInTokenRevokeHandler(cfg AppleSignInHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil || cfg.Tokens == nil {
-			return errors.New("apple sign-in handler is not configured")
+			return Blocked(errors.New("apple sign-in handler is not configured"))
 		}
 		var payload AppleSignInTokenRevokePayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {

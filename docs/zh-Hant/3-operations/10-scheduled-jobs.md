@@ -163,7 +163,7 @@ GROUP BY queue, kind;
 
 - **郵件**在SMTP伺服器（或啟用後的`email-renderer`）拒絕或無法連線時失敗，如[電子郵件](./6-email.md#安裝實例寄送的郵件)所述。
 - 傳送到手機的**推播通知**，在租戶尚未儲存Firebase認證資訊時會被跳過而非失敗，因此儲存之後也不會重試。瀏覽器通知只有在開啟Web Push後才會傳送，如[Web Push](./8-web-push.md)所述。
-- **快取重新驗證**在Web應用程式停擺時失敗。沒有`PUBLIRA_REVALIDATE_TOKEN`的worker，每次嘗試都會讓`publira server`或`publiractl`記錄的每個捨棄失敗；而它自己的工作所產生的捨棄則完全不會記錄，如[免費閱讀期間](#免費閱讀期間與其他快取頁面)所述。
+- **快取重新驗證**在Web應用程式停擺時失敗。沒有`PUBLIRA_REVALIDATE_TOKEN`的worker已關閉快取重新驗證，而沒有權杖的Web應用程式也不接受任何捨棄，因此它會將`publira server`或`publiractl`記錄的每個捨棄直接標記為完成而不傳送；即使以權杖重新啟動worker，也無法找回那些捨棄。而它自己的工作所產生的捨棄則完全不會記錄，如[免費閱讀期間](#免費閱讀期間與其他快取頁面)所述。
 - **Webhook傳送**（`event_type`為`webhook_delivery`）會將一個事件傳送到租戶管理員儲存的端點，如[API金鑰與Webhook](../4-console/10-api-keys-and-webhooks.md#重試與重新傳送)所述。它在該端點停擺或以`2xx`以外的任何狀態回應時失敗；當端點以`408`與`429`以外的其他`4xx`回應，或其主機解析為私人位址、回送位址、鏈路本機位址或共用位址時，會立即被放棄。端點是租戶自己執行的伺服器，因此失敗的傳送應由租戶而非安裝實例修正。若端點的簽章密鑰無法以`PUBLIRA_SECRET_ENCRYPTION_KEYS`中的任何金鑰開啟，該傳送會等待，且不消耗嘗試次數，直到金鑰放回或簽章密鑰重新產生為止。
 - 在應用程式中進行的**Google Play購買或訂閱**，會透過Google Play Developer API確認，而三天內未被確認的購買會由Google Play退款。確認會在該API停擺時失敗，並在這三天內持續重試。當租戶的Google Play商店被關閉，或其金鑰無法解密時，它會等待且不消耗嘗試次數，直到三天期滿為止。
 

@@ -123,10 +123,11 @@ type CommentApprovedNotificationHandlerConfig struct {
 // approval owes its comment's author.
 func NewCommentApprovedNotificationHandler(cfg CommentApprovedNotificationHandlerConfig) Handler {
 	if cfg.DB == nil {
-		// A plain error rather than a [Permanent] one, because an operator
-		// restarting the worker with a database makes the event deliverable.
+		// [Blocked] rather than [Permanent]: an operator restarting the worker
+		// with a database makes the event deliverable, and it waits for that
+		// without spending its budget.
 		return func(context.Context, dbmodels.OutboxEvent) error {
-			return errors.New("comment approved notification handler database is not configured")
+			return Blocked(errors.New("comment approved notification handler database is not configured"))
 		}
 	}
 	return commentApprovedNotificationHandler(

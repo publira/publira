@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"sync"
 
 	dbmodels "github.com/publira/publira/server/internal/db/gen"
@@ -213,6 +214,16 @@ func (r *Registry) Lookup(eventType string) (Handler, bool) {
 	defer r.mu.RUnlock()
 	h, ok := r.handlers[eventType]
 	return h, ok
+}
+
+// EventTypes returns every event type with a handler, sorted.
+func (r *Registry) EventTypes() []string {
+	if r == nil {
+		return nil
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return slices.Sorted(maps.Keys(r.handlers))
 }
 
 // IsMessage reports whether eventType was registered with

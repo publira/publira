@@ -89,7 +89,7 @@ func QueueSubscriptionCancellationsForUser(ctx context.Context, queries dbmodels
 func NewSubscriptionCancelHandler(cfg SubscriptionCancelHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil || cfg.Providers == nil {
-			return errors.New("subscription cancel handler is not configured")
+			return Blocked(errors.New("subscription cancel handler is not configured"))
 		}
 		var payload SubscriptionCancelPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {

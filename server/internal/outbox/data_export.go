@@ -105,10 +105,11 @@ type DataExportReadyNotificationHandlerConfig struct {
 // queues the mail a ready archive owes its reader.
 func NewDataExportReadyNotificationHandler(cfg DataExportReadyNotificationHandlerConfig) Handler {
 	if cfg.DB == nil {
-		// A plain error rather than a [Permanent] one, because an operator
-		// restarting the worker with a database makes the event deliverable.
+		// [Blocked] rather than [Permanent]: an operator restarting the worker
+		// with a database makes the event deliverable, and it waits for that
+		// without spending its budget.
 		return func(context.Context, dbmodels.OutboxEvent) error {
-			return errors.New("data export notification handler database is not configured")
+			return Blocked(errors.New("data export notification handler database is not configured"))
 		}
 	}
 	return dataExportReadyNotificationHandler(dbmodels.New(cfg.DB))

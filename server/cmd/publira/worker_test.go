@@ -2,14 +2,17 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 
+	dbmodels "github.com/publira/publira/server/internal/db/gen"
 	"github.com/publira/publira/server/internal/health"
 	"github.com/publira/publira/server/internal/maintenancejobs"
 	"github.com/publira/publira/server/internal/outbox"
@@ -172,6 +175,47 @@ func TestWorkerDropsOnlyMessagesForASuspendedTenant(t *testing.T) {
 		if cfg.Handlers.IsMessage(eventType) {
 			t.Errorf("%s is dropped for a suspended tenant, want it run", eventType)
 		}
+	}
+}
+
+// A worker started without a dependency an event needs — its database, the
+// SMTP client, a store's or a provider's client — leaves every pending event
+// waiting for an operator to start it with one, charging it no attempt, so
+// none is dead by the time the worker comes back whole. The two kinds of work
+// an install may switch off for good, the cache revalidation and the search
+// index, are done instead: nothing on the other end would ever take them.
+func TestWorkerWithoutItsDependenciesBlocksEveryEvent(t *testing.T) {
+	cfg := workerConfig(slog.Default(), nil,
+		outbox.EmailHandlerConfig{}, outbox.PushHandlerConfig{}, outbox.StaffNotificationHandlerConfig{},
+		outbox.AnnouncementNotificationHandlerConfig{}, outbox.EpisodePublishedNotificationHandlerConfig{},
+		outbox.CommentApprovedNotificationHandlerConfig{},
+		outbox.DataExportReadyNotificationHandlerConfig{},
+		outbox.GooglePlayHandlerConfig{}, outbox.AppleSignInHandlerConfig{},
+		outbox.SubscriptionCancelHandlerConfig{},
+		nil, nil, nil, nil)
+
+	switchedOff := []string{outbox.EventTypeNextCacheRevalidation, outbox.EventTypeCatalogIndexSync}
+	for _, eventType := range cfg.Handlers.EventTypes() {
+		if eventType == outbox.EventTypeTest {
+			continue
+		}
+		t.Run(eventType, func(t *testing.T) {
+			handle, _ := cfg.Handlers.Lookup(eventType)
+			err := handle(t.Context(), dbmodels.OutboxEvent{
+				ID:        uuid.Must(uuid.NewV7()),
+				EventType: eventType,
+				TenantID:  uuid.NullUUID{UUID: uuid.Must(uuid.NewV7()), Valid: true},
+				Payload:   json.RawMessage(`{}`),
+			})
+			switch {
+			case slices.Contains(switchedOff, eventType):
+				if err != nil {
+					t.Fatalf("handler error = %v, want the event done", err)
+				}
+			case !outbox.IsBlocked(err):
+				t.Fatalf("handler error = %v, want it blocked", err)
+			}
+		})
 	}
 }
 

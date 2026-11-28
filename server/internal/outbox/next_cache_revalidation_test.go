@@ -68,18 +68,15 @@ func TestNextCacheRevalidationHandlerRetriesWhenAnAppIsUnreachable(t *testing.T)
 	}
 }
 
-// A worker with no way to send cannot be retried out of, but an operator
-// restarting it with a token can, so the event waits rather than dying.
-func TestNextCacheRevalidationHandlerRetriesWhenTheWorkerCannotSend(t *testing.T) {
+// A worker without a token belongs to an install whose web apps take no drop,
+// so the event is done rather than left to fail or to wait for one.
+func TestNextCacheRevalidationHandlerCompletesWhenRevalidationIsOff(t *testing.T) {
 	err := NewNextCacheRevalidationHandler(nil)(
 		context.Background(),
 		revalidationEvent(t, NextCacheRevalidationPayload{Tags: []string{"tenant:t:site"}}),
 	)
-	if err == nil {
-		t.Fatal("handler error = nil, want the missing client reported")
-	}
-	if IsPermanent(err) {
-		t.Fatalf("handler error = %v, want a retriable one", err)
+	if err != nil {
+		t.Fatalf("handler error = %v, want the event completed", err)
 	}
 }
 

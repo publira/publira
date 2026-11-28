@@ -163,7 +163,7 @@ GROUP BY queue, kind;
 
 - **邮件**在SMTP服务器（或启用后的`email-renderer`）拒绝或无法连接时失败，详见[邮件](./6-email.md#安装实例发送的邮件)。
 - **发往手机的推送通知**在租户未保存Firebase凭据时会被跳过而不是失败，因此保存凭据后也不会重试。浏览器通知只有在开启Web Push后才会发送，详见[Web Push](./8-web-push.md)。
-- **缓存重新验证**在Web应用停止运行时失败。没有`PUBLIRA_REVALIDATE_TOKEN`的worker进程，会在每次尝试时让`publira server`或`publiractl`记录的每个丢弃操作失败；它自身任务的丢弃操作则完全不会被记录，详见[免费阅读期](#免费阅读期及其他缓存页面)。
+- **缓存重新验证**在Web应用停止运行时失败。没有`PUBLIRA_REVALIDATE_TOKEN`的worker进程关闭了缓存重新验证，而没有该令牌的Web应用也不接受任何丢弃操作，因此它会将`publira server`或`publiractl`记录的每个丢弃操作直接标记为完成，而不发送；之后带上令牌重启worker进程也无法找回这些丢弃操作。它自身任务的丢弃操作则完全不会被记录，详见[免费阅读期](#免费阅读期及其他缓存页面)。
 - **Webhook发送**（`event_type`为`webhook_delivery`）把一个事件发送到租户管理员保存的端点，详见[API密钥与Webhook](../4-console/10-api-keys-and-webhooks.md#重试与重新发送)。它在该端点停止运行或以`2xx`以外的任何状态响应时失败；当端点以除`408`和`429`以外的其他`4xx`响应，或其主机解析到私有地址、环回地址、链路本地地址或共享地址时，会被立即放弃。端点是租户运行的服务器，因此发送失败需要由租户而不是安装实例来修复。如果端点的签名密钥无法用`PUBLIRA_SECRET_ENCRYPTION_KEYS`中的任何密钥解密，该发送会等待，且不消耗尝试次数，直到该密钥恢复或签名密钥被重新生成。
 - **Google Play购买或订阅**（在应用中进行）会通过Google Play Developer API进行确认，三天内无人确认的购买会被Google Play退款。该API停止运行时确认会失败，并在这三天内持续重试。租户的Google Play商店被关闭，或其密钥无法解密时，确认会等待，且不消耗尝试次数，直到三天期满。
 

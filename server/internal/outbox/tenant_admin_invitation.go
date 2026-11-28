@@ -126,6 +126,11 @@ func decodeTenantAdminInvitationPayload(event dbmodels.OutboxEvent) (TenantAdmin
 	return payload, nil
 }
 
+// resolveSMTPSettings answers the server a tenant's mail goes through: the
+// tenant's own while its override is on, the platform's otherwise. Settings
+// that are not saved, do not decrypt, or do not validate are [Blocked], since
+// only the tenant or an operator can put them right and the mail is owed for
+// whenever they do; a database that did not answer is an ordinary failure.
 func resolveSMTPSettings(ctx context.Context, queries *dbmodels.Queries, tenant dbmodels.Tenant, encryptor emailsettings.SecretManager) (emailsettings.SMTPSettings, error) {
 	tenantConfig, err := queries.GetTenantSMTPConfigByTenantID(ctx, tenant.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -134,28 +139,15 @@ func resolveSMTPSettings(ctx context.Context, queries *dbmodels.Queries, tenant 
 	if err == nil && tenantConfig.SmtpOverrideEnabled {
 		password, err := emailsettings.DecryptPassword(tenantConfig.PasswordEncrypted.String, encryptor)
 		if err != nil {
-			return emailsettings.SMTPSettings{}, err
+			return emailsettings.SMTPSettings{}, Blocked(fmt.Errorf("open the tenant's smtp password: %w", err))
 		}
 		settings := emailsettings.WithTenantFromName(tenantSMTPSettings(tenantConfig, password), tenant.Name)
 		if err := emailsettings.Validate(settings, true); err != nil {
-			return emailsettings.SMTPSettings{}, err
+			return emailsettings.SMTPSettings{}, Blocked(fmt.Errorf("the tenant's smtp settings: %w", err))
 		}
 		return settings, nil
 	}
-
-	platformConfig, err := queries.GetPlatformSMTPConfig(ctx)
-	if err != nil {
-		return emailsettings.SMTPSettings{}, err
-	}
-	password, err := emailsettings.DecryptPassword(platformConfig.PasswordEncrypted, encryptor)
-	if err != nil {
-		return emailsettings.SMTPSettings{}, err
-	}
-	settings := platformSMTPSettings(platformConfig, password)
-	if err := emailsettings.Validate(settings, true); err != nil {
-		return emailsettings.SMTPSettings{}, err
-	}
-	return settings, nil
+	return resolvePlatformSMTPSettings(ctx, queries, encryptor)
 }
 
 func tenantSMTPSettings(config dbmodels.TenantSmtpConfig, password string) emailsettings.SMTPSettings {
@@ -233,7 +225,7 @@ func tenantAdminConsolePageURL(tenant dbmodels.Tenant, path string) (string, err
 		return "", Permanent(err)
 	}
 	if err != nil {
-		return "", err
+		return "", Blocked(err)
 	}
 	return origin.JoinPath(path).String(), nil
 }

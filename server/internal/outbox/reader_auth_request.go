@@ -77,7 +77,7 @@ type readerSignup struct {
 func NewReaderSignupRequestHandler(cfg EmailHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil {
-			return errors.New("reader signup request handler database is not configured")
+			return Blocked(errors.New("reader signup request handler database is not configured"))
 		}
 		var payload ReaderSignupRequestPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
@@ -233,7 +233,7 @@ func processReaderSignup(ctx context.Context, db *sql.DB, event dbmodels.OutboxE
 func NewReaderPasswordResetRequestHandler(cfg EmailHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil {
-			return errors.New("reader password reset request handler database is not configured")
+			return Blocked(errors.New("reader password reset request handler database is not configured"))
 		}
 		var payload ReaderPasswordResetRequestPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
@@ -321,7 +321,7 @@ func processUserPasswordReset(
 func NewReaderEmailVerificationRequestHandler(cfg EmailHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil {
-			return errors.New("reader email verification request handler database is not configured")
+			return Blocked(errors.New("reader email verification request handler database is not configured"))
 		}
 		var payload ReaderEmailVerificationRequestPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {

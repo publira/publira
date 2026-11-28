@@ -435,6 +435,45 @@ func TestTenantAdminInvitationEmailGoesThroughARelayWithoutCredentials(t *testin
 	}
 }
 
+// A worker started without an SMTP client, and a platform whose SMTP settings
+// are not saved yet, are both for an operator to put right, so the mail waits
+// for them without spending an attempt and goes out once both are there.
+func TestTenantAdminInvitationEmailWaitsForTheSMTPClientAndSettings(t *testing.T) {
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tenant := pg.SeedTenant(t, "OUTBOXINV012", "outbox-smtp-later.example.com", "Outbox SMTP Later Tenant")
+	event := seedInvitationEvent(t, pg, tenant, "tenant-admin-invitation-smtp-later")
+
+	withoutClient := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Renderer: invitationRendererStub{},
+	})
+	if err := withoutClient(ctx, event); !outbox.IsBlocked(err) {
+		t.Fatalf("handler without an smtp client = %v, want it blocked", err)
+	}
+	withClient := outbox.NewTenantAdminInvitationHandler(outbox.EmailHandlerConfig{
+		DB: pg.DB, Mailer: internalsmtp.NewClient(), Renderer: invitationRendererStub{},
+	})
+	if err := withClient(ctx, event); !outbox.IsBlocked(err) {
+		t.Fatalf("handler before the platform's smtp settings are saved = %v, want it blocked", err)
+	}
+
+	relay := testutil.StartSMTPRelay(t)
+	if _, err := dbmodels.New(pg.DB).InsertPlatformSMTPConfig(ctx, dbmodels.InsertPlatformSMTPConfigParams{
+		Host: relay.Host, Port: relay.Port, Encryption: "none", FromAddress: "no-reply@example.com",
+	}); err != nil {
+		t.Fatalf("InsertPlatformSMTPConfig: %v", err)
+	}
+	if err := withClient(ctx, event); err != nil {
+		t.Fatalf("handler once the settings are saved: %v", err)
+	}
+	if got := len(relay.Messages()); got != 1 {
+		t.Fatalf("messages the relay took = %d, want 1", got)
+	}
+}
+
 // A tenant's own SMTP server may be such a relay too, saved with no username
 // and no password. The tenant chose its host, so one on the loopback address
 // is reached only once the operator allows that address.
