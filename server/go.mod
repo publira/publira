@@ -49,7 +49,7 @@ require (
 	golang.org/x/text v0.44.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261123191846-1e707ab9fbc2
 	google.golang.org/protobuf v1.36.12
-	manael.org/x/manael/v3 v3.2.2
+	manael.org/x/manael/v3 v3.2.3
 )
 
 require (

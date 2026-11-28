@@ -479,5 +479,5 @@ gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EV
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gotest.tools/v3 v3.5.2 h1:7koQfIKdy+I8UTetycgUqXWSDwpgv193Ka+qRsmBY8Q=
 gotest.tools/v3 v3.5.2/go.mod h1:LtdLGcnqToBH83WByAAi/wiwSFCArdFIUV/xxN4pcjA=
-manael.org/x/manael/v3 v3.2.2 h1:tFpSHfVpOF694kddSM6apiXMxgO3XiyTuHh/kLB/ff4=
-manael.org/x/manael/v3 v3.2.2/go.mod h1:Tsfk/voa+dm4DTdTIHuvPTdFgtnd/ksbAP4/EcZubxM=
+manael.org/x/manael/v3 v3.2.3 h1:F1kj1lMQE/lz3KGYa//ICR3EwP1wP9fRkosv5OjBXwQ=
+manael.org/x/manael/v3 v3.2.3/go.mod h1:JRoXhu0mKO9ealrSgsG56LvK66YiQ3FFpAjxLrFzDBA=
