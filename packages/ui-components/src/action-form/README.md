@@ -56,7 +56,7 @@ A second control that sends the same fields to another Action, such as a connect
 
 An Action can answer with more than a sentence, and each part of that answer is read by the one component that needs it, so the form itself can stay a Server Component.
 
-A refused submission may carry `fieldErrors`, keyed by field. `ActionForm.FieldError` shows the entry under its `name` next to that field, and nothing otherwise. Inside a `Field.Root`, the message is that field's error: while it is shown, the field is invalid, its control carries `aria-invalid`, and the control's `aria-describedby` names the message:
+A refused submission may carry `fieldErrors`, keyed by field. `ActionForm.FieldError` shows the entry under its `name` next to that field, and nothing otherwise:
 
 ```tsx
 <ActionForm.Root action={saveSettings}>
