@@ -628,6 +628,28 @@ const checkParentheses = (
   }));
 };
 
+/**
+ * An image named `publira/<name>:<tag>` with no registry in front of it.
+ * Docker looks such a name up on Docker Hub, where no release is published, so
+ * the command fails or pulls whatever someone else publishes under the name;
+ * the release images are `ghcr.io/publira/<name>:<tag>`. `publira/<name>:local`
+ * is the name of an image built from the checkout, which nothing pulls.
+ */
+const UNQUALIFIED_IMAGE =
+  /(?<![\w./:@-])publira\/[a-z\d]+(?:[._-][a-z\d]+)*:(?!local(?![\w.-]))[\w<]/gu;
+
+const UNQUALIFIED_IMAGE_MESSAGE =
+  "The image is named without its registry, so Docker looks it up on Docker Hub, where no release is published. Name a release image `ghcr.io/publira/<name>:<tag>`.";
+
+const checkImageNames = (file: string, source: string): Finding[] =>
+  source.split("\n").flatMap((text, index) =>
+    [...text.matchAll(UNQUALIFIED_IMAGE)].map(() => ({
+      file,
+      line: index + 1,
+      message: UNQUALIFIED_IMAGE_MESSAGE,
+    }))
+  );
+
 /** What {@link checkPage} finds in a page, and what it leaves to the tree. */
 export interface CheckedPage {
   findings: Finding[];
@@ -720,6 +742,8 @@ export const checkPage = (file: string, source: string): CheckedPage => {
       findings.push(...checkParentheses(file, node, line));
     }
   });
+
+  findings.push(...checkImageNames(file, source));
 
   return { links: collectLinks(tree), findings, redirects, revision };
 };

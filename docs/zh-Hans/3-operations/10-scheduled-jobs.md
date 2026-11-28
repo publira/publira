@@ -2,8 +2,8 @@
 title: 定时任务与维护任务
 description: publira worker按自己的时间表执行哪些工作、停机后如何补做、如何重试外发的邮件、推送和缓存重新验证，以及何时使用publiractl job手动运行任务。
 published: 2026-11-03
-updated: 2026-11-26
-source_updated: 2026-11-26
+updated: 2026-11-28
+source_updated: 2026-11-28
 ---
 
 安装实例在没有请求的情况下所做的一切都由`publira worker`完成：它发布预约在此刻发布的章节，告知Web应用哪些缓存页面因更改而过时，发送邮件和推送通知，重建统计数据和排行榜，并删除超过保留期限的内容。没有其他任何东西需要按定时器运行，也不需要主机的cron或Kubernetes CronJob。本页说明什么在何时运行、如何判断某个症状背后是哪个任务，以及如何使用`publiractl job`手动运行任务。
@@ -213,7 +213,7 @@ publiractl outbox requeue --type contact_message_reply_email
 
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job purge-content-events
+  ghcr.io/publira/publiractl:<tag> job purge-content-events
 ```
 
 在[Docker Compose](../2-deployments/3-docker-compose.md)安装实例上，`docker compose run --rm publiractl job purge-content-events`已经带有该连接。图片清除、数据下载及其清除、Google Play退款同步、支付对账、搜索索引构建和租户删除，在其使用的凭据保存在安装实例中时（例如存储桶的访问密钥、租户的支付服务商和商店凭据，或搜索引擎的密码），还需要`PUBLIRA_SECRET_ENCRYPTION_KEYS`和`PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID`。租户删除还需要与`publira server`相同的`PUBLIRA_REDIS_URL`，以便删除Valkey中的转换后图片和计数器。
@@ -227,7 +227,7 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   -e PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true \
-  publira/publiractl:<tag> job purge-content-events
+  ghcr.io/publira/publiractl:<tag> job purge-content-events
 ```
 
 清除任务在开始时读取保留期限，因此试运行统计的是按当前保存的期限会删除的内容。保存了一个短得多的期限后，请在正式运行之前先试运行一次，看看清除会一并删除多少内容。`purge-orphan-images`的试运行会报告存储桶中没有任何图片行引用、且已存在至少一天的对象；在[恢复](../2-deployments/9-backup-and-restore.md#worker进程会补做的工作)之后，这些对象包括备份之后上传的图片。
@@ -238,14 +238,14 @@ docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
 
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job project-episode-reads
+  ghcr.io/publira/publiractl:<tag> job project-episode-reads
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   -e PUBLIRA_CONTENT_STATS_DATE=2026-10-01 \
-  publira/publiractl:<tag> job aggregate-content-stats
+  ghcr.io/publira/publiractl:<tag> job aggregate-content-stats
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job aggregate-rankings
+  ghcr.io/publira/publiractl:<tag> job aggregate-rankings
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job build-recommend-features
+  ghcr.io/publira/publiractl:<tag> job build-recommend-features
 ```
 
 一次运行会为所有租户重建该日期。这里的排行榜和推荐会为每个租户的昨天重建，因为网站只显示最新的排行榜，而截至昨天的每周排行榜涵盖最近七天；只有在要重建更早的排行榜时，才需要通过`PUBLIRA_CONTENT_RANKING_DATE`和`PUBLIRA_RECOMMEND_FEATURES_DATE`为它们指定日期。

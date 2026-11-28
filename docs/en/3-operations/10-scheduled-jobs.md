@@ -2,7 +2,7 @@
 title: Scheduled and maintenance jobs
 description: What publira worker does on its own schedule, how it catches up after downtime, how it retries outgoing mail, push, and cache revalidation, and when to run a job by hand with publiractl job.
 published: 2026-10-07
-updated: 2026-11-26
+updated: 2026-11-28
 ---
 
 Everything an install does without a request is done by `publira worker`: it publishes the episodes scheduled for now, tells the web apps which cached pages a change made stale, sends mail and push notifications, rebuilds the statistics and rankings, and deletes what has passed its retention period. Nothing else has to run on a timer, and no host cron or Kubernetes CronJob is needed. This page says what runs when, how to tell which job is behind a symptom, and how to run one by hand with `publiractl job`.
@@ -212,7 +212,7 @@ Run it with the image of the release the install runs, with `PUBLIRA_CONTENT_STA
 
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job purge-content-events
+  ghcr.io/publira/publiractl:<tag> job purge-content-events
 ```
 
 On a [Docker Compose](../2-deployments/3-docker-compose.md) install, `docker compose run --rm publiractl job purge-content-events` has the connection already. The image purge, the data downloads and their purge, the Google Play refund sync, the payment reconciliations, the search index build, and the tenant erasure also need `PUBLIRA_SECRET_ENCRYPTION_KEYS` and `PUBLIRA_SECRET_ENCRYPTION_PRIMARY_KEY_ID` when the credential they use is saved in the install, as the bucket's access key, a tenant's payment provider and store credentials, or the search engine's password is. The tenant erasure also takes `PUBLIRA_REDIS_URL`, the one `publira server` is given, to reach the converted images and the counters in Valkey.
@@ -226,7 +226,7 @@ Every purge takes a variable that makes it count instead of delete, such as `PUB
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   -e PUBLIRA_CONTENT_EVENTS_PURGE_DRY_RUN=true \
-  publira/publiractl:<tag> job purge-content-events
+  ghcr.io/publira/publiractl:<tag> job purge-content-events
 ```
 
 A purge reads the retention periods when it starts, so a dry run counts what the periods saved now would delete. After saving a much shorter period, run one before the real run to see how much the purge will take with it. A dry run of `purge-orphan-images` reports the objects in the bucket that no image row names and that are at least a day old; after a [restore](../2-deployments/9-backup-and-restore.md#what-the-worker-catches-up-on), those include the images uploaded after the backup was taken.
@@ -237,14 +237,14 @@ The chain never goes back over a day it has finished, so a day's statistics are 
 
 ```bash
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job project-episode-reads
+  ghcr.io/publira/publiractl:<tag> job project-episode-reads
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
   -e PUBLIRA_CONTENT_STATS_DATE=2026-10-01 \
-  publira/publiractl:<tag> job aggregate-content-stats
+  ghcr.io/publira/publiractl:<tag> job aggregate-content-stats
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job aggregate-rankings
+  ghcr.io/publira/publiractl:<tag> job aggregate-rankings
 docker run --rm -e PUBLIRA_CONTENT_STATS_DB_URL \
-  publira/publiractl:<tag> job build-recommend-features
+  ghcr.io/publira/publiractl:<tag> job build-recommend-features
 ```
 
 A run rebuilds that day for every tenant. The rankings and the recommendations are rebuilt here for every tenant's yesterday, since the storefront only shows the newest leaderboard and the weekly one ending yesterday covers the last seven days; give them a date, with `PUBLIRA_CONTENT_RANKING_DATE` and `PUBLIRA_RECOMMEND_FEATURES_DATE`, only to rebuild an older leaderboard.
