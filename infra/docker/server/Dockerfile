@@ -35,7 +35,7 @@ FROM golang:1.27.4-trixie@sha256:430985542100b871e108ccc00e8dcc5eef08ca14ee5825e
 # colour profile, and highway is libvips' SIMD backend. The tarball is checked
 # against the checksum the release publishes beside it.
 # renovate: datasource=github-releases depName=libvips/libvips versioning=semver-coerced
-ARG LIBVIPS_VERSION=8.18.7
+ARG LIBVIPS_VERSION=8.18.8
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
