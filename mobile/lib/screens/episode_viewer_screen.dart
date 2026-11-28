@@ -617,9 +617,12 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
   }
 
   /// Sends a store transaction the server could not take yet again before
-  /// reading the body, since only that confirmation opens it.
+  /// reading the body, since only that confirmation opens it, without waiting
+  /// for the wait a retry is spaced out by: the reader asked for it.
   Future<void> _checkAgain() async {
-    await PurchaseScope.maybeOf(context)?.storePurchaser?.reconcile();
+    await PurchaseScope.maybeOf(
+      context,
+    )?.storePurchaser?.reconcile(immediately: true);
     if (mounted) {
       _reload();
     }
@@ -1247,6 +1250,7 @@ class _EpisodeViewerScreenState extends State<EpisodeViewerScreen>
             _reload();
           case PurchaseFailureKind.notSettled ||
               PurchaseFailureKind.otherAccount ||
+              PurchaseFailureKind.transactionRefused ||
               PurchaseFailureKind.promotionCodeInvalid ||
               PurchaseFailureKind.promotionCodeExpired ||
               PurchaseFailureKind.promotionCodeExhausted ||

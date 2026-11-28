@@ -62,7 +62,10 @@ InAppPurchasePlatform? registerDeviceInAppPurchasePlatform() {
 /// Play, so the same price can be bought again. One the app could not confirm
 /// — no session, no network, a store that has not settled — stays with the
 /// store, which reports it again on the next launch, and is confirmed again on
-/// sign-in.
+/// sign-in and on resume, spaced out further after each failure. One the
+/// server refused for good, such as a transaction bought on an intent another
+/// reader of this device opened, stays with the store too, for that reader to
+/// confirm, and is not sent again while the same reader is signed in.
 ///
 /// A transaction of a subscription is [StoreSubscriber]'s, which listens to
 /// the same store, and is left to it.
@@ -71,7 +74,9 @@ class StorePurchaser {
     required this.platform,
     required this.store,
     required this.repository,
+    required this.readerId,
     this.isSubscription = _buysNoSubscription,
+    this.now = DateTime.now,
   });
 
   final InAppPurchasePlatform platform;
@@ -83,6 +88,23 @@ class StorePurchaser {
   final Future<bool> Function(PurchaseDetails purchase) isSubscription;
 
   static Future<bool> _buysNoSubscription(PurchaseDetails _) async => false;
+
+  /// The public ID of the reader who holds the session, empty while nobody
+  /// does: whom a transaction is refused for.
+  final String Function() readerId;
+
+  /// The clock a retry is spaced out by, which a test replaces.
+  final DateTime Function() now;
+
+  /// The wait before a transaction the server could not take is sent again,
+  /// doubled after each failure in a row up to [_longestRetryWait]. A resume,
+  /// a sign-in, a purchase, and Google Play reporting the transaction again
+  /// come within seconds of one another, and every confirmation spends the
+  /// reader's allowance for them, so a minute lets them send it once between
+  /// them; an hour asks a store or a server that stays down no more than that
+  /// often.
+  static const _firstRetryWait = Duration(minutes: 1);
+  static const _longestRetryWait = Duration(hours: 1);
 
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
@@ -100,6 +122,16 @@ class StorePurchaser {
   /// reported twice is confirmed once.
   final _unconfirmed = <String, PurchaseDetails>{};
   final _confirming = <String, Future<void>>{};
+
+  /// The reader each transaction the server refused for good was refused
+  /// for, keyed as [_unconfirmed] is. The server refuses it the same way
+  /// every time that reader sends it, so it is sent again only once another
+  /// reader is signed in, who may be the one it is for.
+  final _refused = <String, String>{};
+
+  /// When each transaction the server could not take yet may be sent again,
+  /// and the wait that set it, keyed as [_unconfirmed] is.
+  final _retries = <String, ({DateTime at, Duration wait})>{};
 
   _OpenPurchase? _open;
 
@@ -123,9 +155,14 @@ class StorePurchaser {
   /// returns once none is being confirmed any more. A sign-in, a resume, and
   /// a reader checking a pending purchase again call it, because a
   /// transaction the server could not take then is taken only by asking again.
-  Future<void> reconcile() async {
+  ///
+  /// A transaction the server could not take is sent again once its wait is
+  /// over, or at once when [immediately] is set, for a reader who asked to
+  /// check again. One it refused for good is sent again only for another
+  /// reader.
+  Future<void> reconcile({bool immediately = false}) async {
     for (final purchase in _unconfirmed.values.toList()) {
-      await _confirm(purchase);
+      await _confirm(purchase, immediately: immediately);
     }
     await _askForUnfinished();
     // What Google Play reported arrives on the stream after the call that
@@ -333,9 +370,9 @@ class StorePurchaser {
     }
   }
 
-  Future<void> _confirm(PurchaseDetails purchase) {
+  Future<void> _confirm(PurchaseDetails purchase, {bool immediately = false}) {
     final transaction = purchase.verificationData.serverVerificationData;
-    if (transaction.isEmpty) {
+    if (transaction.isEmpty || !_due(transaction, immediately: immediately)) {
       return Future.value();
     }
     return _confirming[transaction] ??= _confirmOnce(purchase, transaction)
@@ -352,6 +389,7 @@ class StorePurchaser {
       return;
     }
     _unconfirmed[transaction] = purchase;
+    final reader = readerId();
     try {
       await repository.confirmStorePurchase(
         store: store,
@@ -361,14 +399,28 @@ class StorePurchaser {
     } on PurchaseFailure catch (failure) {
       // The store keeps the transaction, and it is confirmed again later.
       switch (failure.kind) {
+        case PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.transactionRefused:
+          _retries.remove(transaction);
+          _refused[transaction] = reader;
+          _fail(purchase, failure);
+        case PurchaseFailureKind.sessionExpired:
+          // Signing in sends it again, with no wait left from an earlier
+          // failure.
+          _retries.remove(transaction);
+          _fail(purchase, failure);
         case PurchaseFailureKind.notSettled || PurchaseFailureKind.network:
+          _spaceOut(transaction);
           _settle(purchase, StorePurchaseOutcome.pending);
         case _:
+          _spaceOut(transaction);
           _fail(purchase, failure);
       }
       return;
     }
     _unconfirmed.remove(transaction);
+    _refused.remove(transaction);
+    _retries.remove(transaction);
     if (!_recorded.isClosed) {
       _recorded.add(purchase.productID);
     }
@@ -379,6 +431,26 @@ class StorePurchaser {
       // the server answers it with the same purchase, and it is finished then.
     }
     _settle(purchase, StorePurchaseOutcome.purchased);
+  }
+
+  /// Whether [transaction] is to be sent now: not refused for good for the
+  /// reader signed in, and past its wait unless [immediately] is set.
+  bool _due(String transaction, {required bool immediately}) {
+    if (_refused[transaction] == readerId()) {
+      return false;
+    }
+    final retry = _retries[transaction];
+    return immediately || retry == null || !now().isBefore(retry.at);
+  }
+
+  void _spaceOut(String transaction) {
+    final previous = _retries[transaction]?.wait;
+    final wait = previous == null
+        ? _firstRetryWait
+        : previous * 2 < _longestRetryWait
+        ? previous * 2
+        : _longestRetryWait;
+    _retries[transaction] = (at: now().add(wait), wait: wait);
   }
 
   Future<bool> _leftToSubscriber(PurchaseDetails purchase) async {

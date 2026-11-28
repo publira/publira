@@ -26,10 +26,16 @@ enum PurchaseFailureKind {
   /// pending purchase), so it is confirmed again later.
   notSettled,
 
-  /// What the store charged is recorded for another account of the tenant,
-  /// which keeps it: a subscription restored while signed in to a second
-  /// account.
+  /// What the store charged is another account's of the tenant, which keeps
+  /// it: a subscription recorded for that account, restored while signed in
+  /// to a second one, or a purchase bought on an intent another reader
+  /// opened.
   otherAccount,
+
+  /// The server refused the store's transaction as one it will never record:
+  /// it names no intent the reader opened for the product it bought, or it
+  /// is not of the tenant's app. Sending it again is refused the same way.
+  transactionRefused,
 
   /// No code of the tenant's is spelled so, or it is deleted, paused, or has
   /// not started.

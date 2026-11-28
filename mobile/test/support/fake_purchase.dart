@@ -75,6 +75,9 @@ class FakePurchaseRepository implements PurchaseRepository {
   /// Transactions [confirmStorePurchase] recorded, in order.
   final List<String> confirmed = <String>[];
 
+  /// Transactions [confirmStorePurchase] was sent, recorded or not, in order.
+  final List<String> confirmAttempts = <String>[];
+
   /// The intent [startStorePurchase] opens for [episodeInternalId].
   static String intentFor(String episodeInternalId) =>
       'intent-$episodeInternalId'.toLowerCase();
@@ -491,6 +494,7 @@ class FakePurchaseRepository implements PurchaseRepository {
     required String transaction,
     required String productId,
   }) async {
+    confirmAttempts.add(transaction);
     await confirmGate?.future;
     final failure = confirmFailure;
     if (failure != null) {

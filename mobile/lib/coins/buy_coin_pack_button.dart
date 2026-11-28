@@ -105,6 +105,7 @@ class _BuyCoinPackButtonState extends State<BuyCoinPackButton> {
         case PurchaseFailureKind.alreadyPurchased ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.transactionRefused ||
             PurchaseFailureKind.promotionCodeInvalid ||
             PurchaseFailureKind.promotionCodeExpired ||
             PurchaseFailureKind.promotionCodeExhausted ||

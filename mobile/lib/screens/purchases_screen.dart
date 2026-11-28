@@ -386,6 +386,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       PurchaseFailureKind.notSold ||
       PurchaseFailureKind.notSettled ||
       PurchaseFailureKind.otherAccount ||
+      PurchaseFailureKind.transactionRefused ||
       PurchaseFailureKind.promotionCodeInvalid ||
       PurchaseFailureKind.promotionCodeExpired ||
       PurchaseFailureKind.promotionCodeExhausted ||

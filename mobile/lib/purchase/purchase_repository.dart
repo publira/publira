@@ -577,7 +577,10 @@ abstract class PurchaseRepository {
   /// [productId] the product it was bought as.
   ///
   /// Throws [PurchaseFailure]; [PurchaseFailureKind.notSettled] for a
-  /// transaction the store has not settled, which is confirmed again later.
+  /// transaction the store has not settled, which is confirmed again later,
+  /// [PurchaseFailureKind.otherAccount] for one bought on an intent another
+  /// reader opened, and [PurchaseFailureKind.transactionRefused] for one the
+  /// server will never record.
   Future<void> confirmStorePurchase({
     required InAppPurchaseStore store,
     required String transaction,

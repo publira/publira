@@ -634,14 +634,24 @@ class HttpPurchaseRepository implements PurchaseRepository {
       );
     } on ConnectException catch (error) {
       // Here the store has not settled the charge, rather than the tenant
-      // not selling the episode.
-      if (error.code == 'failed_precondition') {
-        throw PurchaseFailure(
+      // not selling the episode, and the intent is another reader's, rather
+      // than an episode that is not public, as `ConfirmStoreSubscription`
+      // answers it.
+      throw switch (error.code) {
+        'failed_precondition' => PurchaseFailure(
           PurchaseFailureKind.notSettled,
           message: error.message,
-        );
-      }
-      throw _toFailure(error);
+        ),
+        'permission_denied' => PurchaseFailure(
+          PurchaseFailureKind.otherAccount,
+          message: error.message,
+        ),
+        'invalid_argument' => PurchaseFailure(
+          PurchaseFailureKind.transactionRefused,
+          message: error.message,
+        ),
+        _ => _toFailure(error),
+      };
     }
   }
 

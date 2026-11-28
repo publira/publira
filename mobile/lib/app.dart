@@ -302,6 +302,7 @@ class PubliraApp extends StatefulWidget {
               platform: storeSubscriber.platform,
               store: storeSubscriber.store,
               repository: purchases,
+              readerId: () => auth.session?.userPublicId ?? '',
               isSubscription: storeSubscriber.isSubscription,
             ),
       storeSubscriber: storeSubscriber,

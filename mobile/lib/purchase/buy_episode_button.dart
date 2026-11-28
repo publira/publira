@@ -217,6 +217,7 @@ class _BuyEpisodeButtonState extends State<BuyEpisodeButton> {
         case PurchaseFailureKind.gone ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.transactionRefused ||
             PurchaseFailureKind.promotionCodeRateLimited ||
             PurchaseFailureKind.unexpected:
           messenger.showSnackBar(

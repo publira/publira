@@ -96,6 +96,7 @@ void main() {
       platform: platform,
       store: InAppPurchaseStore.appStore,
       repository: purchases,
+      readerId: () => fakeSession.userPublicId,
       isSubscription: subscriber.isSubscription,
     );
     addTearDown(purchaser.dispose);
