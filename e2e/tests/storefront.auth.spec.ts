@@ -8,6 +8,7 @@ import {
   SEED_MEMBER_PUBLIC_ID,
   SEED_TENANT_ID,
 } from "../src/scenarios/auth";
+import { SEED_TENANT } from "../src/scenarios/multi-tenant";
 import {
   bumpUserCredentialsVersion,
   expectLoginPage,
@@ -222,4 +223,33 @@ test.describe("web-storefront auth", () => {
       page.getByRole("heading", { name: "Reading history" })
     ).toBeVisible();
   });
+});
+
+/**
+ * The `<title>` is read from the HTML the server sends rather than from the
+ * page, so a title only the browser writes after hydration does not pass.
+ */
+test.describe("web-storefront auth screen titles", () => {
+  const screens = [
+    ["/login", "Sign in"],
+    ["/signup", "Sign up"],
+    ["/reset-password", "Reset your password"],
+    ["/resend-verification", "Resend the confirmation email"],
+  ] as const;
+
+  for (const [pathname, screenName] of screens) {
+    test(`${pathname} is titled with the tenant's name in the server's HTML`, async ({
+      request,
+    }) => {
+      const response = await request.get(storefrontUrl(pathname));
+      expect(response.status()).toBe(200);
+
+      const html = await response.text();
+      const titles = [...html.matchAll(/<title>(?<title>[^<]*)<\/title>/gu)];
+
+      expect(titles.map((match) => match.groups?.title)).toEqual([
+        `${screenName} | ${SEED_TENANT.name}`,
+      ]);
+    });
+  }
 });

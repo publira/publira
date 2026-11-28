@@ -10,13 +10,10 @@ import { Suspense } from "react";
 import { LocaleField } from "#components/locale-field";
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { TenantIdField } from "#components/tenant-id-field";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
 import { MFA_CHALLENGE_PATH, readMfaChallenge } from "#lib/mfa-challenge";
-import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocalePath } from "#lib/tenant-locale-path";
 
@@ -192,25 +189,6 @@ const TwoStepContent = async ({
   return <TwoStepForm method={parseMfaMethod(query[MFA_METHOD_PARAM])} />;
 };
 
-const TwoStepHeader = async () => {
-  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-
-  const [siteLabel, t] = await Promise.all([
-    getTenantSiteLabel(tenantId, locale),
-    getMessagesFor(locale),
-  ]);
-
-  return (
-    <>
-      <TenantDocumentTitle
-        pageTitle={t("storefront.auth.two_step.title")}
-        siteLabel={siteLabel}
-      />
-      <AuthScreen.Title>{t("storefront.auth.two_step.title")}</AuthScreen.Title>
-    </>
-  );
-};
-
 /** The code a sign-in asks for after the password or a provider's sign-in. */
 const TwoStepPage = ({
   searchParams,
@@ -218,9 +196,11 @@ const TwoStepPage = ({
   <AuthScreen.Root>
     <AuthScreen.Main>
       <AuthScreen.Header>
-        <Suspense fallback={<Skeleton className="h-8 w-40" />}>
-          <TwoStepHeader />
-        </Suspense>
+        <AuthScreen.Title>
+          <Suspense fallback={<SkeletonLine className="h-7 w-40" />}>
+            <Message message="storefront.auth.two_step.title" />
+          </Suspense>
+        </AuthScreen.Title>
       </AuthScreen.Header>
 
       <Suspense fallback={<TwoStepFormSkeleton />}>

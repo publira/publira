@@ -6,11 +6,9 @@ import { Suspense } from "react";
 
 import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
-import { TenantDocumentTitle } from "#components/tenant-document-title";
 import { confirmPublicEmailChange } from "#lib/auth";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
-import { getMessagesFor } from "#lib/messages";
 import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -149,18 +147,13 @@ const ConfirmationFallback = () => (
 const ConfirmEmailHeader = async () => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const [{ siteTagline }, siteLabel, t] = await Promise.all([
+  const [{ siteTagline }, siteLabel] = await Promise.all([
     getTenantSiteCopy(tenantId, locale),
     getTenantSiteLabel(tenantId, locale),
-    getMessagesFor(locale),
   ]);
 
   return (
     <>
-      <TenantDocumentTitle
-        pageTitle={t("storefront.auth.confirm_email.title")}
-        siteLabel={siteLabel}
-      />
       <AuthScreen.Title>{siteLabel}</AuthScreen.Title>
       {siteTagline ? (
         <AuthScreen.Tagline>{siteTagline}</AuthScreen.Tagline>
