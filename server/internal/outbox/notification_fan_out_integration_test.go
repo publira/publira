@@ -20,8 +20,8 @@ var onePagePerJob = fanOutPaging{pageSize: 2, reserve: time.Hour}
 // as many jobs as it takes: every reader is told once, the event finishes
 // without an attempt charged, and the push and the mail are queued.
 func TestAnnouncementNotificationReachesEveryReaderAcrossJobsInTheDatabase(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -67,8 +67,8 @@ func TestAnnouncementNotificationReachesEveryReaderAcrossJobsInTheDatabase(t *te
 // credited creator: every follower is told once, the one who follows both
 // under followed_episodes, and the push and the mail are queued.
 func TestEpisodePublishedNotificationReachesEveryFollowerAcrossJobsInTheDatabase(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
