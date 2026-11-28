@@ -26,7 +26,7 @@ require (
 	github.com/payjp/payjpv2-go v0.0.0-20261030083240-4b295d8f3306
 	github.com/pquerna/otp v1.5.0
 	github.com/publira/epub v0.8.0
-	github.com/redis/go-redis/v9 v9.24.0
+	github.com/redis/go-redis/v9 v9.24.1
 	github.com/riverqueue/river v0.51.2
 	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.51.2
 	github.com/riverqueue/river/rivertype v0.51.2
