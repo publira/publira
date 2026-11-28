@@ -24,13 +24,14 @@ import (
 )
 
 // refundWebhookEnv is one tenant with Stripe settings, one buyer, and one paid
-// episode that buyer already paid for through Checkout, wired to a running
-// public API.
+// episode of a series that buyer already paid for through Checkout, wired to a
+// running public API.
 type refundWebhookEnv struct {
 	pg      *testutil.PostgresEnv
 	client  publirav1connect.PurchaseServiceClient
 	tenant  testutil.Tenant
 	user    testutil.TenantUser
+	series  testutil.Series
 	episode testutil.Episode
 	queries *dbmodels.Queries
 }
@@ -85,6 +86,7 @@ func newUnpaidRefundWebhookEnvAnsweredBy(t *testing.T, slug, domain string, api 
 		client:  publirav1connect.NewPurchaseServiceClient(connect.NewClient(connecthttp.NewTransport(ts.Client(), ts.URL))),
 		tenant:  tenant,
 		user:    user,
+		series:  series,
 		episode: episode,
 		queries: dbmodels.New(pg.DB),
 	}

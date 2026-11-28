@@ -2,10 +2,14 @@ package publicapi
 
 import (
 	"context"
+	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/publira/publira/server/internal/paymentprovider"
 	"github.com/publira/publira/server/internal/paymentprovider/stripe/stripetest"
+	"github.com/publira/publira/server/internal/testutil"
 )
 
 // deleteEpisode removes the env's episode the way a deletion leaves it: gone,
@@ -22,12 +26,19 @@ func (e refundWebhookEnv) deleteEpisode(t *testing.T) {
 }
 
 // deliverCheckoutOf delivers the completed checkout id, paid through
-// paymentIntentID, of purchase.
+// paymentIntentID, of purchase of the env's episode by the env's buyer.
 func (e refundWebhookEnv) deliverCheckoutOf(t *testing.T, id, paymentIntentID string, purchase paymentprovider.Purchase) {
 	t.Helper()
-	purchase.TenantID = e.tenant.ID
 	purchase.ReaderID = e.user.ID
 	purchase.EpisodeID = e.episode.ID
+	e.deliverPaidCheckout(t, id, paymentIntentID, purchase)
+}
+
+// deliverPaidCheckout delivers the completed checkout id, paid through
+// paymentIntentID, of purchase as it names its reader and what it sells.
+func (e refundWebhookEnv) deliverPaidCheckout(t *testing.T, id, paymentIntentID string, purchase paymentprovider.Purchase) {
+	t.Helper()
+	purchase.TenantID = e.tenant.ID
 	e.deliver(t, "checkout.session.completed", map[string]any{
 		"id":             id,
 		"object":         "checkout.session",
@@ -150,5 +161,103 @@ func TestDBProcessPaymentWebhookRecordsNothingForAFreeCheckoutOfADeletedEpisode(
 	}
 	if got := env.purchaseCount(t); got != 0 {
 		t.Fatalf("purchases = %d, want none", got)
+	}
+}
+
+// exec runs query against the env's database as its owner, the way a deletion
+// that does not go through the API leaves the rows.
+func (e refundWebhookEnv) exec(t *testing.T, query string, args ...any) {
+	t.Helper()
+	if _, err := e.pg.DB.ExecContext(context.Background(), query, args...); err != nil {
+		t.Fatalf("exec %q: %v", query, err)
+	}
+}
+
+func TestDBProcessPaymentWebhookRefundsACheckoutOfADeletedReaderOrProduct(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name string
+		slug string
+		// checkout seeds what the checkout sells and deletes what the case is
+		// about, and answers the purchase the checkout carried.
+		checkout func(t *testing.T, env refundWebhookEnv) paymentprovider.Purchase
+	}{
+		{
+			name: "reader",
+			slug: "DELREADER",
+			checkout: func(t *testing.T, env refundWebhookEnv) paymentprovider.Purchase {
+				env.exec(t, "DELETE FROM users WHERE tenant_id = $1 AND id = $2", env.tenant.ID, env.user.ID)
+				return paymentprovider.Purchase{ReaderID: env.user.ID, EpisodeID: env.episode.ID, Price: 500}
+			},
+		},
+		{
+			name: "volume",
+			slug: "DELVOLUME",
+			checkout: func(t *testing.T, env refundWebhookEnv) paymentprovider.Purchase {
+				volume := env.pg.SeedVolume(t, env.tenant.ID, env.series.ID, testutil.VolumeSeed{
+					Price:      900,
+					Published:  true,
+					EpisodeIDs: []uuid.UUID{env.episode.ID},
+				})
+				env.exec(t, "DELETE FROM volume_episodes WHERE tenant_id = $1 AND volume_id = $2", env.tenant.ID, volume.ID)
+				env.exec(t, "DELETE FROM volumes WHERE tenant_id = $1 AND id = $2", env.tenant.ID, volume.ID)
+				return paymentprovider.Purchase{ReaderID: env.user.ID, VolumeID: volume.ID, Price: 900}
+			},
+		},
+		{
+			name: "series bundle",
+			slug: "DELBUNDLE",
+			checkout: func(t *testing.T, env refundWebhookEnv) paymentprovider.Purchase {
+				bundleID := uuid.Must(uuid.NewV7())
+				env.exec(t, `
+					INSERT INTO series_bundles (id, tenant_id, series_id, user_id, idempotency_key, price)
+					VALUES ($1, $2, $3, $4, 'deleted-bundle', 400)
+				`, bundleID, env.tenant.ID, env.series.ID, env.user.ID)
+				env.exec(t, "DELETE FROM series_bundles WHERE tenant_id = $1 AND id = $2", env.tenant.ID, bundleID)
+				return paymentprovider.Purchase{ReaderID: env.user.ID, SeriesBundleID: bundleID, Price: 400}
+			},
+		},
+		{
+			name: "coin pack",
+			slug: "DELPACK",
+			checkout: func(t *testing.T, env refundWebhookEnv) paymentprovider.Purchase {
+				pack := env.pg.SeedCoinPack(t, env.tenant.ID, testutil.CoinPackSeed{Coins: 100, Price: 100})
+				env.exec(t, "DELETE FROM tenant_coin_packs WHERE tenant_id = $1 AND id = $2", env.tenant.ID, pack.ID)
+				return paymentprovider.Purchase{ReaderID: env.user.ID, CoinPackID: pack.ID, Coins: 100, CoinExpiryDays: 180, Price: 100}
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			api := stripetest.NewAPI(t)
+			env := newUnpaidRefundWebhookEnvAnsweredBy(t, tc.slug, strings.ReplaceAll("deleted-"+tc.name, " ", "-")+".example.com", api)
+			paymentIntentID := "pi_deleted_" + tc.slug
+			checkoutID := "cs_deleted_" + tc.slug
+			purchase := tc.checkout(t, env)
+			api.SetPaymentIntent(testCheckoutSecretKey, paymentIntentID, int64(purchase.Price), "JPY")
+
+			// The redelivery is what a provider sends until it is answered,
+			// and the refund it asks for again is the same one.
+			for range 2 {
+				env.deliverPaidCheckout(t, checkoutID, paymentIntentID, purchase)
+			}
+
+			refunds := api.Refunds()
+			if len(refunds) != 1 {
+				t.Fatalf("refunds = %+v, want one", refunds)
+			}
+			want := paymentprovider.UnrecordedCheckoutRefundKey(checkoutID)
+			if got := refunds[0]; got.PaymentIntentID != paymentIntentID || got.IdempotencyKey != want || got.Status != "succeeded" {
+				t.Fatalf("refund = %+v, want a refund of %s under %q", got, paymentIntentID, want)
+			}
+			if got, want := api.RefundedTotal(testCheckoutSecretKey, paymentIntentID), int64(purchase.Price); got != want {
+				t.Fatalf("refunded = %d, want the %d paid", got, want)
+			}
+			if got := env.purchaseCount(t); got != 0 {
+				t.Fatalf("purchases = %d, want none", got)
+			}
+		})
 	}
 }

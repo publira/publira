@@ -947,10 +947,11 @@ func (s *apiServer) recordCompletedCheckout(
 		)
 	}
 	if err := s.createPurchase(ctx, tenantID, provider.Declaration().ID, event); err != nil {
-		if !isEpisodeCheckout(event.Purchase) || !dberr.IsForeignKeyViolation(err) {
+		deleted, ok := deletedCheckoutReferences[dberr.ForeignKeyViolationConstraint(err)]
+		if !ok {
 			return s.internalDBError(ctx, "failed to create purchase from a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 		}
-		if err := s.refundCheckoutOfDeletedEpisode(ctx, tenantID, provider, credentials, event, err); err != nil {
+		if err := s.refundCheckoutOfDeleted(ctx, tenantID, provider, credentials, event, deleted); err != nil {
 			return err
 		}
 	}
@@ -1718,54 +1719,72 @@ func (s *apiServer) createPurchase(
 	return nil
 }
 
-// isEpisodeCheckout reports whether purchase is a checkout of one episode: a
-// purchase, a rental, or a tip.
-func isEpisodeCheckout(purchase paymentprovider.Purchase) bool {
-	return purchase.EpisodeID != uuid.Nil &&
-		purchase.VolumeID == uuid.Nil &&
-		purchase.SeriesBundleID == uuid.Nil &&
-		purchase.CoinPackID == uuid.Nil
+// deletedCheckoutReference is a reference a purchase makes that a deletion can
+// take away while a checkout naming it is still unpaid: what the log calls it,
+// and the id the checkout named.
+type deletedCheckoutReference struct {
+	name string
+	id   func(paymentprovider.Purchase) uuid.UUID
 }
 
-// refundCheckoutOfDeletedEpisode hands back the payment of a checkout of an
-// episode that was deleted before the checkout was paid. No purchase can name
-// the episode any more, and a checkout leaves no row behind until it is paid,
-// so the deletion could not wait for it. The refund is asked for under a key
-// naming the checkout, so a redelivered notification refunds nothing twice,
-// and the notification is acknowledged once the provider has answered.
-// createErr is what recording the purchase failed with, answered as it is
-// when the episode turns out to exist after all.
-func (s *apiServer) refundCheckoutOfDeletedEpisode(
+// deletedCheckoutReferences are the foreign keys of purchases whose violation
+// means the checkout's reader, or what it sold, was deleted before it was paid.
+// A checkout leaves no row behind until it is paid, so none of these deletions
+// could wait for it.
+//
+// A reader's payment is handed back rather than recorded without a buyer, as
+// deleting an account leaves the purchases made before it. Those are sales the
+// reader had, kept for the figures they are part of; this one would be a sale
+// to nobody, with no library to read it in and no balance to hold its coins.
+var deletedCheckoutReferences = map[string]deletedCheckoutReference{
+	"purchases_tenant_user_id_fkey": {
+		name: "reader",
+		id:   func(p paymentprovider.Purchase) uuid.UUID { return p.ReaderID },
+	},
+	"purchases_tenant_episode_id_fkey": {
+		name: "episode",
+		id:   func(p paymentprovider.Purchase) uuid.UUID { return p.EpisodeID },
+	},
+	"purchases_tenant_volume_id_fkey": {
+		name: "volume",
+		id:   func(p paymentprovider.Purchase) uuid.UUID { return p.VolumeID },
+	},
+	"purchases_tenant_series_bundle_id_fkey": {
+		name: "series_bundle",
+		id:   func(p paymentprovider.Purchase) uuid.UUID { return p.SeriesBundleID },
+	},
+	"purchases_tenant_coin_pack_id_fkey": {
+		name: "coin_pack",
+		id:   func(p paymentprovider.Purchase) uuid.UUID { return p.CoinPackID },
+	},
+}
+
+// refundCheckoutOfDeleted hands back the payment of a checkout whose purchase
+// cannot be recorded, because deleted is gone. The refund is asked for under a
+// key naming the checkout, so a redelivered notification refunds nothing
+// twice, and the notification is acknowledged once the provider has answered.
+func (s *apiServer) refundCheckoutOfDeleted(
 	ctx context.Context,
 	tenantID uuid.UUID,
 	provider paymentprovider.Provider,
 	credentials paymentprovider.Credentials,
 	event paymentprovider.PurchaseCompleted,
-	createErr error,
+	deleted deletedCheckoutReference,
 ) error {
-	_, err := s.queriesFor(ctx).GetEpisodeSeriesByIDForTenant(ctx, dbmodels.GetEpisodeSeriesByIDForTenantParams{
-		TenantID: tenantID,
-		ID:       event.Purchase.EpisodeID,
-	})
-	switch {
-	case err == nil:
-		return s.internalDBError(ctx, "failed to create purchase from a completed checkout", createErr, "event_id", event.ID, "checkout_id", event.CheckoutID)
-	case !errors.Is(err, sql.ErrNoRows):
-		return s.internalDBError(ctx, "failed to look up the episode of a completed checkout", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
-	}
 	logArgs := []any{
 		"tenant_id", tenantID,
 		"event_id", event.ID,
 		"checkout_id", event.CheckoutID,
 		"payment_id", event.PaymentID,
-		"episode_id", event.Purchase.EpisodeID,
+		"deleted", deleted.name,
+		"deleted_id", deleted.id(event.Purchase),
 		"kind", event.Purchase.Kind,
 		"amount_paid", event.AmountPaid,
 	}
 	// A promotion code can take off the whole price, which leaves nothing
 	// taken and so nothing to hand back.
 	if event.AmountPaid == 0 {
-		s.logger.InfoContext(ctx, "a checkout of a deleted episode took no payment and records nothing", logArgs...)
+		s.logger.InfoContext(ctx, "a checkout of something deleted took no payment and records nothing", logArgs...)
 		return nil
 	}
 	// Without the payment's id there is nothing to ask a refund of, and asking
@@ -1773,7 +1792,7 @@ func (s *apiServer) refundCheckoutOfDeletedEpisode(
 	// the provider's records, where a reconciliation lists it as matching no
 	// purchase.
 	if event.PaymentID == "" {
-		s.logger.ErrorContext(ctx, "a checkout of a deleted episode names no payment to refund", logArgs...)
+		s.logger.ErrorContext(ctx, "a checkout of something deleted names no payment to refund", logArgs...)
 		return nil
 	}
 	// Each redelivery of the notification asks again, and one that arrives
@@ -1784,18 +1803,18 @@ func (s *apiServer) refundCheckoutOfDeletedEpisode(
 	})
 	switch {
 	case errors.Is(err, paymentrefund.ErrNotSent):
-		return s.internalDBError(ctx, "failed to lock the payment of a checkout of a deleted episode", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
+		return s.internalDBError(ctx, "failed to lock the payment of a checkout of something deleted", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 	case errors.Is(err, paymentprovider.ErrRefundRefused):
 		// A redelivery would be refused the same way. The payment is left for
 		// staff to hand back in the provider's dashboard, and a reconciliation
 		// lists it as matching no purchase.
-		s.logger.ErrorContext(ctx, "the provider refused to refund a checkout of a deleted episode",
+		s.logger.ErrorContext(ctx, "the provider refused to refund a checkout of something deleted",
 			append(logArgs, "error", err)...)
 		return nil
 	case err != nil:
-		return s.internalError(ctx, "failed to refund a checkout of a deleted episode", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
+		return s.internalError(ctx, "failed to refund a checkout of something deleted", err, "event_id", event.ID, "checkout_id", event.CheckoutID)
 	}
-	s.logger.WarnContext(ctx, "refunded a checkout of a deleted episode",
+	s.logger.WarnContext(ctx, "refunded a checkout of something deleted",
 		append(logArgs, "refunded", refunded)...)
 	return nil
 }

@@ -120,3 +120,26 @@ func TestUniqueViolationConstraint(t *testing.T) {
 		})
 	}
 }
+
+func TestForeignKeyViolationConstraint(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"foreign_key_violation", &pgconn.PgError{Code: "23503", ConstraintName: "purchases_tenant_volume_id_fkey"}, "purchases_tenant_volume_id_fkey"},
+		{"wrapped", fmt.Errorf("create purchase: %w", &pgconn.PgError{Code: "23503", ConstraintName: "purchases_tenant_user_id_fkey"}), "purchases_tenant_user_id_fkey"},
+		{"unnamed", &pgconn.PgError{Code: "23503"}, ""},
+		{"other_sqlstate", &pgconn.PgError{Code: "23505", ConstraintName: "tenants_domain_key"}, ""},
+		{"plain_error", errors.New("boom"), ""},
+		{"nil", nil, ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := dberr.ForeignKeyViolationConstraint(tc.err); got != tc.want {
+				t.Fatalf("ForeignKeyViolationConstraint(%v) = %q, want %q", tc.err, got, tc.want)
+			}
+		})
+	}
+}
