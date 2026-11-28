@@ -632,6 +632,13 @@ func purchaseCompletedEvent(event *stripego.Event) (paymentprovider.Event, error
 	if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
 		return nil, fmt.Errorf("%w: checkout session: %v", paymentprovider.ErrMalformedNotification, err)
 	}
+	// A session something else on the tenant's account started, such as a
+	// Payment Link, names no tenant. It is acknowledged rather than refused
+	// into days of retries, as its expiry is. One that names a tenant is this
+	// integration's, and metadata of it that does not read is refused.
+	if _, ok := session.Metadata[MetadataTenantID]; !ok {
+		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
+	}
 	purchase, err := parsePurchaseMetadata(session.Metadata)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", paymentprovider.ErrMalformedNotification, err)
@@ -642,7 +649,7 @@ func purchaseCompletedEvent(event *stripego.Event) (paymentprovider.Event, error
 		return paymentprovider.Ignored{ID: event.ID, Type: string(event.Type)}, nil
 	}
 	if strings.TrimSpace(session.ID) == "" {
-		return nil, errors.New("checkout session has no ID")
+		return nil, fmt.Errorf("%w: the checkout session has no id", paymentprovider.ErrMalformedNotification)
 	}
 	promotionCodeID := sessionPromotionCode(&session)
 	if purchase.CoinPackID != uuid.Nil && promotionCodeID != "" {
@@ -653,7 +660,7 @@ func purchaseCompletedEvent(event *stripego.Event) (paymentprovider.Event, error
 	}
 	amountPaid, err := paidAmount(&session, purchase.Price, promotionCodeID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", paymentprovider.ErrMalformedNotification, err)
 	}
 	purchase.Currency = strings.ToUpper(string(session.Currency))
 	// The refund events this purchase may later receive name the payment

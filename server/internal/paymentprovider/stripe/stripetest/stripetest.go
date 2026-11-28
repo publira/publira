@@ -1011,8 +1011,9 @@ type Fixture struct {
 }
 
 var (
-	_ paymentprovidertest.SubscriptionFixture  = (*Fixture)(nil)
-	_ paymentprovidertest.FailingRefundFixture = (*Fixture)(nil)
+	_ paymentprovidertest.SubscriptionFixture    = (*Fixture)(nil)
+	_ paymentprovidertest.FailingRefundFixture   = (*Fixture)(nil)
+	_ paymentprovidertest.ForeignCheckoutFixture = (*Fixture)(nil)
 )
 
 // NewFixture answers a fixture whose fake API serves until t ends.
@@ -1051,6 +1052,23 @@ func (f *Fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Cr
 		"livemode":        !checkout.Test,
 		"payment_intent":  checkout.PaymentID,
 		"metadata":        PurchaseMetadata(checkout.Purchase),
+	})
+}
+
+// ForeignCheckoutCompleted answers the notification of checkout paid through
+// a Payment Link of the tenant's own, which carries none of the metadata this
+// integration starts a session with.
+func (*Fixture) ForeignCheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) ([]byte, http.Header) {
+	t.Helper()
+	return recorded(t, credentials, "checkout.session.completed.json", map[string]any{
+		"id":              checkout.CheckoutID,
+		"amount_subtotal": checkout.Purchase.Price,
+		"amount_total":    checkout.Purchase.Price,
+		"currency":        strings.ToLower(checkout.Purchase.Currency),
+		"livemode":        !checkout.Test,
+		"payment_intent":  checkout.PaymentID,
+		"payment_link":    "plink_foreign",
+		"metadata":        map[string]string{"order": "foreign"},
 	})
 }
 

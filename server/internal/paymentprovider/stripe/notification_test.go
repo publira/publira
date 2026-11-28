@@ -101,9 +101,36 @@ func TestParseNotification(t *testing.T) {
 		}
 	})
 
-	t.Run("a session whose amount disagrees with its price fails", func(t *testing.T) {
-		if _, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"amount_total": 400})); err == nil {
-			t.Fatal("ParseNotification error = nil, want an error")
+	t.Run("a session whose amount disagrees with its price is malformed", func(t *testing.T) {
+		if _, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"amount_total": 400})); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
+	t.Run("a completed session this integration did not start is ignored", func(t *testing.T) {
+		event, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{
+			"payment_link": "plink_tenant",
+			"metadata":     map[string]string{"order": "tenant-own"},
+		}))
+		if err != nil {
+			t.Fatalf("ParseNotification: %v", err)
+		}
+		if _, ok := event.(paymentprovider.Ignored); !ok {
+			t.Fatalf("event = %T, want Ignored", event)
+		}
+	})
+
+	t.Run("a session naming a tenant whose metadata does not read is malformed", func(t *testing.T) {
+		metadata := stripetest.PurchaseMetadata(purchase)
+		delete(metadata, stripe.MetadataUserID)
+		if _, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"metadata": metadata})); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+		}
+	})
+
+	t.Run("a session with no id is malformed", func(t *testing.T) {
+		if _, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"id": ""})); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
 		}
 	})
 
@@ -149,27 +176,27 @@ func TestParseNotification(t *testing.T) {
 		}
 	})
 
-	t.Run("a promotion code session whose subtotal disagrees with its price fails", func(t *testing.T) {
-		if _, err := parse(t, "checkout.session.completed", promoted(400, 300, nil)); err == nil {
-			t.Fatal("ParseNotification error = nil, want an error")
+	t.Run("a promotion code session whose subtotal disagrees with its price is malformed", func(t *testing.T) {
+		if _, err := parse(t, "checkout.session.completed", promoted(400, 300, nil)); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
 		}
 	})
 
-	t.Run("a promotion code session that charges more than its subtotal fails", func(t *testing.T) {
-		if _, err := parse(t, "checkout.session.completed", promoted(500, 600, nil)); err == nil {
-			t.Fatal("ParseNotification error = nil, want an error")
+	t.Run("a promotion code session that charges more than its subtotal is malformed", func(t *testing.T) {
+		if _, err := parse(t, "checkout.session.completed", promoted(500, 600, nil)); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
 		}
 	})
 
-	t.Run("a session requiring no payment of a total above zero fails", func(t *testing.T) {
-		if _, err := parse(t, "checkout.session.completed", promoted(500, 100, map[string]any{"payment_status": "no_payment_required"})); err == nil {
-			t.Fatal("ParseNotification error = nil, want an error")
+	t.Run("a session requiring no payment of a total above zero is malformed", func(t *testing.T) {
+		if _, err := parse(t, "checkout.session.completed", promoted(500, 100, map[string]any{"payment_status": "no_payment_required"})); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
 		}
 	})
 
-	t.Run("a session requiring no payment without a promotion code fails", func(t *testing.T) {
-		if _, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"amount_total": 0, "payment_status": "no_payment_required"})); err == nil {
-			t.Fatal("ParseNotification error = nil, want an error")
+	t.Run("a session requiring no payment without a promotion code is malformed", func(t *testing.T) {
+		if _, err := parse(t, "checkout.session.completed", checkoutSession(purchase, map[string]any{"amount_total": 0, "payment_status": "no_payment_required"})); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+			t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
 		}
 	})
 

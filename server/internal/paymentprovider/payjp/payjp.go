@@ -285,6 +285,13 @@ func (p *Provider) purchaseCompletedEvent(ctx context.Context, credentials payme
 	if strings.TrimSpace(session.ID) == "" || strings.TrimSpace(session.PaymentFlowID) == "" {
 		return nil, fmt.Errorf("%w: the checkout session names no id or payment flow", paymentprovider.ErrMalformedNotification)
 	}
+	// A session something else on the tenant's account started names no
+	// tenant, and is acknowledged rather than refused into retries. One that
+	// names a tenant is this integration's, and metadata of it that does not
+	// read is refused.
+	if _, ok := session.Metadata[MetadataTenantID]; !ok {
+		return paymentprovider.Ignored{ID: event.ID, Type: event.Type}, nil
+	}
 	purchase, err := parsePurchaseMetadata(session.Metadata)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", paymentprovider.ErrMalformedNotification, err)
@@ -314,7 +321,7 @@ func (p *Provider) purchaseCompletedEvent(ctx context.Context, credentials payme
 		return paymentprovider.Ignored{ID: event.ID, Type: event.Type}, nil
 	}
 	if flow.AmountReceived == nil || *flow.AmountReceived != int(purchase.Price) {
-		return nil, errors.New("payment flow was not paid the purchase's price")
+		return nil, fmt.Errorf("%w: the payment flow was not paid the purchase's price", paymentprovider.ErrMalformedNotification)
 	}
 	purchase.Currency = strings.ToUpper(string(flow.Currency))
 	// A PAY.JP checkout takes no promotion code, so the reader paid the price
