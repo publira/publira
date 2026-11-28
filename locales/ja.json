@@ -1221,6 +1221,7 @@
         "unset": "権限未設定"
       },
       "cancel": "キャンセル",
+      "close": "閉じる",
       "show_password": "パスワードを表示",
       "sortable": {
         "instructions": "行を持ち上げるにはSpaceキーまたはEnterキーを押します。矢印キーで移動し、もう一度SpaceキーまたはEnterキーを押すと新しい位置に置きます。Escapeキーで取り消します。",

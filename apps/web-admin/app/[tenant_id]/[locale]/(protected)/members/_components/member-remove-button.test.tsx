@@ -46,7 +46,9 @@ vi.mock("#components/message", () => ({
 }));
 
 const Toasts = ({ children }: { children: ReactNode }) => (
-  <Toast.Provider>{children}</Toast.Provider>
+  <Toast.Provider close={<Toast.Close aria-label="Close" />}>
+    {children}
+  </Toast.Provider>
 );
 
 const renderButton = async () => {

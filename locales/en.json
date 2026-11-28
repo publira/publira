@@ -1221,6 +1221,7 @@
         "unset": "No role"
       },
       "cancel": "Cancel",
+      "close": "Close",
       "show_password": "Show password",
       "sortable": {
         "instructions": "To pick up a row, press Space or Enter. Move it with the arrow keys, then press Space or Enter again to drop it in its new place, or Escape to cancel.",

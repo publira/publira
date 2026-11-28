@@ -1221,6 +1221,7 @@
         "unset": "역할 없음"
       },
       "cancel": "취소",
+      "close": "닫기",
       "show_password": "비밀번호 표시",
       "sortable": {
         "instructions": "행을 들어 올리려면 Space 키 또는 Enter 키를 누르세요. 화살표 키로 이동한 뒤 Space 키 또는 Enter 키를 다시 누르면 새 위치에 놓이고, Escape 키를 누르면 취소됩니다.",

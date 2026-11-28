@@ -51,7 +51,7 @@ const PURCHASE_ID = "018f0e6a-5000-7000-8000-000000000001";
 const renderButton = (bounds: RefundAmountBounds | null = null) =>
   render(
     <AdminLocaleTestProvider locale="en">
-      <Toast.Provider>
+      <Toast.Provider close={<Toast.Close aria-label="Close" />}>
         <RefundPurchaseButton
           bounds={bounds}
           locale="en"

@@ -1,8 +1,9 @@
 "use client";
 
 import { Toast as BaseToast } from "@base-ui/react/toast";
+import { CloseIcon } from "@publira/icons/close-icon";
 import { cn } from "@publira/utils";
-import type { JSX, ReactNode } from "react";
+import type { JSX, ReactElement, ReactNode } from "react";
 
 import { FLOATING_FADE } from "../motion";
 
@@ -64,11 +65,19 @@ export const ToastDescription = ({
   <BaseToast.Description {...props} className={cn("text-xs", className)} />
 );
 
+interface ToastCloseProps extends BaseToast.Close.Props {
+  /**
+   * Names the button. Its default content is an icon, which a screen reader
+   * does not announce, and the copy is the app's, in the reader's language.
+   */
+  "aria-label": string;
+}
+
 export const ToastClose = ({
   className,
-  children = "\u00D7",
+  children,
   ...props
-}: BaseToast.Close.Props): JSX.Element => (
+}: ToastCloseProps): JSX.Element => (
   <BaseToast.Close
     {...props}
     className={cn(
@@ -76,18 +85,18 @@ export const ToastClose = ({
       className
     )}
   >
-    {children}
+    {children ?? <CloseIcon className="size-4" />}
   </BaseToast.Close>
 );
 
-const ToastStack = () => {
+const ToastStack = ({ close }: { close: ReactElement }) => {
   const { toasts } = useToastManager();
 
   return (
     <ToastViewport>
       {toasts.map((toast) => (
         <ToastRoot key={toast.id} toast={toast}>
-          <ToastClose />
+          {close}
           <ToastContent>
             {toast.title ? <ToastTitle>{toast.title}</ToastTitle> : null}
             {toast.description ? (
@@ -102,17 +111,23 @@ const ToastStack = () => {
 
 interface ToastProviderProps {
   children: ReactNode;
+  /**
+   * The close control drawn in every toast, a `Toast.Close` carrying the app's
+   * label for it.
+   */
+  close: ReactElement;
   limit?: number;
   timeout?: number;
 }
 
 export const ToastProvider = ({
   children,
+  close,
   limit = 3,
   timeout = 4000,
 }: ToastProviderProps): JSX.Element => (
   <BaseToast.Provider limit={limit} timeout={timeout}>
     {children}
-    <ToastStack />
+    <ToastStack close={close} />
   </BaseToast.Provider>
 );

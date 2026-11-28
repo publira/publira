@@ -1221,6 +1221,7 @@
         "unset": "無角色"
       },
       "cancel": "取消",
+      "close": "關閉",
       "show_password": "顯示密碼",
       "sortable": {
         "instructions": "按空白鍵或Enter鍵拿起一列。用方向鍵移動，再按一次空白鍵或Enter鍵放到新位置，按Esc鍵取消。",

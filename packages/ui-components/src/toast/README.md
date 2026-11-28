@@ -14,10 +14,20 @@ Mount the provider once, in the layout of the screens that raise toasts. It is a
 import * as Toast from "@publira/ui-components/toast";
 import type { ReactNode } from "react";
 
+import { useClientMessages } from "./client-message";
+
+const CloseControl = () => {
+  const t = useClientMessages();
+
+  return <Toast.Close aria-label={t("admin.common.close")} />;
+};
+
 export const AdminToastProvider = ({ children }: { children: ReactNode }) => (
-  <Toast.Provider>{children}</Toast.Provider>
+  <Toast.Provider close={<CloseControl />}>{children}</Toast.Provider>
 );
 ```
+
+`close` is the close control drawn in every toast. The component carries no copy of its own, so the app writes the `Toast.Close` and names it in the reader's language with `aria-label`; the control's content is an icon, which a screen reader does not announce.
 
 Raise a toast from an event handler with the manager's `add`:
 
@@ -50,6 +60,6 @@ import * as Toast from "@publira/ui-components/toast";
 
 ## Props
 
-`Toast.Provider` takes `children`, `limit` (how many toasts stay on screen at once, default `3`), and `timeout` (how long a toast stays, in milliseconds, default `4000`). The parts take the props of the Base UI part each one wraps, and `Toast.useManager` is Base UI's own hook.
+`Toast.Provider` takes `children`, `close` (the close control drawn in every toast, required), `limit` (how many toasts stay on screen at once, default `3`), and `timeout` (how long a toast stays, in milliseconds, default `4000`). The parts take the props of the Base UI part each one wraps, and `Toast.Close` also requires `aria-label`, since its default content is a close icon; `Toast.useManager` is Base UI's own hook.
 
 See the [Base UI Toast documentation](https://base-ui.com/r/components/toast) for the rest.

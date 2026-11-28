@@ -63,7 +63,7 @@ vi.mock("./comment-reason-input", async () => {
  */
 const renderRows = (secondCommentId = "COMMENT002") =>
   render(
-    <Toast.Provider>
+    <Toast.Provider close={<Toast.Close aria-label="Close" />}>
       <ul>
         <li data-testid="first">
           <CommentReasonDialog
