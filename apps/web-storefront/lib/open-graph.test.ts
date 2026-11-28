@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { EyeCatchImageVariant } from "./catalog";
 import {
+  descriptionFromBody,
   openGraphMetadata,
+  pageOpenGraphMetadata,
   resolveEpisodeOpenGraphImage,
   resolveOpenGraphImage,
   resolveSeriesOpenGraphImage,
@@ -257,5 +259,100 @@ describe("openGraphMetadata", () => {
         title: "Seed Label 01",
       },
     });
+  });
+});
+
+describe("pageOpenGraphMetadata", () => {
+  const site = {
+    description: "Comics from the Seed Tenant",
+    image: {
+      alt: "Seed Tenant",
+      height: 630,
+      url: "/og",
+      width: 1200,
+    },
+    siteName: "Seed Tenant",
+  };
+
+  const alternates = {
+    canonical: "/ja/genres",
+    languages: { en: "/genres", ja: "/ja/genres", "x-default": "/genres" },
+  };
+
+  it("names the page's own title and canonical URL on the site's picture", () => {
+    expect(
+      pageOpenGraphMetadata({
+        alternates,
+        site,
+        description: "The genres published on Seed Tenant",
+        title: "Genres",
+      })
+    ).toEqual({
+      openGraph: {
+        description: "The genres published on Seed Tenant",
+        images: site.image,
+        siteName: "Seed Tenant",
+        title: "Genres",
+        type: "website",
+        url: "/ja/genres",
+      },
+      twitter: {
+        card: "summary_large_image",
+        description: "The genres published on Seed Tenant",
+        images: site.image,
+        title: "Genres",
+      },
+    });
+  });
+
+  it("carries the site's description where the page has none", () => {
+    const { openGraph, twitter } = pageOpenGraphMetadata({
+      alternates,
+      site,
+      title: "Genres",
+    });
+
+    expect(openGraph?.description).toBe(site.description);
+    expect(twitter?.description).toBe(site.description);
+  });
+
+  it("names no URL without alternates", () => {
+    expect(
+      pageOpenGraphMetadata({ site, alternates: undefined, title: "Genres" })
+        .openGraph?.url
+    ).toBeUndefined();
+  });
+});
+
+describe("descriptionFromBody", () => {
+  it("joins the lines of a short body into one", () => {
+    expect(
+      descriptionFromBody(
+        "  Maintenance tonight.\n\nThe site  pauses at 2:00. "
+      )
+    ).toBe("Maintenance tonight. The site pauses at 2:00.");
+  });
+
+  it("returns nothing for a blank body", () => {
+    expect(descriptionFromBody(" \n\t ")).toBeUndefined();
+  });
+
+  it("keeps a body of exactly 200 characters whole", () => {
+    const body = "a".repeat(200);
+
+    expect(descriptionFromBody(body)).toBe(body);
+  });
+
+  it("cuts a longer body with an ellipsis, 200 characters in all", () => {
+    const description = descriptionFromBody(`${"a".repeat(198)} bcd`) ?? "";
+
+    expect(description).toBe(`${"a".repeat(198)}…`);
+  });
+
+  it("counts an emoji sequence as one character and never splits it", () => {
+    const family = "👨‍👩‍👧";
+    const description = descriptionFromBody(family.repeat(250)) ?? "";
+
+    expect(description).toBe(`${family.repeat(199)}…`);
   });
 });

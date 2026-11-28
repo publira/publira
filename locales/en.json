@@ -6350,6 +6350,7 @@
     },
     "genres": {
       "back_to_list": "Back to genres",
+      "detail_description": "{$count} published series in {$name}",
       "list_description": "The genres published on {$site}",
       "list_empty": "No genres have been registered yet.",
       "list_error": "Could not show the genre list",
@@ -7021,6 +7022,7 @@
       "title": "Settings"
     },
     "tags": {
+      "detail_description": "{$count} published series tagged {$name}",
       "detail_failed": "Could not load the tag. Please try again later.",
       "not_found_title": "Tag not found",
       "series_empty": "No published series carry this tag yet.",

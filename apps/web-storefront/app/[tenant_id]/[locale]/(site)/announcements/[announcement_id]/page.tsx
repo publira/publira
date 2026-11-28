@@ -20,8 +20,10 @@ import { withPublicSessionReauth } from "#lib/auth-session";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { descriptionFromBody, pageOpenGraphMetadata } from "#lib/open-graph";
 import { toSafeOperatorLinkUrl } from "#lib/operator-link";
 import { fallbackLanguage } from "#lib/served-locale";
+import { getSiteOpenGraphCard } from "#lib/site-open-graph-card";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantPublishedLocaleAlternates } from "#lib/tenant-locale-path";
@@ -79,9 +81,10 @@ export const generateMetadata = async (
 
   const { announcement_id } = parsedParams;
 
-  const [result, t] = await Promise.all([
+  const [result, t, site] = await Promise.all([
     readAnnouncement(tenantId, announcement_id, locale),
     getMessagesFor(locale),
+    getSiteOpenGraphCard(),
   ]);
 
   // An unavailable announcement reads as "not found" for the `<title>` alone;
@@ -101,7 +104,23 @@ export const generateMetadata = async (
     announcement.locale
   );
 
-  return { alternates, title: announcement.title };
+  // A key set to `undefined` replaces the layout's value rather than leaving
+  // it, so a blank body falls back on the site's description by hand.
+  const description =
+    descriptionFromBody(announcement.body) ?? site.description;
+
+  return {
+    ...pageOpenGraphMetadata({
+      alternates,
+      description,
+      site,
+      title: announcement.title,
+      type: "article",
+    }),
+    alternates,
+    description,
+    title: announcement.title,
+  };
 };
 
 const AnnouncementDetailSkeleton = () => (

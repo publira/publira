@@ -6350,6 +6350,7 @@
     },
     "genres": {
       "back_to_list": "返回题材列表",
+      "detail_description": "{$name}题材已发布的系列共{$count}部",
       "list_description": "{$site}已登记的题材",
       "list_empty": "尚未登记任何题材。",
       "list_error": "无法显示题材列表",
@@ -7021,6 +7022,7 @@
       "title": "设置"
     },
     "tags": {
+      "detail_description": "带有{$name}标签的已发布系列共{$count}部",
       "detail_failed": "无法加载该标签。请稍后再试。",
       "not_found_title": "未找到该标签",
       "series_empty": "尚无带有该标签的已发布系列。",

@@ -9,19 +9,30 @@ import { Message } from "#components/message";
 import { TenantIdField } from "#components/tenant-id-field";
 import { getMe } from "#lib/auth";
 import { getMessages } from "#lib/get-messages";
+import { pageOpenGraphMetadata } from "#lib/open-graph";
 import { getPageAlternates } from "#lib/page-alternates";
+import { getSiteOpenGraphCard } from "#lib/site-open-graph-card";
 import { getTenantId } from "#lib/tenant-id";
 
 import { RetainedInput, RetainedTextarea } from "./_components/retained-fields";
 import { submitContactMessageAction } from "./_lib/actions";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const [t, alternates] = await Promise.all([
+  const [t, alternates, site] = await Promise.all([
     getMessages(),
     getPageAlternates("/contact"),
+    getSiteOpenGraphCard(),
   ]);
 
-  return { alternates, title: t("storefront.contact.title") };
+  const title = t("storefront.contact.title");
+  const description = t("storefront.contact.description");
+
+  return {
+    ...pageOpenGraphMetadata({ alternates, description, site, title }),
+    alternates,
+    description,
+    title,
+  };
 };
 
 /**

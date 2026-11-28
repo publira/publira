@@ -6350,6 +6350,7 @@
     },
     "genres": {
       "back_to_list": "返回類型列表",
+      "detail_description": "{$name}類型已發布的系列共{$count}部",
       "list_description": "{$site}已新增的類型",
       "list_empty": "尚未新增任何類型。",
       "list_error": "無法顯示類型列表",
@@ -7021,6 +7022,7 @@
       "title": "設定"
     },
     "tags": {
+      "detail_description": "帶有{$name}標籤的已發布系列共{$count}部",
       "detail_failed": "無法載入該標籤。請稍後再試。",
       "not_found_title": "找不到該標籤",
       "series_empty": "尚無帶有該標籤的已發布系列。",

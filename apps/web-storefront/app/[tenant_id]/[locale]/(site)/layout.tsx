@@ -5,36 +5,26 @@ import {
   LocaleProvider,
   TenantLocalesProvider,
 } from "#components/locale-provider";
-import { getLocale } from "#lib/locale";
-import { openGraphCardImage, openGraphMetadata } from "#lib/open-graph";
-import { tenantOpenGraphCardPath } from "#lib/open-graph-card-subject";
-import { getTenantSiteCopy, getTenantSiteLabel } from "#lib/tenant";
-import { getTenantId } from "#lib/tenant-id";
+import { pageOpenGraphMetadata } from "#lib/open-graph";
+import { getSiteOpenGraphCard } from "#lib/site-open-graph-card";
 
 import { SiteChrome } from "./_components/site-chrome";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
-
-  const [{ siteDescription }, siteLabel, cardPath] = await Promise.all([
-    getTenantSiteCopy(tenantId, locale),
-    getTenantSiteLabel(tenantId, locale),
-    tenantOpenGraphCardPath(tenantId, locale, { kind: "site" }),
-  ]);
+  const site = await getSiteOpenGraphCard();
 
   return {
-    // The tenant's own card, for every page that has none of its own.
-    ...openGraphMetadata({
-      description: siteDescription,
-      image: cardPath ? openGraphCardImage(cardPath, siteLabel) : undefined,
-      siteName: siteLabel,
-      title: siteLabel,
-      type: "website",
+    // The tenant's own card, for every page that sets none of its own. It
+    // names no URL: whatever page inherits it is not the one it would name.
+    ...pageOpenGraphMetadata({
+      site,
+      alternates: undefined,
+      title: site.siteName,
     }),
-    description: siteDescription,
+    description: site.description,
     title: {
-      default: siteLabel,
-      template: `%s | ${siteLabel}`,
+      default: site.siteName,
+      template: `%s | ${site.siteName}`,
     },
   };
 };
