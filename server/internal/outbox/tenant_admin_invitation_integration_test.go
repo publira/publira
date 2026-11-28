@@ -439,8 +439,8 @@ func TestTenantAdminInvitationEmailGoesThroughARelayWithoutCredentials(t *testin
 // are not saved yet, are both for an operator to put right, so the mail waits
 // for them without spending an attempt and goes out once both are there.
 func TestTenantAdminInvitationEmailWaitsForTheSMTPClientAndSettings(t *testing.T) {
-	pg := testutil.StartPostgres(t)
-	pg.Reset(t)
+	t.Parallel()
+	pg := testutil.StartIsolatedPostgres(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
