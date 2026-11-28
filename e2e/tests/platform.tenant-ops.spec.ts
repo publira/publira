@@ -7,6 +7,7 @@ import {
   querySql,
 } from "../src/db";
 import {
+  confirmDangerAction,
   createTenantViaUi,
   formMessage,
   signInAsScenarioPlatformOperator,
@@ -356,7 +357,7 @@ test.describe("platform tenant operations", () => {
       await createTenantViaUi(page, { domain, name })
     );
 
-    await page.getByRole("button", { name: "Suspend" }).click();
+    await confirmDangerAction(page, "Suspend", "Suspend");
     await expect(page.getByRole("button", { name: "Resume" })).toBeVisible({
       timeout: 30_000,
     });
@@ -393,7 +394,7 @@ test.describe("platform tenant operations", () => {
     await tenantNameForm(page).getByRole("button", { name: "Save" }).click();
     await expect(formMessage(page)).toContainText("Saved.");
 
-    await page.getByRole("button", { name: "Suspend" }).click();
+    await confirmDangerAction(page, "Suspend", "Suspend");
     await expect(page.getByRole("button", { name: "Resume" })).toBeVisible({
       timeout: 30_000,
     });

@@ -20,6 +20,7 @@ import { platformDashboardCacheTag } from "#lib/dashboard";
 import { requiredRecordId, requiredTrimmedString } from "#lib/form-schemas";
 import { getPlatformLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import type { PlatformMessageAccessor } from "#lib/messages";
 import {
   deactivatePlatformOperator,
   platformOperatorsCacheTag,
@@ -147,83 +148,132 @@ export const updateOperatorRoleAction = async (
   };
 };
 
-export const suspendOperatorAction = async (
-  operator: OperatorTarget
-): Promise<void> => {
-  await assertSameOrigin();
-  const locale = await getPlatformLocale();
-  const schema = await operatorTargetSchema(locale);
-  const parsed = schema.safeParse(operator);
+/**
+ * The operator a status change names, once the caller has been confirmed as a
+ * super admin who may change it, or the refusal to show instead. `self` is
+ * what refuses a change the caller may not make to their own account; leaving
+ * it out lets them, which only reactivating does, since a suspended operator
+ * cannot be the one signed in.
+ */
+const resolveStatusChangeTarget = async (
+  formData: FormData,
+  locale: Locale,
+  self?: (t: PlatformMessageAccessor) => string
+): Promise<
+  { ok: true; target: OperatorTarget } | { message: string; ok: false }
+> => {
+  const [t, schema] = await Promise.all([
+    getMessagesFor(locale),
+    operatorTargetSchema(locale),
+  ]);
 
-  if (!parsed.success) {
-    return;
-  }
-
-  const me = await resolveCurrentOperator();
-
-  if (
-    !(me && isPlatformSuperAdmin(me.role)) ||
-    me.publicId === parsed.data.publicId
-  ) {
-    return;
-  }
-
-  await withPlatformSessionReauth(() =>
-    suspendPlatformOperator(parsed.data.id)
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      id: { kind: "value", name: "operator_id" },
+      publicId: { kind: "value", name: "operator_public_id" },
+    })
   );
-  updateTag(platformOperatorsCacheTag);
-  updateTag(platformAuditLogsCacheTag);
-};
-
-export const unsuspendOperatorAction = async (
-  operator: OperatorTarget
-): Promise<void> => {
-  await assertSameOrigin();
-  const locale = await getPlatformLocale();
-  const schema = await operatorTargetSchema(locale);
-  const parsed = schema.safeParse(operator);
 
   if (!parsed.success) {
-    return;
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
   }
 
   const me = await resolveCurrentOperator();
 
   if (!(me && isPlatformSuperAdmin(me.role))) {
-    return;
+    return { message: t("errors.rpc.forbidden"), ok: false };
   }
 
-  await withPlatformSessionReauth(() =>
-    unsuspendPlatformOperator(parsed.data.id)
-  );
-  updateTag(platformOperatorsCacheTag);
-  updateTag(platformAuditLogsCacheTag);
+  if (self && me.publicId === parsed.data.publicId) {
+    return { message: self(t), ok: false };
+  }
+
+  return { ok: true, target: parsed.data };
 };
 
-export const deactivateOperatorAction = async (
-  operator: OperatorTarget
-): Promise<void> => {
+/**
+ * Success returns no message: the page renders the operator's new status, and
+ * the control that reverses the change in place of this one.
+ */
+export const suspendOperatorAction = async (
+  _prevState: ActionForm.State,
+  formData: FormData
+): Promise<ActionForm.State> => {
   await assertSameOrigin();
   const locale = await getPlatformLocale();
-  const schema = await operatorTargetSchema(locale);
-  const parsed = schema.safeParse(operator);
 
-  if (!parsed.success) {
-    return;
-  }
-
-  const me = await resolveCurrentOperator();
-
-  if (
-    !(me && isPlatformSuperAdmin(me.role)) ||
-    me.publicId === parsed.data.publicId
-  ) {
-    return;
-  }
-
-  await withPlatformSessionReauth(() =>
-    deactivatePlatformOperator(parsed.data.id)
+  const resolved = await resolveStatusChangeTarget(formData, locale, (t) =>
+    t("platform.operators.cannot_suspend_self")
   );
+
+  if (!resolved.ok) {
+    return resolved;
+  }
+
+  const result = await withPlatformSessionReauth(() =>
+    suspendPlatformOperator(resolved.target.id, locale)
+  );
+
+  if (!result.ok) {
+    return result;
+  }
+
+  updateTag(platformOperatorsCacheTag);
+  updateTag(platformAuditLogsCacheTag);
+
+  return { message: "", ok: true };
+};
+
+export const unsuspendOperatorAction = async (
+  _prevState: ActionForm.State,
+  formData: FormData
+): Promise<ActionForm.State> => {
+  await assertSameOrigin();
+  const locale = await getPlatformLocale();
+  const resolved = await resolveStatusChangeTarget(formData, locale);
+
+  if (!resolved.ok) {
+    return resolved;
+  }
+
+  const result = await withPlatformSessionReauth(() =>
+    unsuspendPlatformOperator(resolved.target.id, locale)
+  );
+
+  if (!result.ok) {
+    return result;
+  }
+
+  updateTag(platformOperatorsCacheTag);
+  updateTag(platformAuditLogsCacheTag);
+
+  return { message: "", ok: true };
+};
+
+/** Leaves for the operator list once the account is deactivated, and only then. */
+export const deactivateOperatorAction = async (
+  _prevState: ActionForm.State,
+  formData: FormData
+): Promise<ActionForm.State> => {
+  await assertSameOrigin();
+  const locale = await getPlatformLocale();
+
+  const resolved = await resolveStatusChangeTarget(formData, locale, (t) =>
+    t("platform.operators.cannot_deactivate_self")
+  );
+
+  if (!resolved.ok) {
+    return resolved;
+  }
+
+  const result = await withPlatformSessionReauth(() =>
+    deactivatePlatformOperator(resolved.target.id, locale)
+  );
+
+  if (!result.ok) {
+    return result;
+  }
+
   updateTag(platformOperatorsCacheTag);
   updateTag(platformDashboardCacheTag);
   updateTag(platformAuditLogsCacheTag);

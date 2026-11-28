@@ -97,14 +97,28 @@ describe("tenant detail actions", () => {
   });
 
   it("suspending or resuming a tenant clears the tenants, the dashboard, and the audit log", async () => {
+    mockSuspendPlatformTenant.mockResolvedValueOnce({ ok: true });
+    mockResumePlatformTenant.mockResolvedValueOnce({ ok: true });
+
     const { resumeTenantAction, suspendTenantAction } =
       await import("./actions");
 
-    await suspendTenantAction(
-      formData({ tenant_id: "01a0deb5-0000-7000-8000-000000000002" })
-    );
-    await resumeTenantAction(
-      formData({ tenant_id: "01a0deb5-0000-7000-8000-000000000002" })
+    await expect(
+      suspendTenantAction(
+        null,
+        formData({ tenant_id: "01a0deb5-0000-7000-8000-000000000002" })
+      )
+    ).resolves.toEqual({ message: "", ok: true });
+    await expect(
+      resumeTenantAction(
+        null,
+        formData({ tenant_id: "01a0deb5-0000-7000-8000-000000000002" })
+      )
+    ).resolves.toEqual({ message: "", ok: true });
+
+    expect(mockSuspendPlatformTenant).toHaveBeenCalledWith(
+      "01a0deb5-0000-7000-8000-000000000002",
+      "en"
     );
 
     const expected = [
@@ -115,6 +129,34 @@ describe("tenant detail actions", () => {
 
     expect(clearedTags()).toEqual([...expected, ...expected]);
   });
+
+  it.each([
+    ["suspendTenantAction", mockSuspendPlatformTenant],
+    ["resumeTenantAction", mockResumePlatformTenant],
+  ] as const)(
+    "%s answers with the refusal the API met and clears nothing",
+    async (name, mockChange) => {
+      mockChange.mockResolvedValueOnce({
+        message:
+          "You do not have permission to perform this action. Go back or use an account that does.",
+        ok: false,
+      });
+
+      const actions = await import("./actions");
+
+      await expect(
+        actions[name](
+          null,
+          formData({ tenant_id: "01a0deb5-0000-7000-8000-000000000002" })
+        )
+      ).resolves.toEqual({
+        message:
+          "You do not have permission to perform this action. Go back or use an account that does.",
+        ok: false,
+      });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    }
+  );
 
   it("deleting a tenant sends the name as it was typed and clears the tenants, the dashboard, and the audit log", async () => {
     mockDeletePlatformTenant.mockResolvedValueOnce({ ok: true });
@@ -376,8 +418,12 @@ describe("tenant detail actions", () => {
   it("clears nothing for a submission that fails validation", async () => {
     const { suspendTenantAction } = await import("./actions");
 
-    await suspendTenantAction(formData({ tenant_id: "  " }));
+    const result = await suspendTenantAction(
+      null,
+      formData({ tenant_id: "  " })
+    );
 
+    expect(result?.ok).toBe(false);
     expect(mockSuspendPlatformTenant).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
@@ -386,7 +432,7 @@ describe("tenant detail actions", () => {
     const { removeTenantMemberAction, suspendTenantAction } =
       await import("./actions");
 
-    await suspendTenantAction(formData({ tenant_id: "SeedTNNTAAA1" }));
+    await suspendTenantAction(null, formData({ tenant_id: "SeedTNNTAAA1" }));
     await removeTenantMemberAction(
       null,
       formData({

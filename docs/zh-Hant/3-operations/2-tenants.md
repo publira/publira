@@ -2,8 +2,8 @@
 title: 租戶
 description: 建立租戶、選擇它的網域、主控台主機與圖片主機、之後變更它們，以及暫停或刪除租戶。
 published: 2026-11-03
-updated: 2026-11-09
-source_updated: 2026-11-09
+updated: 2026-11-28
+source_updated: 2026-11-28
 ---
 
 安裝實例服務的每個出版社都是一個租戶，在自己的網域上有一個公開網站，並在第二個主機名稱上有一個主控台。第一個租戶是由`publiractl setup`建立的。本頁說明如何新增下一個租戶，以及之後可以變更租戶的哪些內容。
@@ -115,7 +115,7 @@ publiractl tenant update --tenant comics.example.com --name "Example Comics Ltd.
 
 ## 暫停租戶
 
-平台主控台租戶頁面上的**暫停**，或`publiractl tenant suspend --tenant comics.example.com`，會把租戶標示為**已暫停**。**恢復**或`publiractl tenant resume`會把它重新標示為運作中。平台主控台的按鈕一按下就會生效，不會要求確認。無論以哪種方式，變更都會記錄在**稽核記錄**中，儀表板也會把該租戶計入**已暫停的租戶**。
+平台主控台租戶頁面上的**暫停**，或`publiractl tenant suspend --tenant comics.example.com`，會把租戶標示為**已暫停**。**恢復**或`publiractl tenant resume`會把它重新標示為運作中。在平台主控台中，**暫停**會開啟一個說明哪些功能會停止的對話方塊，在其中選擇**暫停**後才會暫停租戶；**恢復**一按下就會生效。任一操作遭到拒絕時，原因會顯示在按鈕下方，租戶維持原狀。無論以哪種方式，變更都會記錄在**稽核記錄**中，儀表板也會把該租戶計入**已暫停的租戶**。
 
 ![運作中租戶頁面的頂端：返回列表、查看稽核記錄，以及暫停。](./tenants-suspend.png)
 

@@ -2,8 +2,8 @@
 title: 租户
 description: 创建租户，选择它的域名、控制台主机和图片主机，之后更改它们，以及暂停或删除租户。
 published: 2026-11-03
-updated: 2026-11-09
-source_updated: 2026-11-09
+updated: 2026-11-28
+source_updated: 2026-11-28
 ---
 
 安装实例服务的每个出版社都是一个租户，它在自己的域名上拥有公开网站，并在第二个主机名上拥有控制台。`publiractl setup`创建了第一个租户。本页添加下一个租户，并介绍租户创建之后可以更改的内容。
@@ -115,7 +115,7 @@ publiractl tenant update --tenant comics.example.com --name "Example Comics Ltd.
 
 ## 暂停租户
 
-在平台控制台的租户页面上点击**暂停**，或运行`publiractl tenant suspend --tenant comics.example.com`，会把租户标记为**已暂停**。**恢复**或`publiractl tenant resume`会把它重新标记为活动状态。平台控制台的按钮一按下就生效，不会要求确认。无论哪种方式，这项更改都会记录在**审计日志**中，并且仪表盘会把该租户计入**已暂停的租户**。
+在平台控制台的租户页面上点击**暂停**，或运行`publiractl tenant suspend --tenant comics.example.com`，会把租户标记为**已暂停**。**恢复**或`publiractl tenant resume`会把它重新标记为活动状态。在平台控制台中，**暂停**会打开一个说明哪些功能会停止的对话框，在其中选择**暂停**后才会暂停租户；**恢复**一按下就生效。任一操作被拒绝时，原因会显示在按钮下方，租户保持原样。无论哪种方式，这项更改都会记录在**审计日志**中，并且仪表盘会把该租户计入**已暂停的租户**。
 
 ![活动租户页面的顶部：返回列表、查看审计日志和暂停。](./tenants-suspend.png)
 

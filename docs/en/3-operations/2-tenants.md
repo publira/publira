@@ -2,7 +2,7 @@
 title: Tenants
 description: Create a tenant, choose its domain, console host, and image host, change them later, and suspend or delete a tenant.
 published: 2026-10-06
-updated: 2026-11-09
+updated: 2026-11-28
 ---
 
 Each publisher an install serves is a tenant, with a public site on its own domain and a console on a second host name. `publiractl setup` created the first one. This page adds the next, and covers what can be changed about a tenant afterwards.
@@ -114,7 +114,7 @@ Moving the domain also moves everything built on it:
 
 ## Suspending a tenant
 
-**Suspend** on a tenant's page in the Platform Console, or `publiractl tenant suspend --tenant comics.example.com`, marks the tenant **Suspended**. **Resume**, or `publiractl tenant resume`, marks it active again. The Platform Console's button takes effect as soon as it is pressed, with no confirmation. Either way the change is recorded in **Audit logs**, and the dashboard counts the tenant among its **Suspended tenants**.
+**Suspend** on a tenant's page in the Platform Console, or `publiractl tenant suspend --tenant comics.example.com`, marks the tenant **Suspended**. **Resume**, or `publiractl tenant resume`, marks it active again. In the Platform Console, **Suspend** opens a dialog that says what stops, and suspends the tenant once **Suspend** in it is chosen, while **Resume** takes effect as soon as it is pressed. When either is refused, the reason is shown under the button and the tenant stays as it was. Either way the change is recorded in **Audit logs**, and the dashboard counts the tenant among its **Suspended tenants**.
 
 ![The top of an active tenant's page: Back to list, View audit logs, and Suspend.](./tenants-suspend.png)
 

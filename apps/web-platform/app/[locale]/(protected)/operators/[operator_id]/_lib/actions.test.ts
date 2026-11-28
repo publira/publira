@@ -71,6 +71,19 @@ const otherOperator = {
   publicId: "OPERATOR002",
 };
 
+const targetForm = (target: { id: string; publicId: string }): FormData => {
+  const formData = new FormData();
+  formData.set("operator_id", target.id);
+  formData.set("operator_public_id", target.publicId);
+
+  return formData;
+};
+
+const self = {
+  id: "0199a3c0-0000-7000-8000-000000000001",
+  publicId: "OPERATOR001",
+};
+
 describe("operator detail actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -91,9 +104,7 @@ describe("operator detail actions", () => {
 
     const { updateOperatorRoleAction } = await import("./actions");
 
-    const formData = new FormData();
-    formData.set("operator_id", "0199a3c0-0000-7000-8000-000000000002");
-    formData.set("operator_public_id", "OPERATOR002");
+    const formData = targetForm(otherOperator);
     formData.set("operator_role", "platform_auditor");
     await updateOperatorRoleAction(null, formData);
 
@@ -111,15 +122,26 @@ describe("operator detail actions", () => {
   });
 
   it("suspending or unsuspending an operator clears the operators and the audit log", async () => {
+    mockSuspendPlatformOperator.mockResolvedValueOnce({ ok: true });
+    mockUnsuspendPlatformOperator.mockResolvedValueOnce({ ok: true });
+
     const { suspendOperatorAction, unsuspendOperatorAction } =
       await import("./actions");
 
-    await suspendOperatorAction(otherOperator);
-    await unsuspendOperatorAction(otherOperator);
+    await expect(
+      suspendOperatorAction(null, targetForm(otherOperator))
+    ).resolves.toEqual({ message: "", ok: true });
+    await expect(
+      unsuspendOperatorAction(null, targetForm(otherOperator))
+    ).resolves.toEqual({ message: "", ok: true });
 
-    expect(mockSuspendPlatformOperator).toHaveBeenCalledWith(otherOperator.id);
+    expect(mockSuspendPlatformOperator).toHaveBeenCalledWith(
+      otherOperator.id,
+      "en"
+    );
     expect(mockUnsuspendPlatformOperator).toHaveBeenCalledWith(
-      otherOperator.id
+      otherOperator.id,
+      "en"
     );
 
     const expected = ["platform:operators", "platform:audit-logs"];
@@ -127,11 +149,13 @@ describe("operator detail actions", () => {
   });
 
   it("deactivating an operator clears the operators, the dashboard, and the audit log before redirecting", async () => {
+    mockDeactivatePlatformOperator.mockResolvedValueOnce({ ok: true });
+
     const { deactivateOperatorAction } = await import("./actions");
 
-    await expect(deactivateOperatorAction(otherOperator)).rejects.toThrow(
-      "NEXT_REDIRECT:/operators"
-    );
+    await expect(
+      deactivateOperatorAction(null, targetForm(otherOperator))
+    ).rejects.toThrow("NEXT_REDIRECT:/operators");
 
     expect(clearedTags()).toEqual([
       "platform:operators",
@@ -140,23 +164,92 @@ describe("operator detail actions", () => {
     ]);
   });
 
-  it("clears nothing when the operator may not make the change", async () => {
-    const { suspendOperatorAction } = await import("./actions");
+  it.each([
+    ["suspendOperatorAction", mockSuspendPlatformOperator],
+    ["unsuspendOperatorAction", mockUnsuspendPlatformOperator],
+    ["deactivateOperatorAction", mockDeactivatePlatformOperator],
+  ] as const)(
+    "%s answers with the refusal the API met, clears nothing, and stays on the page",
+    async (name, mockChange) => {
+      mockChange.mockResolvedValueOnce({
+        message: "The account is not in a status this change starts from.",
+        ok: false,
+      });
 
-    await suspendOperatorAction({
-      id: "0199a3c0-0000-7000-8000-000000000001",
-      publicId: "OPERATOR001",
+      const actions = await import("./actions");
+
+      await expect(
+        actions[name](null, targetForm(otherOperator))
+      ).resolves.toEqual({
+        message: "The account is not in a status this change starts from.",
+        ok: false,
+      });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ["suspendOperatorAction", mockSuspendPlatformOperator],
+    ["unsuspendOperatorAction", mockUnsuspendPlatformOperator],
+    ["deactivateOperatorAction", mockDeactivatePlatformOperator],
+  ] as const)(
+    "%s says an operator who is not a super admin may not make the change",
+    async (name, mockChange) => {
+      mockGetPlatformCurrentOperator.mockResolvedValue({
+        ok: true,
+        operator: {
+          name: "Morgan Diaz",
+          publicId: "OPERATOR003",
+          role: "platform_operator",
+        },
+      });
+
+      const actions = await import("./actions");
+
+      await expect(
+        actions[name](null, targetForm(otherOperator))
+      ).resolves.toEqual({
+        message:
+          "You do not have permission to perform this action. Go back or use an account that does.",
+        ok: false,
+      });
+      expect(mockChange).not.toHaveBeenCalled();
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+    }
+  );
+
+  it("says an operator cannot suspend or deactivate their own account", async () => {
+    const { deactivateOperatorAction, suspendOperatorAction } =
+      await import("./actions");
+
+    await expect(
+      suspendOperatorAction(null, targetForm(self))
+    ).resolves.toEqual({
+      message: "You cannot suspend your own account.",
+      ok: false,
+    });
+    await expect(
+      deactivateOperatorAction(null, targetForm(self))
+    ).resolves.toEqual({
+      message: "You cannot deactivate your own account.",
+      ok: false,
     });
 
     expect(mockSuspendPlatformOperator).not.toHaveBeenCalled();
+    expect(mockDeactivatePlatformOperator).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
 
   it("sends no request for an operator ID that is not a UUID", async () => {
     const { suspendOperatorAction } = await import("./actions");
 
-    await suspendOperatorAction({ id: "OPERATOR002", publicId: "OPERATOR002" });
+    const result = await suspendOperatorAction(
+      null,
+      targetForm({ id: "OPERATOR002", publicId: "OPERATOR002" })
+    );
 
+    expect(result?.ok).toBe(false);
     expect(mockSuspendPlatformOperator).not.toHaveBeenCalled();
   });
 });

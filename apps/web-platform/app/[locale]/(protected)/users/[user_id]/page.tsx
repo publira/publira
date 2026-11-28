@@ -163,10 +163,8 @@ const UserDetailContent = async ({
             </Suspense>
           </LinkButton>
           {canUnsuspend ? (
-            <DangerConfirmButton.Root
-              actionArg={user.id}
-              actionCreator={unsuspendEndUserAction}
-            >
+            <DangerConfirmButton.Root action={unsuspendEndUserAction}>
+              <input name="user_id" type="hidden" value={user.id} />
               <DangerConfirmButton.Trigger variant="outline">
                 {t("platform.users.unsuspend")}
               </DangerConfirmButton.Trigger>
@@ -189,10 +187,8 @@ const UserDetailContent = async ({
             </DangerConfirmButton.Root>
           ) : null}
           {canSuspend ? (
-            <DangerConfirmButton.Root
-              actionArg={user.id}
-              actionCreator={suspendEndUserAction}
-            >
+            <DangerConfirmButton.Root action={suspendEndUserAction}>
+              <input name="user_id" type="hidden" value={user.id} />
               <DangerConfirmButton.Trigger variant="outline">
                 {t("platform.users.suspend")}
               </DangerConfirmButton.Trigger>
@@ -215,10 +211,8 @@ const UserDetailContent = async ({
             </DangerConfirmButton.Root>
           ) : null}
           {canDelete ? (
-            <DangerConfirmButton.Root
-              actionArg={user.id}
-              actionCreator={deleteEndUserAction}
-            >
+            <DangerConfirmButton.Root action={deleteEndUserAction}>
+              <input name="user_id" type="hidden" value={user.id} />
               <DangerConfirmButton.Trigger>
                 {t("platform.users.delete")}
               </DangerConfirmButton.Trigger>

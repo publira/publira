@@ -7,6 +7,8 @@ import {
   listPlatformEndUsers,
   platformEndUsersCacheTag,
   searchPlatformTenantFilterOptions,
+  suspendPlatformEndUser,
+  unsuspendPlatformEndUser,
 } from "./users";
 
 const {
@@ -17,6 +19,9 @@ const {
   mockGetTenant,
   mockListEndUsers,
   mockListTenants,
+  mockResolveAccessToken,
+  mockSuspendEndUser,
+  mockUnsuspendEndUser,
   mockVerifyPlatformSession,
 } = vi.hoisted(() => ({
   mockCacheLife: vi.fn(),
@@ -26,6 +31,9 @@ const {
   mockGetTenant: vi.fn(),
   mockListEndUsers: vi.fn(),
   mockListTenants: vi.fn(),
+  mockResolveAccessToken: vi.fn(),
+  mockSuspendEndUser: vi.fn(),
+  mockUnsuspendEndUser: vi.fn(),
   mockVerifyPlatformSession: vi.fn(),
 }));
 
@@ -52,8 +60,14 @@ vi.mock("./api-client", () => ({
     users: {
       getEndUser: mockGetEndUser,
       listEndUsers: mockListEndUsers,
+      suspendEndUser: mockSuspendEndUser,
+      unsuspendEndUser: mockUnsuspendEndUser,
     },
   },
+  buildSessionHeaders: (sid: string) => ({
+    headers: { Authorization: `Bearer ${sid}` },
+  }),
+  resolveAccessToken: mockResolveAccessToken,
   withServiceHeaders: () => ({
     headers: { Authorization: "Bearer service-token" },
   }),
@@ -67,6 +81,7 @@ const serviceHeaders = {
 const resetMocks = () => {
   vi.resetAllMocks();
   mockGetLocale.mockResolvedValue("en");
+  mockResolveAccessToken.mockResolvedValue("sess_abc");
   mockVerifyPlatformSession.mockResolvedValue({
     name: "Admin",
     publicId: "usr_1",
@@ -470,6 +485,54 @@ describe("searchPlatformTenantFilterOptions", () => {
       searchPlatformTenantFilterOptions("abcdefghijkl")
     ).resolves.toMatchObject({ ok: false, tenants: [] });
   });
+});
+
+describe("end-user status changes", () => {
+  const userId = "0199a3c0-0000-7000-8000-00000000000a";
+
+  beforeEach(resetMocks);
+
+  it.each([
+    ["suspendPlatformEndUser", suspendPlatformEndUser, mockSuspendEndUser],
+    [
+      "unsuspendPlatformEndUser",
+      unsuspendPlatformEndUser,
+      mockUnsuspendEndUser,
+    ],
+  ] as const)(
+    "%s sends the change with the operator's session",
+    async (_name, change, mockRpc) => {
+      mockRpc.mockResolvedValueOnce({});
+
+      await expect(change(userId, "en")).resolves.toEqual({ ok: true });
+      expect(mockRpc).toHaveBeenCalledWith(
+        { userId },
+        { headers: { Authorization: "Bearer sess_abc" } }
+      );
+    }
+  );
+
+  it.each([
+    ["suspendPlatformEndUser", suspendPlatformEndUser, mockSuspendEndUser],
+    [
+      "unsuspendPlatformEndUser",
+      unsuspendPlatformEndUser,
+      mockUnsuspendEndUser,
+    ],
+  ] as const)(
+    "%s answers a refusal with the reason the API gave",
+    async (_name, change, mockRpc) => {
+      mockRpc.mockRejectedValueOnce(
+        new ConnectError("user not found", Code.NotFound)
+      );
+
+      await expect(change(userId, "en")).resolves.toEqual({
+        message:
+          "The requested item could not be found. Go back and open it from the list.",
+        ok: false,
+      });
+    }
+  );
 });
 
 describe("end-user cache tags", () => {

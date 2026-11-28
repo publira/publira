@@ -395,65 +395,58 @@ export const getPlatformEndUser = async (
   return getPlatformEndUserForLocale(await getLocale(), normalizedPublicId);
 };
 
-export const suspendPlatformEndUser = async (
-  userId: string
-): Promise<boolean> => {
-  const normalizedUserId = userId.trim();
+export type PlatformEndUserStatusChangeResult =
+  | { ok: true }
+  | { message: string; ok: false };
 
-  if (!normalizedUserId) {
-    return false;
-  }
-
-  const sid = await resolveAccessToken();
+const changePlatformEndUserStatus = async (
+  locale: Locale,
+  send: (sid: string) => Promise<void>
+): Promise<PlatformEndUserStatusChangeResult> => {
+  const [t, sid] = await Promise.all([
+    getMessagesFor(locale),
+    resolveAccessToken(),
+  ]);
 
   if (!sid) {
-    return false;
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
-    await apiClient.users.suspendEndUser(
-      { userId: normalizedUserId },
-      buildSessionHeaders(sid)
-    );
+    await send(sid);
 
-    return true;
+    return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
-    return false;
+    return {
+      message: rpcErrorMessage(error, t("platform.common.generic_failed"), {
+        locale,
+      }),
+      ok: false,
+    };
   }
 };
 
-export const unsuspendPlatformEndUser = async (
-  userId: string
-): Promise<boolean> => {
-  const normalizedUserId = userId.trim();
+export const suspendPlatformEndUser = (
+  userId: string,
+  locale: Locale
+): Promise<PlatformEndUserStatusChangeResult> =>
+  changePlatformEndUserStatus(locale, async (sid) => {
+    await apiClient.users.suspendEndUser({ userId }, buildSessionHeaders(sid));
+  });
 
-  if (!normalizedUserId) {
-    return false;
-  }
-
-  const sid = await resolveAccessToken();
-
-  if (!sid) {
-    return false;
-  }
-
-  try {
+export const unsuspendPlatformEndUser = (
+  userId: string,
+  locale: Locale
+): Promise<PlatformEndUserStatusChangeResult> =>
+  changePlatformEndUserStatus(locale, async (sid) => {
     await apiClient.users.unsuspendEndUser(
-      { userId: normalizedUserId },
+      { userId },
       buildSessionHeaders(sid)
     );
-
-    return true;
-  } catch (error) {
-    rethrowUnauthenticatedRpcError(error);
-    rethrowUnclassifiedRpcError(error);
-
-    return false;
-  }
-};
+  });
 
 export const deletePlatformEndUser = async (
   userId: string,

@@ -634,8 +634,12 @@ describe("createPlatformTenant", () => {
     mockSuspendTenant.mockResolvedValueOnce({});
     mockResumeTenant.mockResolvedValueOnce({});
 
-    await expect(suspendPlatformTenant(tenantId)).resolves.toBe(true);
-    await expect(resumePlatformTenant(tenantId)).resolves.toBe(true);
+    await expect(suspendPlatformTenant(tenantId, "en")).resolves.toEqual({
+      ok: true,
+    });
+    await expect(resumePlatformTenant(tenantId, "en")).resolves.toEqual({
+      ok: true,
+    });
 
     expect(mockSuspendTenant).toHaveBeenCalledWith(
       { tenantId },
@@ -645,6 +649,29 @@ describe("createPlatformTenant", () => {
       { tenantId },
       { headers: { Authorization: "Bearer sess_abc" } }
     );
+  });
+
+  it("says a tenant being deleted cannot be resumed", async () => {
+    mockResumeTenant.mockRejectedValueOnce(
+      new ConnectError("tenant is being deleted", Code.FailedPrecondition)
+    );
+
+    await expect(resumePlatformTenant(tenantId, "en")).resolves.toEqual({
+      message: "This tenant is being deleted, so it cannot be resumed.",
+      ok: false,
+    });
+  });
+
+  it("answers a suspension the API refuses with the reason it gave", async () => {
+    mockSuspendTenant.mockRejectedValueOnce(
+      new ConnectError("forbidden", Code.PermissionDenied)
+    );
+
+    await expect(suspendPlatformTenant(tenantId, "en")).resolves.toEqual({
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
+      ok: false,
+    });
   });
 
   it("adds a member by email to the tenant named by its internal ID", async () => {

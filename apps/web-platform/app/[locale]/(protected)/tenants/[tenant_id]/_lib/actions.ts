@@ -33,6 +33,7 @@ import {
   updatePlatformTenant,
   updatePlatformTenantMemberRole,
 } from "#lib/tenants";
+import type { PlatformTenantStatusChangeResult } from "#lib/tenants";
 import { platformEndUsersCacheTag } from "#lib/users";
 
 /**
@@ -161,53 +162,60 @@ const invitationIdFormSchema = async (locale: Locale) => {
   });
 };
 
+/**
+ * Suspends or resumes the tenant the form names, through `change`. Success
+ * returns no message: the page renders the tenant's new status, and the other
+ * of the two controls in place of this one.
+ */
+const changeTenantStatus = async (
+  formData: FormData,
+  change: (
+    tenantId: string,
+    locale: Locale
+  ) => Promise<PlatformTenantStatusChangeResult>
+): Promise<ActionForm.State> => {
+  await assertSameOrigin();
+  const locale = await getPlatformLocale();
+  const schema = await tenantIdOnlySchema(locale);
+
+  const parsed = schema.safeParse(
+    toFormDataInput(formData, {
+      tenantId: { kind: "value", name: "tenant_id" },
+    })
+  );
+
+  if (!parsed.success) {
+    return { message: toFormErrorMessage(parsed.error, { locale }), ok: false };
+  }
+
+  const result = await withPlatformSessionReauth(() =>
+    change(parsed.data.tenantId, locale)
+  );
+
+  if (!result.ok) {
+    return { message: result.message, ok: false };
+  }
+
+  updateTag(platformTenantsCacheTag);
+  updateTag(platformDashboardCacheTag);
+  updateTag(platformAuditLogsCacheTag);
+
+  return { message: "", ok: true };
+};
+
+// Written `async` rather than as an arrow returning the promise: Next.js
+// rejects an exported Server Action that is not an async function.
 export const suspendTenantAction = async (
+  _prevState: ActionForm.State,
   formData: FormData
-): Promise<void> => {
-  await assertSameOrigin();
-  const locale = await getPlatformLocale();
-  const schema = await tenantIdOnlySchema(locale);
+): Promise<ActionForm.State> =>
+  await changeTenantStatus(formData, suspendPlatformTenant);
 
-  const parsed = schema.safeParse(
-    toFormDataInput(formData, {
-      tenantId: { kind: "value", name: "tenant_id" },
-    })
-  );
-
-  if (!parsed.success) {
-    return;
-  }
-
-  await withPlatformSessionReauth(() =>
-    suspendPlatformTenant(parsed.data.tenantId)
-  );
-  updateTag(platformTenantsCacheTag);
-  updateTag(platformDashboardCacheTag);
-  updateTag(platformAuditLogsCacheTag);
-};
-
-export const resumeTenantAction = async (formData: FormData): Promise<void> => {
-  await assertSameOrigin();
-  const locale = await getPlatformLocale();
-  const schema = await tenantIdOnlySchema(locale);
-
-  const parsed = schema.safeParse(
-    toFormDataInput(formData, {
-      tenantId: { kind: "value", name: "tenant_id" },
-    })
-  );
-
-  if (!parsed.success) {
-    return;
-  }
-
-  await withPlatformSessionReauth(() =>
-    resumePlatformTenant(parsed.data.tenantId)
-  );
-  updateTag(platformTenantsCacheTag);
-  updateTag(platformDashboardCacheTag);
-  updateTag(platformAuditLogsCacheTag);
-};
+export const resumeTenantAction = async (
+  _prevState: ActionForm.State,
+  formData: FormData
+): Promise<ActionForm.State> =>
+  await changeTenantStatus(formData, resumePlatformTenant);
 
 export const deleteTenantAction = async (
   _prevState: ActionForm.State,

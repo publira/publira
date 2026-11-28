@@ -3,6 +3,7 @@ import * as ConsoleSection from "@publira/layouts/admin/console-section";
 import * as ActionForm from "@publira/ui-components/action-form";
 import { Badge } from "@publira/ui-components/badge";
 import { Button, LinkButton } from "@publira/ui-components/button";
+import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
 import * as Dialog from "@publira/ui-components/dialog";
 import * as Field from "@publira/ui-components/field";
 import { Fieldset } from "@publira/ui-components/fieldset";
@@ -21,6 +22,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { AdminDomainPreview } from "#components/admin-domain-preview";
+import * as DangerConfirmButton from "#components/danger-confirm-button";
 import { ImageDomainPreview } from "#components/image-domain-preview";
 import { Message } from "#components/message";
 import { TenantDomainCautions } from "#components/tenant-domain-cautions";
@@ -285,23 +287,56 @@ const TenantDetailContent = async ({
             </Suspense>
           </LinkButton>
           {tenant.status === "suspended" || isDeleting ? (
-            <form action={resumeTenantAction}>
+            <ActionForm.Root
+              action={resumeTenantAction}
+              className="grid max-w-sm justify-items-end gap-2"
+              showSuccess={false}
+            >
               <input name="tenant_id" type="hidden" value={tenant.id} />
-              <Button disabled={isDeleting} type="submit">
+              <ActionForm.Submit disabled={isDeleting}>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="platform.tenants.resume" />
                 </Suspense>
-              </Button>
-            </form>
+              </ActionForm.Submit>
+            </ActionForm.Root>
           ) : (
-            <form action={suspendTenantAction}>
+            <DangerConfirmButton.Root action={suspendTenantAction}>
               <input name="tenant_id" type="hidden" value={tenant.id} />
-              <Button type="submit" variant="destructive">
+              <DangerConfirmButton.Trigger>
                 <Suspense fallback={<SkeletonLine className="h-4 w-32" />}>
                   <Message message="platform.tenants.suspend" />
                 </Suspense>
-              </Button>
-            </form>
+              </DangerConfirmButton.Trigger>
+              <ConfirmDialog.Content>
+                <ConfirmDialog.Header>
+                  <ConfirmDialog.Title>
+                    <Suspense fallback={<SkeletonLine className="h-5 w-48" />}>
+                      <Message
+                        message="platform.tenants.suspend_title"
+                        values={{ name: tenant.name }}
+                      />
+                    </Suspense>
+                  </ConfirmDialog.Title>
+                  <ConfirmDialog.Description>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-72" />}>
+                      <Message message="platform.tenants.suspend_description" />
+                    </Suspense>
+                  </ConfirmDialog.Description>
+                </ConfirmDialog.Header>
+                <ConfirmDialog.Footer>
+                  <ConfirmDialog.Cancel>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      <Message message="platform.common.cancel" />
+                    </Suspense>
+                  </ConfirmDialog.Cancel>
+                  <DangerConfirmButton.Action>
+                    <Suspense fallback={<SkeletonLine className="h-4 w-12" />}>
+                      <Message message="platform.tenants.suspend_action" />
+                    </Suspense>
+                  </DangerConfirmButton.Action>
+                </ConfirmDialog.Footer>
+              </ConfirmDialog.Content>
+            </DangerConfirmButton.Root>
           )}
           {canDelete ? (
             <DeleteTenantForm tenantId={tenant.id} tenantName={tenant.name} />
