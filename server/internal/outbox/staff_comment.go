@@ -118,11 +118,12 @@ func NewCommentReportedNotificationHandler(cfg StaffNotificationHandlerConfig) H
 
 func newStaffCommentNotificationHandler(cfg StaffNotificationHandlerConfig, notificationType string) Handler {
 	if cfg.DB == nil {
-		// Reported per event rather than at registration, and as a plain error
-		// rather than a [Permanent] one, because an operator restarting the
-		// worker with a database makes a pending event deliverable again.
+		// Reported per event rather than at registration, and as [Blocked]
+		// rather than [Permanent]: an operator restarting the worker with a
+		// database makes a pending event deliverable again, and it waits for that
+		// without spending its budget.
 		return func(context.Context, dbmodels.OutboxEvent) error {
-			return errors.New("staff comment notification handler database is not configured")
+			return Blocked(errors.New("staff comment notification handler database is not configured"))
 		}
 	}
 	return staffCommentNotificationHandler(cfg, notificationType,

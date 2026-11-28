@@ -48,7 +48,7 @@ func QueueGooglePlaySubscriptionAcknowledgement(ctx context.Context, queries dbm
 func NewGooglePlaySubscriptionAcknowledgeHandler(cfg GooglePlayHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil || cfg.Purchases == nil {
-			return errors.New("google play subscription handler is not configured")
+			return Blocked(errors.New("google play subscription handler is not configured"))
 		}
 		var payload GooglePlaySubscriptionAcknowledgePayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {

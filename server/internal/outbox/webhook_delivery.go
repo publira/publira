@@ -76,7 +76,7 @@ func NewWebhookDeliveryHandler(cfg WebhookDeliveryHandlerConfig) Handler {
 	}
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil {
-			return errors.New("webhook delivery handler database is not configured")
+			return Blocked(errors.New("webhook delivery handler database is not configured"))
 		}
 		var payload tenantwebhooks.OutboxPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {

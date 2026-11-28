@@ -702,14 +702,14 @@ func resolveTenantDelivery(
 // outside the request that produced the event, so the origin comes from the
 // tenant's configured domain rather than from an incoming Host header. A
 // tenant without one fails the mail for good, while a malformed deployment
-// setting is retried until an operator fixes it.
+// setting is [Blocked] until an operator fixes it.
 func tenantSiteURL(tenant dbmodels.Tenant, path string) (string, error) {
 	origin, err := tenantorigin.Site(tenant)
 	if errors.Is(err, tenantorigin.ErrDomainNotConfigured) {
 		return "", Permanent(err)
 	}
 	if err != nil {
-		return "", err
+		return "", Blocked(err)
 	}
 	return origin.JoinPath(path).String(), nil
 }

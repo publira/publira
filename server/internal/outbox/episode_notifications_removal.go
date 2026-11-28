@@ -127,10 +127,11 @@ type notificationRemover interface {
 // completes as the first one did.
 func NewEpisodeNotificationsRemovalHandler(cfg NotificationRemovalHandlerConfig) Handler {
 	if cfg.DB == nil {
-		// A plain error rather than a [Permanent] one, because an operator
-		// restarting the worker with a database makes the event deliverable.
+		// [Blocked] rather than [Permanent]: an operator restarting the worker
+		// with a database makes the event deliverable, and it waits for that
+		// without spending its budget.
 		return func(context.Context, dbmodels.OutboxEvent) error {
-			return errors.New("episode notifications removal handler database is not configured")
+			return Blocked(errors.New("episode notifications removal handler database is not configured"))
 		}
 	}
 	return episodeNotificationsRemovalHandler(dbmodels.New(cfg.DB), notificationRemovalBatchSize)

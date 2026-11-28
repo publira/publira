@@ -228,8 +228,9 @@ func TestReaderEmailVerificationEmailLinksTheDeploymentOrigin(t *testing.T) {
 }
 
 // A malformed deployment setting is fixed by an operator restarting the worker,
-// so it leaves the event to be retried rather than spending the reader's link.
-func TestReaderEmailVerificationEmailRetriesOnAMalformedTenantURLScheme(t *testing.T) {
+// so the event waits for that without spending an attempt, and keeps the
+// reader's link.
+func TestReaderEmailVerificationEmailWaitsOnAMalformedTenantURLScheme(t *testing.T) {
 	pg, tenant, encryptor := newReaderEmailEnv(t)
 	t.Setenv(tenantorigin.SchemeEnv, "ftp")
 	reader := pg.SeedUnverifiedEndUser(t, tenant.ID, "READEROUTB17", "reader@example.com", "Reader")
@@ -245,11 +246,8 @@ func TestReaderEmailVerificationEmailRetriesOnAMalformedTenantURLScheme(t *testi
 		"reader_email_verification_email:"+tokenID.String())
 
 	err := handler(context.Background(), event)
-	if err == nil {
-		t.Fatal("handler returned no error on a malformed scheme")
-	}
-	if outbox.IsPermanent(err) {
-		t.Fatalf("handler error = %v, want a retriable failure", err)
+	if !outbox.IsBlocked(err) {
+		t.Fatalf("handler error = %v, want it blocked", err)
 	}
 	if len(renderer.requests) != 0 || len(mailer.recipients) != 0 {
 		t.Fatalf("rendered %d and sent %d, want neither", len(renderer.requests), len(mailer.recipients))

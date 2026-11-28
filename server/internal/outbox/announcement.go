@@ -181,11 +181,12 @@ type announcementNotificationQuerier interface {
 // whether it has an audience, and the recipient query reads it from there.
 func NewAnnouncementNotificationHandler(cfg AnnouncementNotificationHandlerConfig) Handler {
 	if cfg.DB == nil {
-		// Reported per event rather than at registration, and as a plain error
-		// rather than a [Permanent] one, because an operator restarting the
-		// worker with a database makes a pending event deliverable again.
+		// Reported per event rather than at registration, and as [Blocked]
+		// rather than [Permanent]: an operator restarting the worker with a
+		// database makes a pending event deliverable again, and it waits for that
+		// without spending its budget.
 		return func(context.Context, dbmodels.OutboxEvent) error {
-			return errors.New("announcement notification handler database is not configured")
+			return Blocked(errors.New("announcement notification handler database is not configured"))
 		}
 	}
 	return announcementNotificationHandler(cfg, dbmodels.New(cfg.DB))

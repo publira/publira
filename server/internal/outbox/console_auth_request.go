@@ -44,7 +44,7 @@ type PlatformPasswordResetRequestPayload struct {
 func NewAdminPasswordResetRequestHandler(cfg EmailHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil {
-			return errors.New("admin password reset request handler database is not configured")
+			return Blocked(errors.New("admin password reset request handler database is not configured"))
 		}
 		var payload AdminPasswordResetRequestPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
@@ -73,7 +73,7 @@ func NewAdminPasswordResetRequestHandler(cfg EmailHandlerConfig) Handler {
 func NewPlatformPasswordResetRequestHandler(cfg EmailHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil {
-			return errors.New("platform password reset request handler database is not configured")
+			return Blocked(errors.New("platform password reset request handler database is not configured"))
 		}
 		var payload PlatformPasswordResetRequestPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {

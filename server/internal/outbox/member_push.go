@@ -134,11 +134,12 @@ var defaultMemberPushPaging = memberPushPaging{
 // to another one. Content is what both readers can read.
 func NewMemberPushNotificationHandler(cfg PushHandlerConfig) Handler {
 	if cfg.DB == nil {
-		// Reported per event rather than at registration, and as a plain error
-		// rather than a [Permanent] one, because an operator restarting the
-		// worker with a database makes a pending event deliverable again.
+		// Reported per event rather than at registration, and as [Blocked]
+		// rather than [Permanent]: an operator restarting the worker with a
+		// database makes a pending event deliverable again, and it waits for that
+		// without spending its budget.
 		return func(context.Context, dbmodels.OutboxEvent) error {
-			return errors.New("member push notification handler database is not configured")
+			return Blocked(errors.New("member push notification handler database is not configured"))
 		}
 	}
 	return newMemberPushNotificationHandler(cfg, dbmodels.New(cfg.DB), defaultMemberPushPaging)
@@ -147,7 +148,7 @@ func NewMemberPushNotificationHandler(cfg PushHandlerConfig) Handler {
 func newMemberPushNotificationHandler(cfg PushHandlerConfig, queries pushDeviceQuerier, paging memberPushPaging) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.Sender == nil && cfg.WebSender == nil {
-			return errors.New("member push notification handler sender is not configured")
+			return Blocked(errors.New("member push notification handler sender is not configured"))
 		}
 
 		var payload MemberPushNotificationPayload

@@ -66,7 +66,7 @@ type GooglePlayHandlerConfig struct {
 func NewGooglePlayPurchaseConsumeHandler(cfg GooglePlayHandlerConfig) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		if cfg.DB == nil || cfg.Purchases == nil {
-			return errors.New("google play purchase handler is not configured")
+			return Blocked(errors.New("google play purchase handler is not configured"))
 		}
 		var payload GooglePlayPurchaseConsumePayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
