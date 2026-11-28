@@ -65,3 +65,16 @@ func UniqueViolationConstraint(err error) string {
 
 	return pgErr.ConstraintName
 }
+
+// ForeignKeyViolationConstraint returns the name of the foreign key err
+// violated, or "" when err is not a foreign key violation. Use it when the
+// reaction depends on which reference was missing; use
+// [IsForeignKeyViolation] when it does not.
+func ForeignKeyViolationConstraint(err error) string {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != foreignKeyViolationCode {
+		return ""
+	}
+
+	return pgErr.ConstraintName
+}

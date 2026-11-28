@@ -857,8 +857,9 @@ func StaffRefundKey(purchaseID uuid.UUID, attempt int32) string {
 }
 
 // UnrecordedCheckoutRefundKey is the idempotency key the refund of a paid
-// checkout whose purchase cannot be recorded, as one of an episode deleted
-// before the checkout was paid cannot, is sent under. It names the checkout,
+// checkout whose purchase cannot be recorded, as one whose reader, or whose
+// episode, volume, series bundle, or coin pack, was deleted before the
+// checkout was paid cannot, is sent under. It names the checkout,
 // so every redelivery of the notification asks for the same refund.
 func UnrecordedCheckoutRefundKey(checkoutID string) string {
 	return "publira-checkout-refund-" + checkoutID
