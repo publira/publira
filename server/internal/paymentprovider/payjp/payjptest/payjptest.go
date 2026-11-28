@@ -623,7 +623,10 @@ type Fixture struct {
 	API *API
 }
 
-var _ paymentprovidertest.FailingRefundFixture = (*Fixture)(nil)
+var (
+	_ paymentprovidertest.FailingRefundFixture   = (*Fixture)(nil)
+	_ paymentprovidertest.ForeignCheckoutFixture = (*Fixture)(nil)
+)
 
 // NewFixture answers a fixture whose fake API serves until t ends.
 func NewFixture(t testing.TB) *Fixture {
@@ -660,6 +663,24 @@ func (f *Fixture) CheckoutCompleted(t testing.TB, credentials paymentprovider.Cr
 		"amount_total":    checkout.Purchase.Price,
 		"payment_flow_id": checkout.PaymentID,
 		"metadata":        PurchaseMetadata(checkout.Purchase),
+	})
+}
+
+// ForeignCheckoutCompleted answers the notification of checkout paid through
+// a Checkout Session something else on the tenant's account started, which
+// carries none of the metadata this integration starts one with.
+func (f *Fixture) ForeignCheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkout paymentprovidertest.Checkout) ([]byte, http.Header) {
+	t.Helper()
+	secretKey := credentials[payjp.FieldSecretKey]
+	f.API.SetPaymentFlow(secretKey, checkout.PaymentID, "succeeded", int(checkout.Purchase.Price))
+	f.API.SetLivemode(secretKey, checkout.PaymentID, !checkout.Test)
+	return Event(t, credentials[payjp.FieldWebhookToken], "checkout.session.completed.json", map[string]any{
+		"id":              checkout.CheckoutID,
+		"livemode":        !checkout.Test,
+		"amount_subtotal": checkout.Purchase.Price,
+		"amount_total":    checkout.Purchase.Price,
+		"payment_flow_id": checkout.PaymentID,
+		"metadata":        map[string]any{"order": "foreign"},
 	})
 }
 

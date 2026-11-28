@@ -125,6 +125,20 @@ type Fixture interface {
 	Unrelated(t testing.TB, credentials paymentprovider.Credentials) ([]byte, http.Header)
 }
 
+// ForeignCheckoutFixture is the fixture of a provider whose notifications
+// also report checkouts something other than this integration started on the
+// same account, such as a payment link the tenant made in the provider's
+// dashboard. A provider that reports only the checkouts the integration
+// started, or one whose checkouts the server writes down when it starts them,
+// supplies a [Fixture] without it.
+type ForeignCheckoutFixture interface {
+	Fixture
+	// ForeignCheckoutCompleted answers the notification of checkout paid as
+	// [Fixture.CheckoutCompleted] answers it, had something other than this
+	// integration started it, so that it carries nothing of the purchase.
+	ForeignCheckoutCompleted(t testing.TB, credentials paymentprovider.Credentials, checkout Checkout) ([]byte, http.Header)
+}
+
 // FailingRefundFixture is the fixture of a provider whose refunds can fail:
 // answered as failed when they are asked for, or failing after the provider
 // accepted them. A provider whose API makes a refund or refuses it when it is
@@ -1003,6 +1017,19 @@ func runParse(t *testing.T, fixture Fixture, currency string) {
 			t.Fatalf("event = %T, want Ignored", event)
 		}
 	})
+
+	if foreign, ok := fixture.(ForeignCheckoutFixture); ok {
+		t.Run("a completed checkout this integration did not start is ignored", func(t *testing.T) {
+			payload, headers := foreign.ForeignCheckoutCompleted(t, credentials, paying("foreign"))
+			event, err := provider.ParseNotification(t.Context(), payload, headers, credentials)
+			if err != nil {
+				t.Fatalf("ParseNotification: %v", err)
+			}
+			if !isIgnored(event) {
+				t.Fatalf("event = %T, want Ignored", event)
+			}
+		})
+	}
 
 	t.Run("a refund returns the whole payment once however often it is asked for", func(t *testing.T) {
 		paid := paying("refund_" + strings.ToLower(currency))
@@ -1912,6 +1939,23 @@ func run(t *testing.T, harness Harness, fixture Fixture, currency string) {
 			t.Fatalf("purchases = %d, want 0", got)
 		}
 	})
+
+	if foreign, ok := fixture.(ForeignCheckoutFixture); ok {
+		t.Run("a checkout this integration did not start is acknowledged and records nothing", func(t *testing.T) {
+			tenant := newTenant(t, credentials)
+			payload, headers := foreign.ForeignCheckoutCompleted(t, credentials, Checkout{
+				CheckoutID: checkoutNamed("foreign"),
+				PaymentID:  paymentNamed("foreign"),
+				Purchase:   tenant.Purchase(),
+			})
+			if err := tenant.Deliver(t, payload, headers); err != nil {
+				t.Fatalf("Deliver: %v", err)
+			}
+			if got := tenant.Purchases(t); got != 0 {
+				t.Fatalf("purchases = %d, want 0", got)
+			}
+		})
+	}
 
 	t.Run("a checkout naming another tenant creates nothing", func(t *testing.T) {
 		tenant := newTenant(t, credentials)

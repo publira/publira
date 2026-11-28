@@ -234,25 +234,31 @@ func completedCheckout(t *testing.T, api *payjptest.API, purchase paymentprovide
 func TestACompletedCheckoutWaitsForItsPaymentToSettle(t *testing.T) {
 	purchase := testPurchase()
 	tests := []struct {
-		name    string
-		status  string
-		amount  int
-		want    string
-		wantErr bool
+		name   string
+		status string
+		amount int
+		want   string
 	}{
 		{name: "succeeded", status: "succeeded", amount: 500, want: "completed"},
-		{name: "still processing", status: "processing", amount: 0, wantErr: true},
+		{name: "still processing", status: "processing", amount: 0, want: "retried"},
 		{name: "canceled", status: "canceled", amount: 0, want: "ignored"},
-		{name: "paid another amount", status: "succeeded", amount: 300, wantErr: true},
+		// A redelivery carries the same amount, so retrying it changes nothing.
+		{name: "paid another amount", status: "succeeded", amount: 300, want: "malformed"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			api := payjptest.NewAPI(t)
 			api.SetPaymentFlow(testSecretKey, "pfw_provider", tt.status, tt.amount)
 			event, err := completedCheckout(t, api, purchase)
-			if tt.wantErr {
+			switch tt.want {
+			case "retried":
 				if err == nil || errors.Is(err, paymentprovider.ErrMalformedNotification) {
 					t.Fatalf("ParseNotification error = %v, want one PAY.JP retries", err)
+				}
+				return
+			case "malformed":
+				if !errors.Is(err, paymentprovider.ErrMalformedNotification) {
+					t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
 				}
 				return
 			}
@@ -283,6 +289,22 @@ func TestACompletedCheckoutOfAnotherAccountIsRefused(t *testing.T) {
 	api.SetPaymentFlow("sk_test_AnotherAccount", "pfw_provider", "succeeded", 500)
 	if _, err := completedCheckout(t, api, testPurchase()); !errors.Is(err, paymentprovider.ErrMalformedNotification) {
 		t.Fatalf("ParseNotification error = %v, want ErrMalformedNotification", err)
+	}
+}
+
+func TestACompletedCheckoutThisIntegrationDidNotStartIsIgnored(t *testing.T) {
+	api := payjptest.NewAPI(t)
+	payload, headers := payjptest.Event(t, testWebhookToken, "checkout.session.completed.json", map[string]any{
+		"id":              "cs_provider",
+		"payment_flow_id": "pfw_provider",
+		"metadata":        map[string]any{"order": "tenant-own"},
+	})
+	event, err := payjp.New(payjp.WithBaseURL(api.URL())).ParseNotification(t.Context(), payload, headers, testCredentials)
+	if err != nil {
+		t.Fatalf("ParseNotification: %v", err)
+	}
+	if _, ok := event.(paymentprovider.Ignored); !ok {
+		t.Fatalf("event = %T, want Ignored", event)
 	}
 }
 
@@ -349,7 +371,8 @@ func TestParseNotificationRejectsMalformedMetadata(t *testing.T) {
 	tests := map[string]map[string]any{
 		"a price of nothing":                    {payjp.MetadataPrice: "0"},
 		"a number price":                        {payjp.MetadataPrice: 500},
-		"no tenant":                             {payjp.MetadataTenantID: nil},
+		"a tenant that is not an id":            {payjp.MetadataTenantID: "tenant"},
+		"no reader":                             {payjp.MetadataUserID: nil},
 		"a reading period that is not a string": {payjp.MetadataReadingPeriodHours: 72},
 	}
 	for name, fields := range tests {
