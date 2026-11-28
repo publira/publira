@@ -4,6 +4,8 @@ The components that make up a form field: a label, a description, an error messa
 
 `Field.Label` is associated with the control in the same `Field` through `for` / `id`, so clicking the label focuses that control. The id comes from the `Field`, so `Field.Label` takes no `htmlFor` and the control needs no `id`. A `Select` is the exception: its trigger is a button that opens a popup, so over a `Select` the label is a non-label element that names the trigger through `aria-labelledby`, and clicking it focuses the trigger without opening the popup. `field-control-association.test.tsx` asserts both for every control this package ships.
 
+An `ActionForm.FieldError` inside a `Field` is that field's error: while it shows a message the Action returned, the `Field` is invalid, so its control carries `aria-invalid` and is described by the message as well as by `Field.Description`. `field-control-association.test.tsx` asserts that too.
+
 ## Usage
 
 ```tsx

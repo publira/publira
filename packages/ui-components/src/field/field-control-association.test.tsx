@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactElement } from "react";
 import { Suspense, use, useState } from "react";
 import { hydrateRoot } from "react-dom/client";
@@ -17,6 +24,7 @@ import {
 } from "vitest";
 
 import * as Field from ".";
+import * as ActionForm from "../action-form";
 import { Checkbox } from "../checkbox/checkbox";
 import * as Combobox from "../combobox";
 import { Input } from "../input/input";
@@ -518,4 +526,140 @@ describe("FieldLabel over a Combobox, whose control is a text input", () => {
       expect(control.getAttribute("aria-expanded")).toBe("false");
     }
   );
+});
+
+const refuseName = (): Promise<ActionForm.State> =>
+  Promise.resolve({
+    fieldErrors: { name: "Enter a shorter name." },
+    message: "Could not save.",
+    ok: false,
+  });
+
+const saveName = (): Promise<ActionForm.State> =>
+  Promise.resolve({ message: "Saved.", ok: true });
+
+const describedBy = (control: HTMLElement) =>
+  (control.getAttribute("aria-describedby") ?? "")
+    .split(" ")
+    .filter(Boolean)
+    .map((id) => document.querySelector(`#${CSS.escape(id)}`)?.textContent);
+
+describe("an ActionForm field error inside a Field", () => {
+  it.each([
+    {
+      name: "Input",
+      renderControl: () => <Input name="name" />,
+      role: "textbox",
+    },
+    {
+      name: "Textarea",
+      renderControl: () => <Textarea name="name" />,
+      role: "textbox",
+    },
+    {
+      name: "Checkbox",
+      renderControl: () => <Checkbox name="name" />,
+      role: "checkbox",
+    },
+    {
+      name: "Switch",
+      renderControl: () => <Switch name="name" />,
+      role: "switch",
+    },
+    {
+      name: "Select",
+      renderControl: () => <Select items={selectItems} name="name" />,
+      role: "combobox",
+    },
+    {
+      name: "Combobox",
+      renderControl: () => <StatefulCombobox />,
+      role: "combobox",
+    },
+  ])(
+    "marks the $name invalid and describes it with the message",
+    async ({ renderControl, role }) => {
+      render(
+        <ActionForm.Root action={refuseName}>
+          <Field.Root>
+            <Field.Label>Label</Field.Label>
+            {renderControl()}
+            <Field.Description>Help</Field.Description>
+            <ActionForm.FieldError name="name" />
+          </Field.Root>
+          <ActionForm.Submit>Save</ActionForm.Submit>
+        </ActionForm.Root>
+      );
+
+      const control = screen.getByRole(role, { name: "Label" });
+      expect(control.getAttribute("aria-invalid")).toBeNull();
+      expect(describedBy(control)).toEqual(["Help"]);
+
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(control.getAttribute("aria-invalid")).toBe("true");
+      });
+      expect(describedBy(control)).toEqual(
+        expect.arrayContaining([
+          "Help",
+          expect.stringContaining("Enter a shorter name."),
+        ])
+      );
+    }
+  );
+
+  it("leaves the control valid when the error is for another field", async () => {
+    render(
+      <ActionForm.Root action={refuseName}>
+        <Field.Root>
+          <Field.Label>Label</Field.Label>
+          <Input name="slug" />
+          <ActionForm.FieldError name="slug" />
+        </Field.Root>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Could not save.")).toBeTruthy();
+    });
+
+    const control = screen.getByRole("textbox", { name: "Label" });
+    expect(control.getAttribute("aria-invalid")).toBeNull();
+    expect(control.getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("clears the invalid mark once a submission succeeds", async () => {
+    let answer = refuseName;
+
+    render(
+      <ActionForm.Root action={() => answer()}>
+        <Field.Root>
+          <Field.Label>Label</Field.Label>
+          <Input name="name" />
+          <ActionForm.FieldError name="name" />
+        </Field.Root>
+        <ActionForm.Submit>Save</ActionForm.Submit>
+      </ActionForm.Root>
+    );
+
+    const control = screen.getByRole("textbox", { name: "Label" });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(control.getAttribute("aria-invalid")).toBe("true");
+    });
+
+    answer = saveName;
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Saved.")).toBeTruthy();
+    });
+    expect(control.getAttribute("aria-invalid")).toBeNull();
+    expect(control.getAttribute("aria-describedby")).toBeNull();
+  });
 });
