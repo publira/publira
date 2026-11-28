@@ -11,7 +11,9 @@ import { listPublishedGenres } from "#lib/catalog";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { pageOpenGraphMetadata } from "#lib/open-graph";
 import { getPageAlternates } from "#lib/page-alternates";
+import { getSiteOpenGraphCard } from "#lib/site-open-graph-card";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -24,12 +26,24 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const [t, alternates] = await Promise.all([
+  const [t, alternates, site] = await Promise.all([
     getMessages(),
     getPageAlternates("/genres"),
+    getSiteOpenGraphCard(),
   ]);
 
-  return { alternates, title: t("storefront.genres.list_title") };
+  const title = t("storefront.genres.list_title");
+
+  const description = t("storefront.genres.list_description", {
+    site: site.siteName,
+  });
+
+  return {
+    ...pageOpenGraphMetadata({ alternates, description, site, title }),
+    alternates,
+    description,
+    title,
+  };
 };
 
 /**

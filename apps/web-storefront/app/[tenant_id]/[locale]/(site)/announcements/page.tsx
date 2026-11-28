@@ -15,8 +15,10 @@ import { listMyAnnouncements } from "#lib/announcements";
 import { PUBLIC_SESSION_COOKIE_NAME } from "#lib/auth-shared";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
+import { pageOpenGraphMetadata } from "#lib/open-graph";
 import { getPageAlternates } from "#lib/page-alternates";
 import { fallbackLanguage } from "#lib/served-locale";
+import { getSiteOpenGraphCard } from "#lib/site-open-graph-card";
 import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
@@ -34,12 +36,21 @@ import {
 const ANNOUNCEMENTS_PAGE_SIZE = 20;
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const [t, alternates] = await Promise.all([
+  const [t, alternates, site] = await Promise.all([
     getMessages(),
     getPageAlternates("/announcements"),
+    getSiteOpenGraphCard(),
   ]);
 
-  return { alternates, title: t("storefront.announcements.title") };
+  const title = t("storefront.announcements.title");
+  const description = t("storefront.announcements.description");
+
+  return {
+    ...pageOpenGraphMetadata({ alternates, description, site, title }),
+    alternates,
+    description,
+    title,
+  };
 };
 
 /*

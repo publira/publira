@@ -103,8 +103,14 @@ export const generateMetadata = async ({
     return { title: t("storefront.genres.not_found_title") };
   }
 
+  const description = t("storefront.genres.detail_description", {
+    count: genre.publishedSeriesCount,
+    name: genre.name,
+  });
+
   return {
     ...openGraphMetadata({
+      description,
       image: cardPath ? openGraphCardImage(cardPath, genre.name) : undefined,
       siteName: siteLabel,
       title: genre.name,
@@ -112,6 +118,7 @@ export const generateMetadata = async ({
       url: alternates?.canonical,
     }),
     alternates,
+    description,
     title: genre.name,
   };
 };

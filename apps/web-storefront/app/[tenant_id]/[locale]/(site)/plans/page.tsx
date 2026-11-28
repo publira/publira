@@ -6,7 +6,9 @@ import { Suspense } from "react";
 import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getMessages } from "#lib/get-messages";
+import { pageOpenGraphMetadata } from "#lib/open-graph";
 import { getPageAlternates } from "#lib/page-alternates";
+import { getSiteOpenGraphCard } from "#lib/site-open-graph-card";
 
 import { PlanList } from "./_components/plan-list";
 import { PlansNotice } from "./_components/plans-notice";
@@ -15,12 +17,21 @@ export const generateStaticParams = () =>
   createPlaceholderStaticParams("tenant_id");
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const [t, alternates] = await Promise.all([
+  const [t, alternates, site] = await Promise.all([
     getMessages(),
     getPageAlternates("/plans"),
+    getSiteOpenGraphCard(),
   ]);
 
-  return { alternates, title: t("storefront.plans.title") };
+  const title = t("storefront.plans.title");
+  const description = t("storefront.plans.description");
+
+  return {
+    ...pageOpenGraphMetadata({ alternates, description, site, title }),
+    alternates,
+    description,
+    title,
+  };
 };
 
 /** As many cards as a site usually offers, while the read comes back. */

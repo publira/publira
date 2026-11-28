@@ -6,17 +6,31 @@ import { LocaleLink } from "#components/locale-link";
 import { Message } from "#components/message";
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
+import { pageOpenGraphMetadata } from "#lib/open-graph";
 import { getPageAlternates } from "#lib/page-alternates";
+import { getSiteOpenGraphCard } from "#lib/site-open-graph-card";
 import { getTenantSiteLabel } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 
 export const generateMetadata = async (): Promise<Metadata> => {
-  const [t, alternates] = await Promise.all([
+  const [t, alternates, site] = await Promise.all([
     getMessages(),
     getPageAlternates("/contact/sent"),
+    getSiteOpenGraphCard(),
   ]);
 
-  return { alternates, title: t("storefront.contact.sent_title") };
+  const title = t("storefront.contact.sent_title");
+
+  const description = t("storefront.contact.sent_description", {
+    site: site.siteName,
+  });
+
+  return {
+    ...pageOpenGraphMetadata({ alternates, description, site, title }),
+    alternates,
+    description,
+    title,
+  };
 };
 
 /**

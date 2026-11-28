@@ -81,8 +81,14 @@ export const generateMetadata = async ({
     return { title: t("storefront.tags.not_found_title") };
   }
 
+  const description = t("storefront.tags.detail_description", {
+    count: tag.publishedSeriesCount,
+    name: tag.name,
+  });
+
   return {
     ...openGraphMetadata({
+      description,
       image: cardPath ? openGraphCardImage(cardPath, tag.name) : undefined,
       siteName: siteLabel,
       title: tag.name,
@@ -90,6 +96,7 @@ export const generateMetadata = async ({
       url: alternates?.canonical,
     }),
     alternates,
+    description,
     title: tag.name,
   };
 };

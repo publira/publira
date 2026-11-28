@@ -1,8 +1,18 @@
 import { expect, test } from "@playwright/test";
 import type { APIRequestContext, Page } from "@playwright/test";
 
+import { applyScenarioSql } from "../src/db";
+import {
+  BILINGUAL_TENANT,
+  LOCALE_SWITCHING_SCENARIO,
+} from "../src/scenarios/locale-switching";
 import { SEED_TENANT } from "../src/scenarios/multi-tenant";
-import { localeStorefrontPath, storefrontPath, tenantHost } from "../src/urls";
+import {
+  localeStorefrontPath,
+  storefrontPath,
+  tenantHost,
+  WEB_STOREFRONT_BILINGUAL_BASE_URL,
+} from "../src/urls";
 
 /** The development seed tenant's stored domain, over the edge's plain HTTP. */
 const SEED_ORIGIN = `http://${tenantHost("localhost")}`;
@@ -156,5 +166,112 @@ test.describe("web-storefront Open Graph cards", () => {
     const response = await request.get(`${SEED_ORIGIN}/og/series/ZZZZZZZZZZZZ`);
 
     expect(response.status()).toBe(404);
+  });
+});
+
+const metaContent = async (page: Page, selector: string): Promise<string> => {
+  const meta = page.locator(selector);
+  await expect(meta).toHaveCount(1);
+
+  return (await meta.getAttribute("content")) ?? "";
+};
+
+/**
+ * The card a page declares describes that page: the `<title>` is its
+ * `og:title` under the site's name, `og:url` is its canonical URL, and its
+ * description is the same in the head and on the card. Returns the
+ * description.
+ */
+const expectOwnCard = async (page: Page): Promise<string> => {
+  const [title, siteName, url, description] = await Promise.all([
+    metaContent(page, 'meta[property="og:title"]'),
+    metaContent(page, 'meta[property="og:site_name"]'),
+    metaContent(page, 'meta[property="og:url"]'),
+    metaContent(page, 'meta[property="og:description"]'),
+  ]);
+
+  await expect(page).toHaveTitle(`${title} | ${siteName}`);
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute(
+    "content",
+    title
+  );
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    url
+  );
+  expect(description).not.toBe("");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    description
+  );
+  await expect(
+    page.locator('meta[name="twitter:description"]')
+  ).toHaveAttribute("content", description);
+
+  return description;
+};
+
+/**
+ * A page shared on a social network previews under its own title and URL,
+ * not under the site's, whether or not it has a picture of its own.
+ */
+test.describe("web-storefront Open Graph titles, URLs, and descriptions", () => {
+  const ownCards = [
+    "/genres",
+    "/labels",
+    "/creators",
+    "/series",
+    "/search",
+    "/search?q=series",
+    "/plans",
+    "/announcements",
+    "/contact",
+    "/contact/sent",
+    "/ranking",
+  ] as const;
+
+  for (const path of ownCards) {
+    test(`${path} describes itself on its card`, async ({ page }) => {
+      await page.goto(storefrontPath(path));
+
+      await expectOwnCard(page);
+    });
+  }
+
+  test("a genre describes itself by the series it carries", async ({
+    page,
+  }) => {
+    await page.goto(storefrontPath(`/genres/${SEED_GENRE_PUBLIC_ID}`));
+
+    expect(await expectOwnCard(page)).toMatch(/^\d+ published series in /u);
+  });
+
+  test("a tag describes itself by the series it carries", async ({ page }) => {
+    await page.goto(storefrontPath(`/tags/${SEED_TAG_SLUG}`));
+
+    expect(await expectOwnCard(page)).toMatch(/^\d+ published series tagged /u);
+  });
+
+  test.describe("an announcement", () => {
+    const { translated } = BILINGUAL_TENANT.announcements;
+
+    test.beforeAll(() => {
+      applyScenarioSql(LOCALE_SWITCHING_SCENARIO);
+    });
+
+    test("is described by the start of its body", async ({ page }) => {
+      const path = localeStorefrontPath(
+        "en",
+        `/announcements/${translated.id}`
+      );
+
+      await page.goto(`${WEB_STOREFRONT_BILINGUAL_BASE_URL}${path}`);
+
+      expect(await expectOwnCard(page)).toBe(translated.englishBody);
+      await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+        "content",
+        translated.englishTitle
+      );
+    });
   });
 });

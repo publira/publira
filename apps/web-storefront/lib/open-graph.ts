@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import type { RestrictedAgeRating } from "./age-rating";
 import type { EyeCatchImageVariant } from "./catalog";
+import type { LocaleAlternates } from "./locale-path";
 
 /**
  * The ratio the image server crops an eye-catch to for a link preview — 1200
@@ -176,3 +177,79 @@ export const openGraphMetadata = ({
     title,
   },
 });
+
+/** The site's own card, which a page with no picture of its own unfurls with. */
+export interface SiteOpenGraphCard {
+  description: string | undefined;
+  image: OpenGraphImage | undefined;
+  siteName: string;
+}
+
+interface PageOpenGraphCard {
+  alternates: LocaleAlternates | undefined;
+  description?: string;
+  site: SiteOpenGraphCard;
+  title: string;
+  type?: "article" | "website";
+}
+
+/**
+ * {@link openGraphMetadata} for a page with no picture of its own: its own
+ * title, canonical URL, and description, on the site's card image. A page
+ * that sets none inherits the `(site)` layout's card whole, and unfurls under
+ * the site's name with no URL.
+ *
+ * Without a description of its own, the card carries the site's, which is
+ * also the `<meta name="description">` such a page inherits.
+ */
+export const pageOpenGraphMetadata = ({
+  alternates,
+  description,
+  site,
+  title,
+  type = "website",
+}: PageOpenGraphCard): Pick<Metadata, "openGraph" | "twitter"> =>
+  openGraphMetadata({
+    title,
+    type,
+    description: description ?? site.description,
+    image: site.image,
+    siteName: site.siteName,
+    url: alternates?.canonical,
+  });
+
+/**
+ * The most of a text a description repeats, in grapheme clusters: the length
+ * at which X stops reading `twitter:description`. A search result or a link
+ * preview cuts a shorter line itself.
+ */
+const DESCRIPTION_MAX_GRAPHEMES = 200;
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/**
+ * The start of a body as a one-line description, with an ellipsis where it
+ * was cut, or `undefined` when the body is blank. Line breaks and runs of
+ * spaces collapse to one space, as a crawler shows the line.
+ */
+export const descriptionFromBody = (body: string): string | undefined => {
+  const line = body.replaceAll(/\s+/gu, " ").trim();
+
+  if (!line) {
+    return undefined;
+  }
+
+  const segments = Array.from(
+    graphemes.segment(line),
+    ({ segment }) => segment
+  );
+
+  if (segments.length <= DESCRIPTION_MAX_GRAPHEMES) {
+    return line;
+  }
+
+  return `${segments
+    .slice(0, DESCRIPTION_MAX_GRAPHEMES - 1)
+    .join("")
+    .trimEnd()}…`;
+};

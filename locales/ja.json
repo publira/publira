@@ -6350,6 +6350,7 @@
     },
     "genres": {
       "back_to_list": "ジャンル一覧に戻る",
+      "detail_description": "{$name}の公開中シリーズ{$count}件",
       "list_description": "{$site}に登録されているジャンルをご紹介します",
       "list_empty": "ジャンルはまだ登録されていません。",
       "list_error": "ジャンル一覧を表示できませんでした",
@@ -7021,6 +7022,7 @@
       "title": "設定"
     },
     "tags": {
+      "detail_description": "{$name}のタグが付いた公開中シリーズ{$count}件",
       "detail_failed": "タグを取得できませんでした。時間をおいて再試行してください。",
       "not_found_title": "タグが見つかりません",
       "series_empty": "このタグのシリーズはまだ公開されていません。",

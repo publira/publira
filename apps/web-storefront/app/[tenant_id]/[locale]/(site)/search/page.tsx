@@ -13,7 +13,9 @@ import { Message } from "#components/message";
 import { SectionErrorBoundary } from "#components/section-error-boundary";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { pageOpenGraphMetadata } from "#lib/open-graph";
 import { getPageAlternates } from "#lib/page-alternates";
+import { getSiteOpenGraphCard } from "#lib/site-open-graph-card";
 
 import {
   CreatorResults,
@@ -47,18 +49,23 @@ export const generateMetadata = async ({
 
   const { query } = parseSearchPageSearchParams(resolvedSearchParams);
 
-  const [t, alternates] = await Promise.all([
+  const [t, alternates, site] = await Promise.all([
     getMessagesFor(locale),
     getPageAlternates("/search"),
+    getSiteOpenGraphCard(),
   ]);
 
-  if (!query) {
-    return { alternates, title: t("storefront.search.title") };
-  }
+  const title = query
+    ? t("storefront.search.results_title", { query })
+    : t("storefront.search.title");
+
+  const description = t("storefront.search.description");
 
   return {
+    ...pageOpenGraphMetadata({ alternates, description, site, title }),
     alternates,
-    title: t("storefront.search.results_title", { query }),
+    description,
+    title,
   };
 };
 

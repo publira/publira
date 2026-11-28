@@ -779,7 +779,9 @@ test.describe("web-storefront announcements in the reader's language", () => {
  * The copy a tenant writes about its site — the description its metadata and
  * footer carry, and its copyright line — is read in the language in the URL,
  * else in the tenant's default. The bilingual tenant writes it in both of its
- * languages; the Japanese-default tenant in Japanese alone.
+ * languages; the Japanese-default tenant in Japanese alone. The home page is
+ * where the metadata carries the site's description: every other page leads
+ * with a description of its own.
  */
 test.describe("web-storefront site copy in the reader's language", () => {
   test.beforeAll(() => {
@@ -793,7 +795,7 @@ test.describe("web-storefront site copy in the reader's language", () => {
     const footer = page.getByRole("contentinfo");
     const description = page.locator('meta[name="description"]');
 
-    await page.goto(bilingualUrl(storefrontPath("/series")));
+    await page.goto(bilingualUrl(storefrontPath("/")));
     await expect(
       footer.getByText(japaneseCopy.copyrightText, { exact: true })
     ).toBeVisible();
@@ -808,7 +810,7 @@ test.describe("web-storefront site copy in the reader's language", () => {
     await switchStorefrontLocale(page, "日本語", "English");
 
     await expect(page).toHaveURL(
-      (url) => url.pathname === localeStorefrontPath("en", "/series")
+      (url) => url.pathname === localeStorefrontPath("en", "/")
     );
     await expect(
       footer.getByText(englishCopy.copyrightText, { exact: true })
@@ -833,10 +835,7 @@ test.describe("web-storefront site copy in the reader's language", () => {
   }) => {
     const { japaneseCopy } = JAPANESE_DEFAULT_TENANT;
 
-    await page.goto(japaneseDefaultUrl(localeStorefrontPath("en", "/series")));
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Series" })
-    ).toBeVisible();
+    await page.goto(japaneseDefaultUrl(localeStorefrontPath("en", "/")));
 
     await expect(
       page

@@ -42,8 +42,10 @@ import type {
 import { organizationJsonLd, websiteJsonLd } from "#lib/json-ld";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { pageOpenGraphMetadata } from "#lib/open-graph";
 import { listMyRecentSeries } from "#lib/reading-progress";
-import { getTenantDisplayTimeZone, getTenantSiteLabel } from "#lib/tenant";
+import { getSiteOpenGraphCard } from "#lib/site-open-graph-card";
+import { getTenantDisplayTimeZone } from "#lib/tenant";
 import { getTenantId } from "#lib/tenant-id";
 import { tenantLocaleAlternates } from "#lib/tenant-locale-path";
 
@@ -108,18 +110,20 @@ export const generateStaticParams = () =>
 export const generateMetadata = async (): Promise<Metadata> => {
   const [tenantId, locale] = await Promise.all([getTenantId(), getLocale()]);
 
-  const [siteLabel, t, alternates] = await Promise.all([
-    getTenantSiteLabel(tenantId, locale),
+  const [site, t, alternates] = await Promise.all([
+    getSiteOpenGraphCard(),
     getMessagesFor(locale),
     tenantLocaleAlternates(tenantId, locale, "/"),
   ]);
 
   // This page shares a route segment with `(site)/layout.tsx`, so Next.js does
   // not apply that layout's `title.template`. Compose the full tab title here.
+  // The card is the site's own, which this page is.
   return {
+    ...pageOpenGraphMetadata({ alternates, site, title: site.siteName }),
     alternates,
     title: {
-      absolute: `${t("storefront.top.metadata_title")} | ${siteLabel}`,
+      absolute: `${t("storefront.top.metadata_title")} | ${site.siteName}`,
     },
   };
 };

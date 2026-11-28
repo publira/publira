@@ -37,9 +37,11 @@ import type {
 import { getMessages } from "#lib/get-messages";
 import { getLocale } from "#lib/locale";
 import { getMessagesFor } from "#lib/messages";
+import { pageOpenGraphMetadata } from "#lib/open-graph";
 import { getPageAlternates } from "#lib/page-alternates";
 import { DEFAULT_RANKING_PERIOD, rankingHref } from "#lib/ranking-href";
 import { getReaderProvenAgeRating, readerHasBirthDate } from "#lib/reader-age";
+import { getSiteOpenGraphCard } from "#lib/site-open-graph-card";
 import {
   getTenantAgeVerification,
   getTenantDisplayTimeZone,
@@ -89,7 +91,7 @@ export const generateMetadata = async ({
   const { genre: genreId, rating } =
     parseRankingSearchParams(resolvedSearchParams);
 
-  const [t, alternates, genres] = await Promise.all([
+  const [t, alternates, genres, site] = await Promise.all([
     getMessages(),
     getPageAlternates(
       rankingHref({ genre: genreId, period: DEFAULT_RANKING_PERIOD, rating })
@@ -97,7 +99,19 @@ export const generateMetadata = async ({
     genreId
       ? listPublishedGenres(tenantId, locale)
       : { ok: true as const, value: [] },
+    getSiteOpenGraphCard(),
   ]);
+
+  const rankingMetadata = (title: string): Metadata => {
+    const description = t("storefront.ranking.description");
+
+    return {
+      ...pageOpenGraphMetadata({ alternates, description, site, title }),
+      alternates,
+      description,
+      title,
+    };
+  };
 
   if (genreId) {
     // An unavailable genre reads as "not found" for the `<title>` alone; the
@@ -108,26 +122,23 @@ export const generateMetadata = async ({
         : null;
 
     return genre
-      ? {
-          alternates,
-          title: t("storefront.ranking.list_title_genre", {
-            genre: genre.name,
-          }),
-        }
+      ? rankingMetadata(
+          t("storefront.ranking.list_title_genre", { genre: genre.name })
+        )
       : { title: t("storefront.genres.not_found_title") };
   }
 
   if (rating === "all") {
-    return { alternates, title: t("storefront.ranking.list_title") };
+    return rankingMetadata(t("storefront.ranking.list_title"));
   }
 
   return {
-    alternates,
-    robots: { index: false },
-    title:
+    ...rankingMetadata(
       rating === "r18"
         ? t("storefront.ranking.list_title_r18")
-        : t("storefront.ranking.list_title_r15"),
+        : t("storefront.ranking.list_title_r15")
+    ),
+    robots: { index: false },
   };
 };
 
