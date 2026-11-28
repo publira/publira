@@ -9,8 +9,7 @@
 --
 -- category is which of the recipient's notification preferences the row
 -- answers to, and the row is listed in their inbox unless that preference's
--- inbox cell is off; a recipient who saved nothing holds every cell on, and
--- the staff, everyone, and account categories have no cell. The cell is read
+-- inbox cell is off, which notification_in_inbox answers. The cell is read
 -- here rather than passed in, so no writer can file a row past it. Reading it
 -- needs a connection that sees the recipient's settings, which the worker's
 -- do: the settings are isolated to the reader they belong to, so a
@@ -37,18 +36,39 @@ VALUES (
     sqlc.arg('payload'),
     COALESCE(sqlc.narg('availability')::text, 'all'),
     sqlc.arg('category')::text,
-    COALESCE((
-        SELECT CASE sqlc.arg('category')::text
-            WHEN 'followed_episodes' THEN s.followed_episodes_inbox_enabled
-            WHEN 'followed_creators' THEN s.followed_creators_inbox_enabled
-            WHEN 'comments' THEN s.comments_inbox_enabled
-            WHEN 'announcements' THEN s.announcements_inbox_enabled
-        END
-        FROM user_notification_settings s
-        WHERE s.tenant_id = sqlc.arg('tenant_id')
-            AND s.user_id = sqlc.arg('user_id')
-    ), true)
+    notification_in_inbox(sqlc.arg('tenant_id'), sqlc.arg('user_id'), sqlc.arg('category')::text)
 )
+ON CONFLICT DO NOTHING;
+
+-- CreateNotification for a page of recipients in one statement, which is how
+-- a fan-out to a tenant's readership files them: one insert per reader is a
+-- round trip per reader, and a page of them is what one outbox job can afford
+-- to write before it records how far it got. The recipients and their payloads
+-- are paired by position, and everything else is the same for the whole page.
+-- name: CreateNotificationsForRecipients :exec
+INSERT INTO notifications (
+    id,
+    tenant_id,
+    user_id,
+    notification_type,
+    subject_key,
+    payload,
+    availability,
+    category,
+    in_inbox
+)
+SELECT
+    uuidv7(),
+    sqlc.arg('tenant_id')::uuid,
+    r.user_id,
+    sqlc.arg('notification_type')::text,
+    sqlc.arg('subject_key')::text,
+    p.payload::jsonb,
+    COALESCE(sqlc.narg('availability')::text, 'all'),
+    sqlc.arg('category')::text,
+    notification_in_inbox(sqlc.arg('tenant_id')::uuid, r.user_id, sqlc.arg('category')::text)
+FROM unnest(sqlc.arg('user_ids')::uuid[]) WITH ORDINALITY AS r(user_id, ordinality)
+    JOIN unnest(sqlc.arg('payloads')::text[]) WITH ORDINALITY AS p(payload, ordinality) USING (ordinality)
 ON CONFLICT DO NOTHING;
 
 -- A row filed for the tenant's staff for being staff, which no preference

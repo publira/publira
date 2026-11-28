@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -32,7 +33,7 @@ func TestAnnouncementNotificationWritesOneRowPerTenantUserInTheirLocale(t *testi
 	}
 	queries := &stubAnnouncementQuerier{users: recipients}
 
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 	if err := handler(context.Background(), announcementEvent(t, tenantID, announcementID)); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -118,7 +119,7 @@ func TestAnnouncementNotificationFilesItsRowsByItsDelivery(t *testing.T) {
 				users:    []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Terms of use updated"}},
 			}
 
-			handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+			handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 			if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
 				t.Fatalf("handler: %v", err)
 			}
@@ -138,7 +139,7 @@ func TestAnnouncementNotificationRejectsADeliveryItDoesNotKnow(t *testing.T) {
 		users:    []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Scheduled maintenance"}},
 	}
 
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); !IsPermanent(err) {
 		t.Fatalf("handler error = %v, want a permanent error", err)
 	}
@@ -163,7 +164,7 @@ func TestAnnouncementNotificationRejectsAnAudienceItCannotRead(t *testing.T) {
 				users:    []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Scheduled maintenance"}},
 			}
 
-			handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+			handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 			if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); !IsPermanent(err) {
 				t.Fatalf("handler error = %v, want a permanent error", err)
 			}
@@ -180,7 +181,7 @@ func TestAnnouncementNotificationCompletesWhenTheAnnouncementIsGone(t *testing.T
 		users:       []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Scheduled maintenance"}},
 	}
 
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -192,13 +193,13 @@ func TestAnnouncementNotificationCompletesWhenTheAnnouncementIsGone(t *testing.T
 func TestAnnouncementNotificationWalksEveryRecipientPage(t *testing.T) {
 	// A full page means there may be another behind it, so the handler asks
 	// again from the last user it saw rather than stopping at the first page.
-	users := make([]dbmodels.ListAnnouncementRecipientsRow, announcementRecipientPageSize+1)
+	users := make([]dbmodels.ListAnnouncementRecipientsRow, defaultFanOutPaging.pageSize+1)
 	for i := range users {
 		users[i] = dbmodels.ListAnnouncementRecipientsRow{UserID: uuid.New(), Title: "Scheduled maintenance"}
 	}
 	queries := &stubAnnouncementQuerier{users: users}
 
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -206,15 +207,65 @@ func TestAnnouncementNotificationWalksEveryRecipientPage(t *testing.T) {
 	if len(queries.created) != len(users) {
 		t.Fatalf("notifications written = %d, want %d", len(queries.created), len(users))
 	}
-	if queries.listCalls != 2 {
-		t.Fatalf("recipient queries = %d, want 2", queries.listCalls)
+	if queries.listCalls != 2 || queries.inserts != 2 {
+		t.Fatalf("recipient queries, inserts = %d, %d, want one of each per page (2)", queries.listCalls, queries.inserts)
+	}
+}
+
+// A job with no room for another page records the last reader it filed and
+// hands the event back, and the run that resumes it starts past that reader:
+// every reader is filed once, and the mail and the push wait for the last page.
+func TestAnnouncementNotificationResumesWhereTheLastJobStopped(t *testing.T) {
+	users := make([]dbmodels.ListAnnouncementRecipientsRow, 5)
+	for i := range users {
+		users[i] = dbmodels.ListAnnouncementRecipientsRow{UserID: uuid.New(), Title: "Scheduled maintenance"}
+	}
+	queries := &stubAnnouncementQuerier{users: users}
+	// A reserve longer than the job leaves every run room for its first page
+	// only.
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries,
+		fanOutPaging{pageSize: 2, reserve: time.Hour})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	event := announcementEvent(t, uuid.New(), uuid.New())
+	for run := 1; ; run++ {
+		err := handler(ctx, event)
+		if err == nil {
+			if run != 3 {
+				t.Fatalf("finished on run %d, want one run per page (3)", run)
+			}
+			break
+		}
+		if !errors.Is(err, ErrResume) {
+			t.Fatalf("run %d: handler error = %v, want ErrResume", run, err)
+		}
+		if run == 3 {
+			t.Fatal("handler is still resuming after every page was filed")
+		}
+		if len(queries.queued) != 0 {
+			t.Fatalf("run %d queued %d outbox events before the last page", run, len(queries.queued))
+		}
+		event.ProgressCursor = queries.progress
+	}
+
+	if len(queries.created) != len(users) {
+		t.Fatalf("notifications written = %d, want one per reader (%d)", len(queries.created), len(users))
+	}
+	for i, row := range queries.created {
+		if row.UserID != users[i].UserID {
+			t.Fatalf("notification %d addressed %s, want %s", i, row.UserID, users[i].UserID)
+		}
+	}
+	if len(queries.queued) != 2 {
+		t.Fatalf("outbox events = %d, want the push and the mail", len(queries.queued))
 	}
 }
 
 func TestAnnouncementNotificationCompletesWhenTheTenantHasNoUsers(t *testing.T) {
 	queries := &stubAnnouncementQuerier{}
 
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -231,7 +282,7 @@ func TestAnnouncementNotificationQueuesTheMailOfAnEarlierAttemptsRows(t *testing
 		written:  true,
 	}
 
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 	if err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New())); err != nil {
 		t.Fatalf("handler: %v", err)
 	}
@@ -245,7 +296,7 @@ func TestAnnouncementNotificationQueuesTheMailOfAnEarlierAttemptsRows(t *testing
 func TestAnnouncementNotificationRetriesAFailedLookup(t *testing.T) {
 	queries := &stubAnnouncementQuerier{listErr: errors.New("connection refused")}
 
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 	err := handler(context.Background(), announcementEvent(t, uuid.New(), uuid.New()))
 	if err == nil {
 		t.Fatal("handler error = nil, want a retriable error")
@@ -258,7 +309,7 @@ func TestAnnouncementNotificationRetriesAFailedLookup(t *testing.T) {
 func TestAnnouncementNotificationRejectsAPayloadNamingAnotherTenant(t *testing.T) {
 	queries := &stubAnnouncementQuerier{users: []dbmodels.ListAnnouncementRecipientsRow{{UserID: uuid.New(), Title: "Scheduled maintenance"}}}
 
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 	event := announcementEvent(t, uuid.New(), uuid.New())
 	event.TenantID = uuid.NullUUID{UUID: uuid.New(), Valid: true}
 
@@ -278,7 +329,7 @@ func TestAnnouncementNotificationRejectsAPayloadWithoutAnAnnouncement(t *testing
 		t.Fatalf("encode payload: %v", err)
 	}
 
-	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries)
+	handler := announcementNotificationHandler(AnnouncementNotificationHandlerConfig{}, queries, defaultFanOutPaging)
 	event := announcementEvent(t, tenantID, uuid.New())
 	event.Payload = payload
 
@@ -325,7 +376,9 @@ type stubAnnouncementQuerier struct {
 	listCalls          int
 	listErr            error
 	created            []dbmodels.CreateNotificationParams
+	inserts            int
 	createErr          error
+	progress           sql.NullString
 	queued             []dbmodels.InsertOutboxEventParams
 }
 
@@ -391,13 +444,34 @@ func (s *stubAnnouncementQuerier) AnnouncementHasNotifications(
 	return s.written || len(s.created) > 0, nil
 }
 
-func (s *stubAnnouncementQuerier) CreateNotification(
+// CreateNotificationsForRecipients records one row per recipient of the page,
+// as the insert would file them.
+func (s *stubAnnouncementQuerier) CreateNotificationsForRecipients(
 	_ context.Context,
-	arg dbmodels.CreateNotificationParams,
+	arg dbmodels.CreateNotificationsForRecipientsParams,
 ) error {
 	if s.createErr != nil {
 		return s.createErr
 	}
-	s.created = append(s.created, arg)
+	s.inserts++
+	for i, userID := range arg.UserIds {
+		s.created = append(s.created, dbmodels.CreateNotificationParams{
+			TenantID:         arg.TenantID,
+			UserID:           userID,
+			NotificationType: arg.NotificationType,
+			SubjectKey:       arg.SubjectKey,
+			Payload:          json.RawMessage(arg.Payloads[i]),
+			Availability:     arg.Availability,
+			Category:         arg.Category,
+		})
+	}
 	return nil
+}
+
+func (s *stubAnnouncementQuerier) RecordOutboxEventProgress(
+	_ context.Context,
+	arg dbmodels.RecordOutboxEventProgressParams,
+) (int64, error) {
+	s.progress = arg.ProgressCursor
+	return 1, nil
 }

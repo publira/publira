@@ -22,7 +22,7 @@ import (
 // announcement was posted for everyone.
 //
 // It is drained here rather than written by CreateAnnouncement itself. The
-// fan-out is a query and an insert per person while an operator waits for the
+// fan-out is a row per person, written while an operator would wait for the
 // form to come back, and it grows with the tenant's readership rather than with
 // what was posted.
 const EventTypeAnnouncementNotification = "announcement_notification"
@@ -52,12 +52,6 @@ const (
 	AnnouncementDeliveryPreferred = "preferred"
 	AnnouncementDeliveryEveryone  = "everyone"
 )
-
-// announcementRecipientPageSize bounds one recipient query, for the reason
-// DefaultEpisodeFollowerPageSize does: the handler walks the tenant's users a
-// page at a time instead of materializing every one of them before the first
-// insert.
-const announcementRecipientPageSize = int32(500)
 
 // AnnouncementSubjectKey is the identity one announcement's notifications
 // share, so a redelivered event writes no second row for anyone.
@@ -106,7 +100,7 @@ type AnnouncementEventQuerier interface {
 //
 // The worker owns the fan-out: an announcement addresses every user the tenant
 // has, or every one its audience selects, and an operator submitting the
-// console form must not wait on an insert per person. The idempotency key is
+// console form must not wait on a row per person. The idempotency key is
 // the announcement's own identity, so a redelivered event notifies nobody a
 // second time. One with an audience is queued as an event of its own type, so
 // that a worker that would deliver it to everyone never claims it.
@@ -170,8 +164,15 @@ type announcementNotificationQuerier interface {
 	GetAnnouncementDelivery(ctx context.Context, arg dbmodels.GetAnnouncementDeliveryParams) (dbmodels.GetAnnouncementDeliveryRow, error)
 	ListAnnouncementRecipients(ctx context.Context, arg dbmodels.ListAnnouncementRecipientsParams) ([]dbmodels.ListAnnouncementRecipientsRow, error)
 	AnnouncementHasNotifications(ctx context.Context, arg dbmodels.AnnouncementHasNotificationsParams) (bool, error)
-	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
+	CreateNotificationsForRecipients(ctx context.Context, arg dbmodels.CreateNotificationsForRecipientsParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
+	fanOutProgressRecorder
+}
+
+// announcementCursor is the last reader a run filed a row for, in the order
+// the recipient query walks them.
+type announcementCursor struct {
+	UserID uuid.UUID `json:"user_id"`
 }
 
 // NewAnnouncementNotificationHandler writes one bell notification per reader a
@@ -179,6 +180,10 @@ type announcementNotificationQuerier interface {
 // them. It handles both [EventTypeAnnouncementNotification] and
 // [EventTypeTargetedAnnouncementNotification]: the announcement row says
 // whether it has an audience, and the recipient query reads it from there.
+//
+// The readers are filed a page at a time, and a tenant whose readers do not
+// fit in one job is filed across as many as it takes: the mail and the push are
+// queued once the last page is.
 func NewAnnouncementNotificationHandler(cfg AnnouncementNotificationHandlerConfig) Handler {
 	if cfg.DB == nil {
 		// Reported per event rather than at registration, and as a plain error
@@ -188,12 +193,13 @@ func NewAnnouncementNotificationHandler(cfg AnnouncementNotificationHandlerConfi
 			return errors.New("announcement notification handler database is not configured")
 		}
 	}
-	return announcementNotificationHandler(cfg, dbmodels.New(cfg.DB))
+	return announcementNotificationHandler(cfg, dbmodels.New(cfg.DB), defaultFanOutPaging)
 }
 
 func announcementNotificationHandler(
 	cfg AnnouncementNotificationHandlerConfig,
 	queries announcementNotificationQuerier,
+	paging fanOutPaging,
 ) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		var payload AnnouncementNotificationPayload
@@ -237,65 +243,74 @@ func announcementNotificationHandler(
 		if _, _, err := announcementaudience.Decode(audience); err != nil {
 			return Permanent(err)
 		}
-		insert := func(recipient dbmodels.ListAnnouncementRecipientsRow) error {
-			body, encodeErr := json.Marshal(announcementNotificationBody{
-				AnnouncementTitle: strings.TrimSpace(recipient.Title),
-			})
-			if encodeErr != nil {
-				return Permanent(fmt.Errorf("encode announcement notification body: %w", encodeErr))
+		file := func(recipients []dbmodels.ListAnnouncementRecipientsRow) error {
+			userIDs := make([]uuid.UUID, len(recipients))
+			payloads := make([]string, len(recipients))
+			for i, recipient := range recipients {
+				body, encodeErr := json.Marshal(announcementNotificationBody{
+					AnnouncementTitle: strings.TrimSpace(recipient.Title),
+				})
+				if encodeErr != nil {
+					return Permanent(fmt.Errorf("encode announcement notification body: %w", encodeErr))
+				}
+				userIDs[i], payloads[i] = recipient.UserID, string(body)
 			}
-			notificationID, idErr := uuid.NewV7()
-			if idErr != nil {
-				return fmt.Errorf("allocate notification id: %w", idErr)
-			}
-			insertErr := queries.CreateNotification(ctx, dbmodels.CreateNotificationParams{
-				ID:               notificationID,
+			// A recipient who already has this announcement's row, which is what
+			// a redelivered event or a page filed again looks like, is a no-op
+			// rather than an error.
+			if err := queries.CreateNotificationsForRecipients(ctx, dbmodels.CreateNotificationsForRecipientsParams{
 				TenantID:         tenantID,
-				UserID:           recipient.UserID,
 				NotificationType: NotificationTypeAnnouncementPosted,
 				SubjectKey:       AnnouncementSubjectKey(announcementID),
-				Payload:          body,
 				Category:         category,
-			})
-			// A recipient who already has this announcement's row, which is what
-			// a redelivered event looks like, is a no-op rather than an error.
-			if insertErr != nil {
-				return fmt.Errorf("insert notification for %s: %w", recipient.UserID, insertErr)
+				UserIds:          userIDs,
+				Payloads:         payloads,
+			}); err != nil {
+				return fmt.Errorf("insert announcement notifications: %w", err)
 			}
 			return nil
 		}
 
+		var cursor announcementCursor
+		if err := parseFanOutCursor(event, &cursor); err != nil {
+			return Permanent(err)
+		}
+		// Readers this run filed, not counting those an earlier run of the
+		// event did.
 		notified := 0
-		// The nil UUID sorts below every UUID, so the first page starts there.
-		after := uuid.Nil
-		for {
+		for first := true; ; first = false {
+			if !first && !paging.hasRoomForPage(ctx) {
+				return ErrResume
+			}
 			recipients, listErr := queries.ListAnnouncementRecipients(ctx, dbmodels.ListAnnouncementRecipientsParams{
 				AnnouncementID: announcementID,
 				TenantID:       uuid.NullUUID{UUID: tenantID, Valid: true},
-				AfterUserID:    after,
-				Limit:          announcementRecipientPageSize,
+				AfterUserID:    cursor.UserID,
+				Limit:          paging.pageSize,
 			})
 			if listErr != nil {
 				return fmt.Errorf("list announcement recipients: %w", listErr)
 			}
-			if len(recipients) == 0 {
-				break
-			}
-			for _, recipient := range recipients {
-				if err := insert(recipient); err != nil {
+			if len(recipients) > 0 {
+				if err := file(recipients); err != nil {
 					return err
 				}
 			}
 			notified += len(recipients)
-			after = recipients[len(recipients)-1].UserID
-			if int32(len(recipients)) < announcementRecipientPageSize {
+			if int32(len(recipients)) < paging.pageSize {
 				break
+			}
+			cursor.UserID = recipients[len(recipients)-1].UserID
+			if err := recordFanOutProgress(ctx, queries, event, cursor); err != nil {
+				return err
 			}
 		}
 		if notified == 0 {
 			// A retry evaluates the audience again, and a reader an earlier
-			// attempt wrote a row for may no longer meet it. The mail and the
-			// push read the rows that were written, so both are still owed.
+			// attempt wrote a row for may no longer meet it; a run resumed
+			// after a page that ended on the last reader finds nobody past it.
+			// The mail and the push read the rows that were written, so both
+			// are still owed.
 			written, err := queries.AnnouncementHasNotifications(ctx, dbmodels.AnnouncementHasNotificationsParams{
 				TenantID:   tenantID,
 				SubjectKey: AnnouncementSubjectKey(announcementID),

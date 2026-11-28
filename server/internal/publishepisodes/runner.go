@@ -46,7 +46,7 @@ type Runner struct {
 	logger     *slog.Logger
 	maxRetries int
 	// followerPageSize bounds one recipient query. New sets it to
-	// outbox.DefaultEpisodeFollowerPageSize; a test lowers it to walk several pages without
+	// outbox.DefaultFanOutPageSize; a test lowers it to walk several pages without
 	// seeding a page's worth of readers.
 	followerPageSize int32
 	// publish, when set, replaces publishEpisode so tests can force a final failure.
@@ -100,7 +100,7 @@ func New(db *sql.DB, queries *dbmodels.Queries, reval *revalidate.Requester, log
 		reval:            reval,
 		logger:           logger,
 		maxRetries:       maxRetries,
-		followerPageSize: outbox.DefaultEpisodeFollowerPageSize,
+		followerPageSize: outbox.DefaultFanOutPageSize,
 	}
 }
 

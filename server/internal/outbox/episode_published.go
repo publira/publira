@@ -34,11 +34,6 @@ const NotificationTypeEpisodePublished = "episode_published"
 // operators, for an episode it gave up publishing.
 const NotificationTypeEpisodePublishFailed = "episode_publish_failed"
 
-// DefaultEpisodeFollowerPageSize bounds one recipient query. The fan-out grows
-// with the tenant's readership, so it walks the followers a page at a time
-// instead of materializing every one of them before the first insert.
-const DefaultEpisodeFollowerPageSize = int32(500)
-
 // EpisodePublishedIdempotencyKey is the outbox key for one episode's event.
 // The episode id is unique across every tenant, and the key is the same every
 // time the console publishes the episode, so one taken down and published
@@ -90,7 +85,7 @@ type EpisodeFollowerQuerier interface {
 	ListPublishedEpisodeSurfaces(ctx context.Context, arg dbmodels.ListPublishedEpisodeSurfacesParams) ([]string, error)
 	ListEpisodeFollowerIDs(ctx context.Context, arg dbmodels.ListEpisodeFollowerIDsParams) ([]uuid.UUID, error)
 	ListEpisodeCreatorFollowerIDs(ctx context.Context, arg dbmodels.ListEpisodeCreatorFollowerIDsParams) ([]uuid.UUID, error)
-	CreateNotification(ctx context.Context, arg dbmodels.CreateNotificationParams) error
+	CreateNotificationsForRecipients(ctx context.Context, arg dbmodels.CreateNotificationsForRecipientsParams) error
 	InsertOutboxEvent(ctx context.Context, arg dbmodels.InsertOutboxEventParams) (dbmodels.OutboxEvent, error)
 }
 
@@ -121,10 +116,54 @@ type EpisodeFollowerQuerier interface {
 // series published in between has to find the debt where the publication left
 // it.
 //
-// The recipients arrive a page at a time and the rows are written as each page
-// lands. The notification and the push both key on the episode, so a second
-// run over the same episode writes nothing new.
+// The recipients arrive a page at a time and each page is written in one
+// insert as it lands. The notification and the push both key on the episode,
+// so a second run over the same episode writes nothing new.
 func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publication EpisodePublication, pageSize int32) error {
+	filer, ok, err := newEpisodeFollowerFiler(ctx, q, publication, pageSize)
+	if err != nil || !ok {
+		return err
+	}
+	var cursor episodeFollowerCursor
+	for done := false; !done; {
+		if cursor, done, err = filer.filePage(ctx, q, cursor); err != nil {
+			return err
+		}
+	}
+	return filer.finish(ctx, q, cursor)
+}
+
+// episodeFollowerCursor is how far a walk over an episode's followers has got:
+// which recipient query it is on, and the last reader that query filed.
+type episodeFollowerCursor struct {
+	// Creators is set once every follower of the episode and its series is
+	// filed, and the walk is on the followers of its creators.
+	Creators bool      `json:"creators,omitempty"`
+	UserID   uuid.UUID `json:"user_id"`
+	// Notified is set once the walk has filed anybody, which is what the push
+	// and the mail are queued for.
+	Notified bool `json:"notified,omitempty"`
+}
+
+// episodeFollowerFiler files one published episode's notification for its
+// followers, a page of them at a time.
+type episodeFollowerFiler struct {
+	publication  EpisodePublication
+	subjectKey   string
+	payload      string
+	availability sql.NullString
+	pageSize     int32
+}
+
+// newEpisodeFollowerFiler answers false when the episode is shown on no
+// surface: no reader can open it, so neither recipient query would answer
+// anybody.
+func newEpisodeFollowerFiler(
+	ctx context.Context,
+	q EpisodeFollowerQuerier,
+	publication EpisodePublication,
+	pageSize int32,
+) (episodeFollowerFiler, bool, error) {
 	payload, err := json.Marshal(EpisodePublishedNotificationBody{
 		EpisodeID:    publication.EpisodePublicID,
 		EpisodeTitle: publication.EpisodeTitle,
@@ -132,110 +171,127 @@ func NotifyEpisodeFollowers(ctx context.Context, q EpisodeFollowerQuerier, publi
 		SeriesTitle:  publication.SeriesTitle,
 	})
 	if err != nil {
-		return fmt.Errorf("encode payload: %w", err)
+		return episodeFollowerFiler{}, false, fmt.Errorf("encode payload: %w", err)
 	}
-
 	surfaces, err := q.ListPublishedEpisodeSurfaces(ctx, dbmodels.ListPublishedEpisodeSurfacesParams{
 		TenantID:  publication.TenantID,
 		EpisodeID: publication.EpisodeID,
 	})
 	if err != nil {
-		return fmt.Errorf("list episode surfaces: %w", err)
+		return episodeFollowerFiler{}, false, fmt.Errorf("list episode surfaces: %w", err)
 	}
 	if len(surfaces) == 0 {
-		// No reader can open it, so neither recipient query would answer anybody.
-		return nil
+		return episodeFollowerFiler{}, false, nil
 	}
-	availability := sql.NullString{String: notificationAvailability(surfaces), Valid: true}
-
-	subjectKey := EpisodeSubjectKey(publication.EpisodePublicID)
-	file := func(category NotificationCategory, followerID uuid.UUID) error {
-		filedUnder, err := NotificationCategoryFor(NotificationTypeEpisodePublished, category)
-		if err != nil {
-			return err
-		}
-		notificationID, err := uuid.NewV7()
-		if err != nil {
-			return fmt.Errorf("allocate notification id: %w", err)
-		}
-		err = q.CreateNotification(ctx, dbmodels.CreateNotificationParams{
-			ID:               notificationID,
-			TenantID:         publication.TenantID,
-			UserID:           followerID,
-			NotificationType: NotificationTypeEpisodePublished,
-			SubjectKey:       subjectKey,
-			Payload:          payload,
-			Availability:     availability,
-			Category:         filedUnder,
-		})
-		if err != nil {
-			return fmt.Errorf("insert notification for %s: %w", followerID, err)
-		}
-		return nil
-	}
-
-	episodeFollowers, err := forEachEpisodeFollower(pageSize, func(after uuid.UUID) ([]uuid.UUID, error) {
-		return q.ListEpisodeFollowerIDs(ctx, dbmodels.ListEpisodeFollowerIDsParams{
-			TenantID:    publication.TenantID,
-			EpisodeID:   publication.EpisodeID,
-			AfterUserID: after,
-			Limit:       pageSize,
-		})
-	}, func(followerID uuid.UUID) error {
-		return file(NotificationCategoryFollowedEpisodes, followerID)
-	})
-	if err != nil {
-		return fmt.Errorf("notify the followers of the episode and its series: %w", err)
-	}
-	creatorFollowers, err := forEachEpisodeFollower(pageSize, func(after uuid.UUID) ([]uuid.UUID, error) {
-		return q.ListEpisodeCreatorFollowerIDs(ctx, dbmodels.ListEpisodeCreatorFollowerIDsParams{
-			TenantID:    publication.TenantID,
-			EpisodeID:   publication.EpisodeID,
-			AfterUserID: after,
-			Limit:       pageSize,
-		})
-	}, func(followerID uuid.UUID) error {
-		return file(NotificationCategoryFollowedCreators, followerID)
-	})
-	if err != nil {
-		return fmt.Errorf("notify the followers of its creators: %w", err)
-	}
-	notified := episodeFollowers + creatorFollowers
-	if notified == 0 {
-		return nil
-	}
-	if err := enqueueEpisodePublishedPush(ctx, q, publication, subjectKey); err != nil {
-		return err
-	}
-	return queueNotificationEmail(ctx, q, publication.TenantID, NotificationTypeEpisodePublished, subjectKey)
+	return episodeFollowerFiler{
+		publication:  publication,
+		subjectKey:   EpisodeSubjectKey(publication.EpisodePublicID),
+		payload:      string(payload),
+		availability: sql.NullString{String: notificationAvailability(surfaces), Valid: true},
+		pageSize:     pageSize,
+	}, true, nil
 }
 
-// forEachEpisodeFollower walks one recipient query a page at a time, the
-// nil UUID first because it sorts below every UUID, and hands each recipient
-// to notify as its page lands. It answers how many it handed over.
-func forEachEpisodeFollower(
-	pageSize int32,
-	list func(after uuid.UUID) ([]uuid.UUID, error),
-	notify func(followerID uuid.UUID) error,
-) (int, error) {
-	notified := 0
-	after := uuid.Nil
+// filePage files the page of followers past cursor, and answers the cursor
+// after it and whether every follower is filed. A page that runs out of the
+// followers of the episode and its series goes straight on to those of its
+// creators, so a walk ends a call only on a full page or on the last one. The
+// nil UUID sorts below every UUID, so the zero cursor starts each recipient
+// query at its first reader.
+func (f episodeFollowerFiler) filePage(
+	ctx context.Context,
+	q EpisodeFollowerQuerier,
+	cursor episodeFollowerCursor,
+) (episodeFollowerCursor, bool, error) {
 	for {
-		followers, err := list(after)
+		category, followers, err := f.listPage(ctx, q, cursor)
 		if err != nil {
-			return notified, fmt.Errorf("list followers: %w", err)
+			return cursor, false, err
 		}
-		for _, followerID := range followers {
-			if err := notify(followerID); err != nil {
-				return notified, err
+		if len(followers) > 0 {
+			if err := f.file(ctx, q, category, followers); err != nil {
+				return cursor, false, err
 			}
+			cursor.Notified = true
 		}
-		notified += len(followers)
-		if int32(len(followers)) < pageSize {
-			return notified, nil
+		if int32(len(followers)) == f.pageSize {
+			cursor.UserID = followers[len(followers)-1]
+			return cursor, false, nil
 		}
-		after = followers[len(followers)-1]
+		if cursor.Creators {
+			return cursor, true, nil
+		}
+		cursor = episodeFollowerCursor{Creators: true, Notified: cursor.Notified}
 	}
+}
+
+func (f episodeFollowerFiler) listPage(
+	ctx context.Context,
+	q EpisodeFollowerQuerier,
+	cursor episodeFollowerCursor,
+) (NotificationCategory, []uuid.UUID, error) {
+	if !cursor.Creators {
+		followers, err := q.ListEpisodeFollowerIDs(ctx, dbmodels.ListEpisodeFollowerIDsParams{
+			TenantID:    f.publication.TenantID,
+			EpisodeID:   f.publication.EpisodeID,
+			AfterUserID: cursor.UserID,
+			Limit:       f.pageSize,
+		})
+		if err != nil {
+			return "", nil, fmt.Errorf("list the followers of the episode and its series: %w", err)
+		}
+		return NotificationCategoryFollowedEpisodes, followers, nil
+	}
+	followers, err := q.ListEpisodeCreatorFollowerIDs(ctx, dbmodels.ListEpisodeCreatorFollowerIDsParams{
+		TenantID:    f.publication.TenantID,
+		EpisodeID:   f.publication.EpisodeID,
+		AfterUserID: cursor.UserID,
+		Limit:       f.pageSize,
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("list the followers of its creators: %w", err)
+	}
+	return NotificationCategoryFollowedCreators, followers, nil
+}
+
+func (f episodeFollowerFiler) file(
+	ctx context.Context,
+	q EpisodeFollowerQuerier,
+	category NotificationCategory,
+	followers []uuid.UUID,
+) error {
+	filedUnder, err := NotificationCategoryFor(NotificationTypeEpisodePublished, category)
+	if err != nil {
+		return err
+	}
+	payloads := make([]string, len(followers))
+	for i := range payloads {
+		payloads[i] = f.payload
+	}
+	if err := q.CreateNotificationsForRecipients(ctx, dbmodels.CreateNotificationsForRecipientsParams{
+		TenantID:         f.publication.TenantID,
+		NotificationType: NotificationTypeEpisodePublished,
+		SubjectKey:       f.subjectKey,
+		Availability:     f.availability,
+		Category:         filedUnder,
+		UserIds:          followers,
+		Payloads:         payloads,
+	}); err != nil {
+		return fmt.Errorf("insert %s notifications: %w", category, err)
+	}
+	return nil
+}
+
+// finish queues the push and the mail that mirror the rows, once every
+// follower is filed and if anybody was.
+func (f episodeFollowerFiler) finish(ctx context.Context, q EpisodeFollowerQuerier, cursor episodeFollowerCursor) error {
+	if !cursor.Notified {
+		return nil
+	}
+	if err := enqueueEpisodePublishedPush(ctx, q, f.publication, f.subjectKey); err != nil {
+		return err
+	}
+	return queueNotificationEmail(ctx, q, f.publication.TenantID, NotificationTypeEpisodePublished, f.subjectKey)
 }
 
 // SeriesPublicationQuerier is the statements
@@ -368,12 +424,24 @@ type EpisodePublishedNotificationHandlerConfig struct {
 // episodePublishedNotificationQuerier is the statements the handler runs, named
 // so a test can drive the fan-out without a database behind it.
 type episodePublishedNotificationQuerier interface {
-	EpisodeFollowerQuerier
 	GetPublishedEpisodeForFollowerNotification(ctx context.Context, arg dbmodels.GetPublishedEpisodeForFollowerNotificationParams) (dbmodels.GetPublishedEpisodeForFollowerNotificationRow, error)
+}
+
+// episodeFollowerPageQuerier is the statements one page of the handler's
+// fan-out runs, in the transaction that holds the episode: the page, and the
+// cursor that records it.
+type episodeFollowerPageQuerier interface {
+	EpisodeFollowerQuerier
+	fanOutProgressRecorder
 }
 
 // NewEpisodePublishedNotificationHandler tells the followers of an episode the
 // console published at once.
+//
+// Each page of followers is filed in a transaction of its own that holds the
+// episode and records how far the walk has got, and an episode whose followers
+// do not fit in one job is filed across as many as it takes: the push and the
+// mail are queued with the last page.
 func NewEpisodePublishedNotificationHandler(cfg EpisodePublishedNotificationHandlerConfig) Handler {
 	if cfg.DB == nil {
 		// A plain error rather than a [Permanent] one, because an operator
@@ -383,15 +451,15 @@ func NewEpisodePublishedNotificationHandler(cfg EpisodePublishedNotificationHand
 		}
 	}
 	return episodePublishedNotificationHandler(cfg, dbmodels.New(cfg.DB),
-		holdEpisodeOn(cfg.DB, func(q *dbmodels.Queries) EpisodeFollowerQuerier { return q }),
-		DefaultEpisodeFollowerPageSize)
+		holdEpisodeOn(cfg.DB, func(q *dbmodels.Queries) episodeFollowerPageQuerier { return q }),
+		defaultFanOutPaging)
 }
 
 func episodePublishedNotificationHandler(
 	cfg EpisodePublishedNotificationHandlerConfig,
 	queries episodePublishedNotificationQuerier,
-	hold episodeHold[EpisodeFollowerQuerier],
-	pageSize int32,
+	hold episodeHold[episodeFollowerPageQuerier],
+	paging fanOutPaging,
 ) Handler {
 	return func(ctx context.Context, event dbmodels.OutboxEvent) error {
 		var payload EpisodePublishedNotificationPayload
@@ -423,24 +491,55 @@ func episodePublishedNotificationHandler(
 			return fmt.Errorf("get published episode: %w", err)
 		}
 
-		held, err := hold(ctx, tenantID, episode.EpisodePublicID, func(q EpisodeFollowerQuerier) error {
-			return NotifyEpisodeFollowers(ctx, q, EpisodePublication{
-				TenantID:        tenantID,
-				EpisodeID:       episode.EpisodeID,
-				EpisodePublicID: episode.EpisodePublicID,
-				EpisodeTitle:    episode.EpisodeTitle,
-				SeriesPublicID:  episode.SeriesPublicID,
-				SeriesTitle:     episode.SeriesTitle,
-			}, pageSize)
-		})
-		if err != nil {
-			return err
+		publication := EpisodePublication{
+			TenantID:        tenantID,
+			EpisodeID:       episode.EpisodeID,
+			EpisodePublicID: episode.EpisodePublicID,
+			EpisodeTitle:    episode.EpisodeTitle,
+			SeriesPublicID:  episode.SeriesPublicID,
+			SeriesTitle:     episode.SeriesTitle,
 		}
-		if !held {
-			logEpisodePublished(ctx, cfg.Logger, "episode was deleted; followers are not notified", event,
-				"episode_id", episodeID.String())
+		var cursor episodeFollowerCursor
+		if err := parseFanOutCursor(event, &cursor); err != nil {
+			return Permanent(err)
 		}
-		return nil
+		for first := true; ; first = false {
+			if !first && !paging.hasRoomForPage(ctx) {
+				return ErrResume
+			}
+			done := false
+			held, err := hold(ctx, tenantID, episode.EpisodePublicID, func(q episodeFollowerPageQuerier) error {
+				filer, ok, err := newEpisodeFollowerFiler(ctx, q, publication, paging.pageSize)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					done = true
+					return nil
+				}
+				next, finished, err := filer.filePage(ctx, q, cursor)
+				if err != nil {
+					return err
+				}
+				if finished {
+					done = true
+					return filer.finish(ctx, q, next)
+				}
+				cursor = next
+				return recordFanOutProgress(ctx, q, event, next)
+			})
+			if err != nil {
+				return err
+			}
+			if !held {
+				logEpisodePublished(ctx, cfg.Logger, "episode was deleted; followers are not notified", event,
+					"episode_id", episodeID.String())
+				return nil
+			}
+			if done {
+				return nil
+			}
+		}
 	}
 }
 
