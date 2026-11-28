@@ -50,6 +50,23 @@ const (
 	// deadline of its own instead.
 	outcomeTimeout = 10 * time.Second
 
+	// rescueStuckJobsAfter is how long a River job may stay running before the
+	// leader's rescuer takes it for one a killed worker left behind and retries
+	// it. River's default is an hour, and every job here is unique over the
+	// running state, so a drain left running would hold every later drain back
+	// for that long. The rescuer still waits out a kind's own Timeout before it
+	// touches a job, so one value fits every queue: the drain and the process
+	// jobs are retried after this, which outlasts their 30-second timeout and
+	// the outcome write after it, and the ticker and maintenance jobs once their
+	// own timeout has passed.
+	rescueStuckJobsAfter = time.Minute
+
+	// stopCancelGrace is the part of Stop's deadline kept back for the jobs
+	// still running when the rest of it has passed. Their contexts are
+	// cancelled then, so each returns and River records its attempt rather than
+	// leaving the row running for the rescuer.
+	stopCancelGrace = 5 * time.Second
+
 	// unknownTypeWindow is how long after an event is written a worker that
 	// has no handler for its type keeps leaving it for one that has. It
 	// outlasts an upgrade that rolls the workers of two releases one copy at
@@ -262,9 +279,12 @@ func Start(ctx context.Context, db *sql.DB, cfg Config) (*Worker, error) {
 		MaxAttempts:       5,
 		FetchCooldown:     cfg.FetchCooldown,
 		FetchPollInterval: cfg.FetchPollInterval,
-		Queues:            queues,
-		Workers:           workers,
-		PeriodicJobs:      periodicJobs,
+		// A process job may run for JobTimeout and then write its outcome, and
+		// a rescue inside that would run the event a second time.
+		RescueStuckJobsAfter: max(rescueStuckJobsAfter, cfg.JobTimeout+outcomeTimeout),
+		Queues:               queues,
+		Workers:              workers,
+		PeriodicJobs:         periodicJobs,
 	}
 
 	client, err := river.NewClient(riverdatabasesql.New(db), riverCfg)
@@ -337,8 +357,11 @@ func registerPeriodic(workers *river.Workers, queues map[string]river.QueueConfi
 	return periodicJobs, nil
 }
 
-// Stop stops fetching new River jobs and waits for in-flight work. It is
-// safe to call more than once.
+// Stop stops fetching new River jobs and waits for in-flight work. The jobs
+// still running [stopCancelGrace] before ctx's deadline, or when ctx is done,
+// have their contexts cancelled, so each records its attempt instead of
+// leaving its river_job row running until the rescuer finds it. It is safe to
+// call more than once.
 func (w *Worker) Stop(ctx context.Context) error {
 	if w == nil {
 		return nil
@@ -348,9 +371,22 @@ func (w *Worker) Stop(ctx context.Context) error {
 		if w.client == nil {
 			return
 		}
-		w.stopErr = w.client.Stop(ctx)
+		w.stopErr = w.stopClient(ctx)
 	})
 	return w.stopErr
+}
+
+func (w *Worker) stopClient(ctx context.Context) error {
+	soft := ctx
+	if deadline, ok := ctx.Deadline(); ok {
+		var cancel context.CancelFunc
+		soft, cancel = context.WithDeadline(ctx, deadline.Add(-stopCancelGrace))
+		defer cancel()
+	}
+	if err := w.client.Stop(soft); err == nil {
+		return nil
+	}
+	return w.client.StopAndCancel(ctx)
 }
 
 // DrainArgs is the periodic job that claims due outbox rows and enqueues
