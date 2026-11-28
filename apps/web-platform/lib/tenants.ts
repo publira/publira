@@ -462,13 +462,26 @@ export const listPlatformTenantMembers = async (
   });
 };
 
-export const suspendPlatformTenant = async (
-  tenantId: string
-): Promise<boolean> => {
-  const sid = await resolveAccessToken();
+export type PlatformTenantStatusChangeResult =
+  | { ok: true }
+  | { message: string; ok: false };
 
-  if (!tenantId.trim() || !sid) {
-    return false;
+/**
+ * Stops serving the tenant: its site, its app, and its console stop working
+ * until it is resumed.
+ */
+export const suspendPlatformTenant = async (
+  tenantId: string,
+  locale: Locale
+): Promise<PlatformTenantStatusChangeResult> => {
+  const {
+    locale: resolvedLocale,
+    sid,
+    t,
+  } = await loadTenantCopyAndSession(locale);
+
+  if (!sid) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -477,22 +490,37 @@ export const suspendPlatformTenant = async (
       buildSessionHeaders(sid)
     );
 
-    return true;
+    return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
-    return false;
+    return {
+      message: rpcErrorMessage(error, t("platform.tenants.suspend_failed"), {
+        locale: resolvedLocale,
+        overrides: { "not-found": t("platform.tenants.not_found") },
+      }),
+      ok: false,
+    };
   }
 };
 
+/**
+ * Serves a suspended tenant again. One marked for deletion is refused, since
+ * the worker is about to erase it.
+ */
 export const resumePlatformTenant = async (
-  tenantId: string
-): Promise<boolean> => {
-  const sid = await resolveAccessToken();
+  tenantId: string,
+  locale: Locale
+): Promise<PlatformTenantStatusChangeResult> => {
+  const {
+    locale: resolvedLocale,
+    sid,
+    t,
+  } = await loadTenantCopyAndSession(locale);
 
-  if (!tenantId.trim() || !sid) {
-    return false;
+  if (!sid) {
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
@@ -501,12 +529,21 @@ export const resumePlatformTenant = async (
       buildSessionHeaders(sid)
     );
 
-    return true;
+    return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
-    return false;
+    return {
+      message: rpcErrorMessage(error, t("platform.tenants.resume_failed"), {
+        locale: resolvedLocale,
+        overrides: {
+          "not-found": t("platform.tenants.not_found"),
+          precondition: t("platform.tenants.resume_deleting"),
+        },
+      }),
+      ok: false,
+    };
   }
 };
 

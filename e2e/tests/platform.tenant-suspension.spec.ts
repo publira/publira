@@ -4,7 +4,10 @@ import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { applyScenarioSql, runSql } from "../src/db";
-import { signInAsSeedPlatformSuperAdmin } from "../src/platform";
+import {
+  confirmDangerAction,
+  signInAsSeedPlatformSuperAdmin,
+} from "../src/platform";
 import {
   SUSPENSION_ADMIN,
   SUSPENSION_TENANT,
@@ -129,7 +132,7 @@ test.describe("a suspended tenant", () => {
         page,
         `/tenants/${SUSPENSION_TENANT.publicId}`
       );
-      await page.getByRole("button", { name: "Suspend" }).click();
+      await confirmDangerAction(page, "Suspend", "Suspend");
       await expect(page.getByRole("button", { name: "Resume" })).toBeVisible({
         timeout: 30_000,
       });

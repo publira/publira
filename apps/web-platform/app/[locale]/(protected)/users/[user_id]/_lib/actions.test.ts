@@ -71,6 +71,13 @@ const clearedTags = (): string[] =>
 
 const endUserId = "0199a3c0-0000-7000-8000-00000000000a";
 
+const userForm = (userId: string): FormData => {
+  const formData = new FormData();
+  formData.set("user_id", userId);
+
+  return formData;
+};
+
 describe("end-user detail actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -87,14 +94,21 @@ describe("end-user detail actions", () => {
   });
 
   it("suspending or unsuspending clears the end users, the dashboard's pending count, and the audit log", async () => {
+    mockSuspendPlatformEndUser.mockResolvedValueOnce({ ok: true });
+    mockUnsuspendPlatformEndUser.mockResolvedValueOnce({ ok: true });
+
     const { suspendEndUserAction, unsuspendEndUserAction } =
       await import("./actions");
 
-    await suspendEndUserAction(endUserId);
-    await unsuspendEndUserAction(endUserId);
+    await expect(
+      suspendEndUserAction(null, userForm(endUserId))
+    ).resolves.toEqual({ message: "", ok: true });
+    await expect(
+      unsuspendEndUserAction(null, userForm(endUserId))
+    ).resolves.toEqual({ message: "", ok: true });
 
-    expect(mockSuspendPlatformEndUser).toHaveBeenCalledWith(endUserId);
-    expect(mockUnsuspendPlatformEndUser).toHaveBeenCalledWith(endUserId);
+    expect(mockSuspendPlatformEndUser).toHaveBeenCalledWith(endUserId, "en");
+    expect(mockUnsuspendPlatformEndUser).toHaveBeenCalledWith(endUserId, "en");
     expect(clearedTags()).toEqual([...endUserTags, ...endUserTags]);
   });
 
@@ -103,13 +117,36 @@ describe("end-user detail actions", () => {
 
     const { deleteEndUserAction } = await import("./actions");
 
-    await expect(deleteEndUserAction(endUserId)).rejects.toThrow(
-      "NEXT_REDIRECT:/users"
-    );
+    await expect(
+      deleteEndUserAction(null, userForm(endUserId))
+    ).rejects.toThrow("NEXT_REDIRECT:/users");
     expect(clearedTags()).toEqual(endUserTags);
   });
 
-  it("clears nothing when the operator may not manage end users", async () => {
+  it.each([
+    ["suspendEndUserAction", mockSuspendPlatformEndUser],
+    ["unsuspendEndUserAction", mockUnsuspendPlatformEndUser],
+    ["deleteEndUserAction", mockDeletePlatformEndUser],
+  ] as const)(
+    "%s answers with the refusal the API met, clears nothing, and stays on the page",
+    async (name, mockChange) => {
+      mockChange.mockResolvedValueOnce({
+        message: "The requested item could not be found.",
+        ok: false,
+      });
+
+      const actions = await import("./actions");
+
+      await expect(actions[name](null, userForm(endUserId))).resolves.toEqual({
+        message: "The requested item could not be found.",
+        ok: false,
+      });
+      expect(mockUpdateTag).not.toHaveBeenCalled();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    }
+  );
+
+  it("says an operator who may not manage end users may not suspend one", async () => {
     mockGetPlatformCurrentOperator.mockResolvedValue({
       ok: true,
       operator: {
@@ -121,8 +158,13 @@ describe("end-user detail actions", () => {
 
     const { suspendEndUserAction } = await import("./actions");
 
-    await suspendEndUserAction(endUserId);
-
+    await expect(
+      suspendEndUserAction(null, userForm(endUserId))
+    ).resolves.toEqual({
+      message:
+        "You do not have permission to perform this action. Go back or use an account that does.",
+      ok: false,
+    });
     expect(mockSuspendPlatformEndUser).not.toHaveBeenCalled();
     expect(mockUpdateTag).not.toHaveBeenCalled();
   });
@@ -130,8 +172,9 @@ describe("end-user detail actions", () => {
   it("sends no request for a user ID that is not a UUID", async () => {
     const { suspendEndUserAction } = await import("./actions");
 
-    await suspendEndUserAction("SeedUSERAAA1");
+    const result = await suspendEndUserAction(null, userForm("SeedUSERAAA1"));
 
+    expect(result?.ok).toBe(false);
     expect(mockSuspendPlatformEndUser).not.toHaveBeenCalled();
   });
 });

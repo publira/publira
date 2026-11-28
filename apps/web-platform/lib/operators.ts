@@ -20,6 +20,7 @@ import { verifyPlatformSession } from "./auth-session";
 import { rethrowUnauthenticatedRpcError } from "./auth-shared";
 import { getLocale } from "./locale";
 import { getMessagesFor } from "./messages";
+import type { PlatformMessageAccessor } from "./messages";
 import { normalizePlatformRole } from "./roles";
 
 const getPlatformOperatorInputSchema = z.object({
@@ -199,61 +200,76 @@ export const createPlatformOperator = async (
   }
 };
 
-export const suspendPlatformOperator = async (
-  operatorId: string
-): Promise<boolean> => {
-  if (!operatorId.trim()) {
-    return false;
-  }
+export type PlatformOperatorStatusChangeResult =
+  | { ok: true }
+  | { message: string; ok: false };
 
-  const sessionId = await resolveAccessToken();
+/**
+ * Sends one status change for an operator and words its refusal. A failed
+ * precondition means the operator is no longer in the status the change
+ * starts from, which `precondition` says for that change.
+ */
+const changePlatformOperatorStatus = async (
+  locale: Locale,
+  send: (sessionId: string) => Promise<void>,
+  precondition: (t: PlatformMessageAccessor) => string
+): Promise<PlatformOperatorStatusChangeResult> => {
+  const [t, sessionId] = await Promise.all([
+    getMessagesFor(locale),
+    resolveAccessToken(),
+  ]);
 
   if (!sessionId) {
-    return false;
+    return { message: t("errors.rpc.unauthenticated"), ok: false };
   }
 
   try {
-    await apiClient.operators.suspendOperator(
-      { operatorId },
-      buildSessionHeaders(sessionId)
-    );
+    await send(sessionId);
 
-    return true;
+    return { ok: true };
   } catch (error) {
     rethrowUnauthenticatedRpcError(error);
     rethrowUnclassifiedRpcError(error);
 
-    return false;
+    return {
+      message: rpcErrorMessage(error, t("platform.common.generic_failed"), {
+        locale,
+        overrides: { precondition: precondition(t) },
+      }),
+      ok: false,
+    };
   }
 };
 
-export const unsuspendPlatformOperator = async (
-  operatorId: string
-): Promise<boolean> => {
-  if (!operatorId.trim()) {
-    return false;
-  }
+export const suspendPlatformOperator = (
+  operatorId: string,
+  locale: Locale
+): Promise<PlatformOperatorStatusChangeResult> =>
+  changePlatformOperatorStatus(
+    locale,
+    async (sessionId) => {
+      await apiClient.operators.suspendOperator(
+        { operatorId },
+        buildSessionHeaders(sessionId)
+      );
+    },
+    (t) => t("platform.operators.suspend_not_active")
+  );
 
-  const sessionId = await resolveAccessToken();
-
-  if (!sessionId) {
-    return false;
-  }
-
-  try {
-    await apiClient.operators.unsuspendOperator(
-      { operatorId },
-      buildSessionHeaders(sessionId)
-    );
-
-    return true;
-  } catch (error) {
-    rethrowUnauthenticatedRpcError(error);
-    rethrowUnclassifiedRpcError(error);
-
-    return false;
-  }
-};
+export const unsuspendPlatformOperator = (
+  operatorId: string,
+  locale: Locale
+): Promise<PlatformOperatorStatusChangeResult> =>
+  changePlatformOperatorStatus(
+    locale,
+    async (sessionId) => {
+      await apiClient.operators.unsuspendOperator(
+        { operatorId },
+        buildSessionHeaders(sessionId)
+      );
+    },
+    (t) => t("platform.operators.resume_not_suspended")
+  );
 
 const getPlatformOperatorForLocale = async (
   locale: Locale,
@@ -359,26 +375,17 @@ export const updatePlatformOperatorRole = async (
   }
 };
 
-export const deactivatePlatformOperator = async (
-  operatorId: string
-): Promise<boolean> => {
-  if (!operatorId.trim()) {
-    return false;
-  }
-
-  const sid = await resolveAccessToken();
-
-  try {
-    await apiClient.operators.deactivateOperator(
-      { operatorId },
-      buildSessionHeaders(sid)
-    );
-
-    return true;
-  } catch (error) {
-    rethrowUnauthenticatedRpcError(error);
-    rethrowUnclassifiedRpcError(error);
-
-    return false;
-  }
-};
+export const deactivatePlatformOperator = (
+  operatorId: string,
+  locale: Locale
+): Promise<PlatformOperatorStatusChangeResult> =>
+  changePlatformOperatorStatus(
+    locale,
+    async (sessionId) => {
+      await apiClient.operators.deactivateOperator(
+        { operatorId },
+        buildSessionHeaders(sessionId)
+      );
+    },
+    (t) => t("platform.operators.deactivate_already_inactive")
+  );

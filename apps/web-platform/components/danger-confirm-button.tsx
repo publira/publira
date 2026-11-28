@@ -1,49 +1,45 @@
 "use client";
 
+import * as ActionForm from "@publira/ui-components/action-form";
 import { Button } from "@publira/ui-components/button";
 import type { ButtonProps } from "@publira/ui-components/button";
 import * as ConfirmDialog from "@publira/ui-components/confirm-dialog";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useTransition,
-} from "react";
+import { createContext, useContext, useId } from "react";
 import type { ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 
-interface DangerConfirmState {
-  isPending: boolean;
-  run: () => void;
-}
+const DangerConfirmFormContext = createContext<string | null>(null);
 
-const DangerConfirmContext = createContext<DangerConfirmState | null>(null);
+const useDangerConfirmForm = (): string => {
+  const formId = useContext(DangerConfirmFormContext);
 
-const useDangerConfirm = (): DangerConfirmState => {
-  const state = useContext(DangerConfirmContext);
-
-  if (!state) {
+  if (!formId) {
     throw new Error(
       "DangerConfirmButton slots must be rendered inside a DangerConfirmButton."
     );
   }
 
-  return state;
+  return formId;
 };
 
-interface DangerConfirmButtonProps<T> {
-  actionArg: T;
-  actionCreator: (arg: T) => Promise<void>;
-  /** A `DangerConfirmButton.Trigger` and the `ConfirmDialog.Content` it opens, with a `DangerConfirmButton.Action` in its footer. */
+interface DangerConfirmButtonProps {
+  action: ActionForm.RootProps["action"];
+  /**
+   * The hidden inputs `action` reads, a `DangerConfirmButton.Trigger`, and the
+   * `ConfirmDialog.Content` it opens, with a `DangerConfirmButton.Action` in
+   * its footer.
+   */
   children: ReactNode;
 }
 
 /**
- * A confirmation dialog that runs `actionCreator(actionArg)` once the operator
- * confirms.
+ * A form that submits to `action` once the operator confirms in a dialog, and
+ * shows the refusal `action` answers with under the button. Success shows
+ * nothing: the page it re-renders says what changed.
  *
  * ```tsx
- * <DangerConfirmButton.Root actionArg={…} actionCreator={…}>
+ * <DangerConfirmButton.Root action={…}>
+ *   <input name="…" type="hidden" value={…} />
  *   <DangerConfirmButton.Trigger>…</DangerConfirmButton.Trigger>
  *   <ConfirmDialog.Content>
  *     <ConfirmDialog.Header>
@@ -58,25 +54,23 @@ interface DangerConfirmButtonProps<T> {
  * </DangerConfirmButton.Root>
  * ```
  */
-const DangerConfirmButton = <T,>({
-  actionArg,
-  actionCreator,
+const DangerConfirmButton = ({
+  action,
   children,
-}: DangerConfirmButtonProps<T>) => {
-  const [isPending, startTransition] = useTransition();
-
-  const run = useCallback(() => {
-    startTransition(async () => {
-      await actionCreator(actionArg);
-    });
-  }, [actionArg, actionCreator]);
-
-  const state = useMemo(() => ({ isPending, run }), [isPending, run]);
+}: DangerConfirmButtonProps) => {
+  const formId = useId();
 
   return (
-    <DangerConfirmContext value={state}>
-      <ConfirmDialog.Root>{children}</ConfirmDialog.Root>
-    </DangerConfirmContext>
+    <DangerConfirmFormContext value={formId}>
+      <ActionForm.Root
+        action={action}
+        className="grid max-w-sm justify-items-end gap-2"
+        id={formId}
+        showSuccess={false}
+      >
+        <ConfirmDialog.Root>{children}</ConfirmDialog.Root>
+      </ActionForm.Root>
+    </DangerConfirmFormContext>
   );
 };
 
@@ -88,12 +82,12 @@ const DangerConfirmButtonTrigger = ({
   children: ReactNode;
   variant?: ButtonProps["variant"];
 }) => {
-  const { isPending } = useDangerConfirm();
+  const { pending } = useFormStatus();
 
   return (
     <ConfirmDialog.Trigger
       render={
-        <Button disabled={isPending} variant={variant}>
+        <Button disabled={pending} type="button" variant={variant}>
           {children}
         </Button>
       }
@@ -101,7 +95,10 @@ const DangerConfirmButtonTrigger = ({
   );
 };
 
-/** The dialog's confirm control, which runs the action. */
+/**
+ * The dialog's confirm control, which submits the form. The dialog portals
+ * out of the form, so the form's id is what connects the two.
+ */
 const DangerConfirmButtonAction = ({
   children,
   variant = "destructiveFilled",
@@ -109,10 +106,10 @@ const DangerConfirmButtonAction = ({
   children: ReactNode;
   variant?: NonNullable<ButtonProps["variant"]>;
 }) => {
-  const { run } = useDangerConfirm();
+  const formId = useDangerConfirmForm();
 
   return (
-    <ConfirmDialog.Action onClick={run} variant={variant}>
+    <ConfirmDialog.Action form={formId} variant={variant}>
       {children}
     </ConfirmDialog.Action>
   );

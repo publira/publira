@@ -169,10 +169,13 @@ const OperatorDetailContent = async ({
             </Suspense>
           </LinkButton>
           {canUnsuspend ? (
-            <DangerConfirmButton.Root
-              actionArg={{ id: operator.id, publicId: operator.publicId }}
-              actionCreator={unsuspendOperatorAction}
-            >
+            <DangerConfirmButton.Root action={unsuspendOperatorAction}>
+              <input name="operator_id" type="hidden" value={operator.id} />
+              <input
+                name="operator_public_id"
+                type="hidden"
+                value={operator.publicId}
+              />
               <DangerConfirmButton.Trigger variant="outline">
                 {t("platform.operators.resume")}
               </DangerConfirmButton.Trigger>
@@ -195,10 +198,13 @@ const OperatorDetailContent = async ({
             </DangerConfirmButton.Root>
           ) : null}
           {canSuspend ? (
-            <DangerConfirmButton.Root
-              actionArg={{ id: operator.id, publicId: operator.publicId }}
-              actionCreator={suspendOperatorAction}
-            >
+            <DangerConfirmButton.Root action={suspendOperatorAction}>
+              <input name="operator_id" type="hidden" value={operator.id} />
+              <input
+                name="operator_public_id"
+                type="hidden"
+                value={operator.publicId}
+              />
               <DangerConfirmButton.Trigger variant="outline">
                 {t("platform.operators.suspend")}
               </DangerConfirmButton.Trigger>
@@ -221,10 +227,13 @@ const OperatorDetailContent = async ({
             </DangerConfirmButton.Root>
           ) : null}
           {canModify ? (
-            <DangerConfirmButton.Root
-              actionArg={{ id: operator.id, publicId: operator.publicId }}
-              actionCreator={deactivateOperatorAction}
-            >
+            <DangerConfirmButton.Root action={deactivateOperatorAction}>
+              <input name="operator_id" type="hidden" value={operator.id} />
+              <input
+                name="operator_public_id"
+                type="hidden"
+                value={operator.publicId}
+              />
               <DangerConfirmButton.Trigger>
                 {t("platform.operators.deactivate")}
               </DangerConfirmButton.Trigger>
