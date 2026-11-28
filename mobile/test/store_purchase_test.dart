@@ -45,7 +45,12 @@ void main() {
   late FakeInAppPurchasePlatform platform;
   late StorePurchaser purchaser;
 
+  /// The clock the purchaser spaces out its retries by.
+  late DateTime now;
+
   setUp(() {
+    now = DateTime.utc(2026, 11, 28, 12);
+    auth = fakeAuthController();
     catalog = FakeCatalogRepository(
       series: fixtureSeries,
       details: fixtureDetails(),
@@ -62,6 +67,8 @@ void main() {
       platform: platform,
       store: InAppPurchaseStore.appStore,
       repository: purchases,
+      readerId: () => auth.session?.userPublicId ?? '',
+      now: () => now,
     );
     addTearDown(purchaser.dispose);
   });
@@ -70,13 +77,14 @@ void main() {
     WidgetTester tester, {
     String? initialLocation,
     AuthSession? session,
+    FakeAuthRepository? authRepository,
   }) async {
     tester.view
       ..physicalSize = const Size(400, 2400)
       ..devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     router = createAppRouter(initialLocation: initialLocation ?? viewerPath);
-    auth = fakeAuthController(session: session);
+    auth = fakeAuthController(session: session, repository: authRepository);
     await tester.pumpWidget(
       PubliraApp(
         router: router,
@@ -89,6 +97,12 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
+  }
+
+  void resume(WidgetTester tester) {
+    tester.binding
+      ..handleAppLifecycleStateChanged(AppLifecycleState.paused)
+      ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
   }
 
   Finder snackBar(String text) =>
@@ -180,11 +194,92 @@ void main() {
       await pumpUntilFound(tester, confirming);
 
       purchases.confirmFailure = null;
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      now = now.add(const Duration(minutes: 1));
+      resume(tester);
       await pumpUntilTrue(tester, () => platform.finished.isNotEmpty);
 
       expect(purchases.confirmed, ['jws-2000000000000001']);
+    });
+
+    testWidgets('spaces out each retry further than the last', (tester) async {
+      purchases.confirmFailure = const PurchaseFailure(
+        PurchaseFailureKind.network,
+      );
+      await pumpApp(tester, session: fakeSession);
+      await pumpUntilFound(tester, buy);
+      await tester.tap(buy);
+      await pumpUntilFound(tester, confirming);
+      expect(purchases.confirmAttempts, hasLength(1));
+
+      // A resume straight after the failure leaves it for later.
+      resume(tester);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(purchases.confirmAttempts, hasLength(1));
+
+      now = now.add(const Duration(minutes: 1));
+      resume(tester);
+      await pumpUntilTrue(tester, () => purchases.confirmAttempts.length == 2);
+
+      // It failed again, so a minute is no longer enough.
+      now = now.add(const Duration(minutes: 1));
+      resume(tester);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(purchases.confirmAttempts, hasLength(2));
+
+      purchases.confirmFailure = null;
+      now = now.add(const Duration(minutes: 1));
+      resume(tester);
+      await pumpUntilTrue(tester, () => platform.finished.isNotEmpty);
+      expect(purchases.confirmAttempts, hasLength(3));
+      expect(purchases.confirmed, ['jws-2000000000000001']);
+    });
+
+    testWidgets('sends a transaction refused for one reader again only for '
+        'another', (tester) async {
+      const anotherReader = AuthSession(
+        accessToken: 'another-access-token',
+        userPublicId: 'SeedMMBRBBB2',
+        userName: 'Another Member',
+      );
+      const transaction = 'jws-2000000000000005';
+      purchases
+        ..onConfirmed = null
+        ..confirmFailure = const PurchaseFailure(
+          PurchaseFailureKind.otherAccount,
+        );
+      await pumpApp(
+        tester,
+        session: fakeSession,
+        authRepository: FakeAuthRepository(session: anotherReader),
+      );
+      await pumpUntilFound(tester, buy);
+      // Bought on this device by the reader who opened the intent, and left
+      // unfinished when they signed out.
+      platform.report([
+        FakeInAppPurchasePlatform.storeTransaction(
+          id: '2000000000000005',
+          productId: 'episode_500',
+          intentId: 'intent-of-another-reader',
+        ),
+      ]);
+      await pumpUntilTrue(tester, () => purchases.confirmAttempts.isNotEmpty);
+
+      for (var i = 0; i < 2; i++) {
+        now = now.add(const Duration(hours: 1));
+        unawaited(purchaser.reconcile());
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(purchases.confirmAttempts, [transaction]);
+      expect(platform.finished, isEmpty);
+
+      purchases.confirmFailure = null;
+      await auth.signOut();
+      await tester.pump();
+      await auth.signIn(email: 'another@example.com', password: 'memberpass');
+      await pumpUntilTrue(tester, () => platform.finished.isNotEmpty);
+
+      expect(purchases.confirmAttempts, [transaction, transaction]);
+      expect(purchases.confirmed, [transaction]);
     });
 
     testWidgets('waits for a transaction being confirmed before a new order', (

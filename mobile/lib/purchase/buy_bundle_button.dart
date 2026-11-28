@@ -138,6 +138,7 @@ class _BuyBundleButtonState extends State<BuyBundleButton> {
         case PurchaseFailureKind.storeUnavailable ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.transactionRefused ||
             PurchaseFailureKind.promotionCodeRateLimited ||
             PurchaseFailureKind.unexpected:
           report(messages.purchaseStartFailed);

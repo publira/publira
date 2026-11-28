@@ -161,6 +161,7 @@ class _TipAuthorsButtonState extends State<TipAuthorsButton> {
             PurchaseFailureKind.gone ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.transactionRefused ||
             PurchaseFailureKind.promotionCodeInvalid ||
             PurchaseFailureKind.promotionCodeExpired ||
             PurchaseFailureKind.promotionCodeExhausted ||

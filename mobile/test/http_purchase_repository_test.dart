@@ -301,6 +301,38 @@ void main() {
     );
   });
 
+  test('a transaction bought on another reader\'s intent is theirs', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    server
+      ..storeConfirmStatus = HttpStatus.forbidden
+      ..storeConfirmErrorCode = 'permission_denied';
+
+    await expectLater(
+      repository().confirmStorePurchase(
+        store: InAppPurchaseStore.appStore,
+        transaction: 'signed-transaction',
+        productId: 'episode_500',
+      ),
+      failsWith(PurchaseFailureKind.otherAccount),
+    );
+  });
+
+  test('a transaction the server will never record is refused', () async {
+    accessToken = ConnectFixtureServer.memberAccessToken;
+    server
+      ..storeConfirmStatus = HttpStatus.badRequest
+      ..storeConfirmErrorCode = 'invalid_argument';
+
+    await expectLater(
+      repository().confirmStorePurchase(
+        store: InAppPurchaseStore.appStore,
+        transaction: 'signed-transaction',
+        productId: 'episode_500',
+      ),
+      failsWith(PurchaseFailureKind.transactionRefused),
+    );
+  });
+
   test('a subscription is opened for the plan through the store', () async {
     accessToken = ConnectFixtureServer.memberAccessToken;
 

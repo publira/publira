@@ -1004,6 +1004,7 @@ class _PlanSectionState extends State<_PlanSection> {
             PurchaseFailureKind.storeUnavailable ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.transactionRefused ||
             PurchaseFailureKind.promotionCodeInvalid ||
             PurchaseFailureKind.promotionCodeExpired ||
             PurchaseFailureKind.promotionCodeExhausted ||
@@ -1098,6 +1099,7 @@ class _PlanSectionState extends State<_PlanSection> {
             PurchaseFailureKind.notSold ||
             PurchaseFailureKind.notSettled ||
             PurchaseFailureKind.otherAccount ||
+            PurchaseFailureKind.transactionRefused ||
             PurchaseFailureKind.promotionCodeInvalid ||
             PurchaseFailureKind.promotionCodeExpired ||
             PurchaseFailureKind.promotionCodeExhausted ||

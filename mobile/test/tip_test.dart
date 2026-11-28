@@ -67,6 +67,7 @@ void main() {
       platform: platform,
       store: InAppPurchaseStore.appStore,
       repository: purchases,
+      readerId: () => fakeSession.userPublicId,
     );
     addTearDown(purchaser.dispose);
   });
